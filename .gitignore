@@ -1,0 +1,36 @@
+# Firebase 서비스 계정 키 (절대 공유 금지!)
+config/serviceAccountKey.json
+config/*.json
+*-firebase-adminsdk-*.json
+firebase-config.js
+
+# 백업 파일 (엑셀 원본)
+backup/
+*.xlsx
+
+# 임시/브로큰 파일
+*.broken
+Screenshot*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 임시 파일
+*.tmp
+*.log

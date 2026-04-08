@@ -1,0 +1,858 @@
+window.__PORTFOLIO_DATA__ = {
+  "metadata": {
+    "title": "📊 투자 총괄 현황",
+    "mantra": "항상 돈에대한 자세는 겸손하게, 욕심부리지말자",
+    "basisDateLabel": "2026.04.08 기준",
+    "workbook": "투자현황_4월8일.xlsx"
+  },
+  "summary": {
+    "initialInvestment": 59034182,
+    "totalAssets": 48315645.93432188,
+    "investedPrincipal": 13708551.29394945,
+    "assetValuationTotal": 12564658.93432188,
+    "cashTotal": 35750987,
+    "portfolioPnl": -1143892.359627569,
+    "portfolioReturnRate": -0.08344370860927146,
+    "realizedProfitTotal": 3545841,
+    "liquidityRatio": 0.7399463736570611
+  },
+  "assetStatus": [
+    {
+      "category": "암호화폐",
+      "platform": "업비트",
+      "valuation": 12564658.93432188,
+      "principal": 13708551.29394945,
+      "pnl": -1143892.359627569,
+      "returnRate": -0.08344370860927153
+    }
+  ],
+  "cashPositions": [
+    {
+      "platform": "카카오증권 예수금",
+      "amount": 17633938
+    },
+    {
+      "platform": "카카오페이머니",
+      "amount": 0
+    },
+    {
+      "platform": "업비트 KRW잔액",
+      "amount": 18117049
+    }
+  ],
+  "holdings": [
+    {
+      "platform": "업비트",
+      "asset": "XRP",
+      "quantity": 6052.34052713,
+      "averagePrice": 2265,
+      "valuation": 12564658.93432188,
+      "returnRate": -0.08344370860927153
+    }
+  ],
+  "realized": [
+    {
+      "platform": "카카오증권",
+      "asset": "SK하이닉스 7주 매도",
+      "assetName": "SK하이닉스",
+      "quantity": 7,
+      "pnl": 930510,
+      "returnRate": 0.1535,
+      "date": "4/08"
+    },
+    {
+      "platform": "미래에셋",
+      "asset": "SK하이닉스 1주 매도",
+      "assetName": "SK하이닉스",
+      "quantity": 1,
+      "pnl": 93912,
+      "returnRate": 0.104,
+      "date": "4/08"
+    },
+    {
+      "platform": "업비트",
+      "asset": "ETH 전체 매도",
+      "assetName": "ETH",
+      "quantity": 0.6396,
+      "pnl": 91461,
+      "returnRate": 0.0457,
+      "date": "4/08"
+    },
+    {
+      "platform": "업비트",
+      "asset": "XRP 2,017개 매도 (최근매수평단)",
+      "assetName": "XRP",
+      "quantity": 2017,
+      "pnl": 150205,
+      "returnRate": 0.0372,
+      "date": "4/08",
+      "note": "최근 매수 평균가 2,000.49원 기준"
+    },
+    {
+      "platform": "카카오증권",
+      "asset": "SK하이닉스 7주 매도",
+      "assetName": "SK하이닉스",
+      "quantity": 7,
+      "pnl": 308778,
+      "returnRate": 0.05094088983973593,
+      "date": "4/07"
+    },
+    {
+      "platform": "카카오증권",
+      "asset": "삼성전자 17주 매도",
+      "assetName": "삼성전자",
+      "quantity": 17,
+      "pnl": 253723,
+      "returnRate": 0.0841972140117746,
+      "date": "4/07"
+    },
+    {
+      "platform": "카카오증권",
+      "asset": "삼성전자 16주 매도",
+      "assetName": "삼성전자",
+      "quantity": 16,
+      "pnl": 238796,
+      "returnRate": 0.08414899555144592,
+      "date": "4/06"
+    },
+    {
+      "platform": "카카오증권",
+      "asset": "삼성전자 46주 매도",
+      "assetName": "삼성전자",
+      "quantity": 46,
+      "pnl": 372647,
+      "returnRate": 0.04567532737823102,
+      "date": "4/03"
+    },
+    {
+      "platform": "카카오증권",
+      "asset": "SK하이닉스 4주 매도",
+      "assetName": "SK하이닉스",
+      "quantity": 4,
+      "pnl": 52846,
+      "returnRate": 0.0152570421559298,
+      "date": "4/03"
+    },
+    {
+      "platform": "카카오증권",
+      "asset": "삼성전자 57주 매도",
+      "assetName": "삼성전자",
+      "quantity": 57,
+      "pnl": 896964,
+      "returnRate": 0.0918,
+      "date": "4/01"
+    },
+    {
+      "platform": "카카오증권",
+      "asset": "SK하이닉스 6주 매도",
+      "assetName": "SK하이닉스",
+      "quantity": 6,
+      "pnl": 118453,
+      "returnRate": 0.0226,
+      "date": "4/01"
+    },
+    {
+      "platform": "미래에셋",
+      "asset": "삼성전자 4주 매도",
+      "assetName": "삼성전자",
+      "quantity": 4,
+      "pnl": 37546,
+      "returnRate": 0.0538,
+      "date": "4/01"
+    }
+  ],
+  "charts": {
+    "returnsComparison": [
+      {
+        "label": "XRP",
+        "valuation": 12564658.93432188,
+        "pnl": -1143892.359627569,
+        "returnRate": -0.08344370860927153
+      }
+    ],
+    "realizedHistory": [
+      {
+        "date": "4/01",
+        "displayDate": "2026-04-01",
+        "dailyPnl": 1052963,
+        "cumulativePnl": 1052963,
+        "tradeCount": 3,
+        "items": [
+          "삼성전자 57주 · 카카오증권",
+          "SK하이닉스 6주 · 카카오증권",
+          "삼성전자 4주 · 미래에셋"
+        ],
+        "profitDetails": [
+          {
+            "item": "삼성전자 57주 · 카카오증권",
+            "pnl": 896964
+          },
+          {
+            "item": "SK하이닉스 6주 · 카카오증권",
+            "pnl": 118453
+          },
+          {
+            "item": "삼성전자 4주 · 미래에셋",
+            "pnl": 37546
+          }
+        ]
+      },
+      {
+        "date": "4/03",
+        "displayDate": "2026-04-03",
+        "dailyPnl": 425493,
+        "cumulativePnl": 1478456,
+        "tradeCount": 2,
+        "items": [
+          "삼성전자 46주 · 카카오증권",
+          "SK하이닉스 4주 · 카카오증권"
+        ],
+        "profitDetails": [
+          {
+            "item": "삼성전자 46주 · 카카오증권",
+            "pnl": 372647
+          },
+          {
+            "item": "SK하이닉스 4주 · 카카오증권",
+            "pnl": 52846
+          }
+        ]
+      },
+      {
+        "date": "4/06",
+        "displayDate": "2026-04-06",
+        "dailyPnl": 238796,
+        "cumulativePnl": 1717252,
+        "tradeCount": 1,
+        "items": [
+          "삼성전자 16주 · 카카오증권"
+        ],
+        "profitDetails": [
+          {
+            "item": "삼성전자 16주 · 카카오증권",
+            "pnl": 238796
+          }
+        ]
+      },
+      {
+        "date": "4/07",
+        "displayDate": "2026-04-07",
+        "dailyPnl": 562501,
+        "cumulativePnl": 2279753,
+        "tradeCount": 2,
+        "items": [
+          "SK하이닉스 7주 · 카카오증권",
+          "삼성전자 17주 · 카카오증권"
+        ],
+        "profitDetails": [
+          {
+            "item": "SK하이닉스 7주 · 카카오증권",
+            "pnl": 308778
+          },
+          {
+            "item": "삼성전자 17주 · 카카오증권",
+            "pnl": 253723
+          }
+        ]
+      },
+      {
+        "date": "4/08",
+        "displayDate": "2026-04-08",
+        "dailyPnl": 1266088,
+        "cumulativePnl": 3545841,
+        "tradeCount": 4,
+        "items": [
+          "SK하이닉스 7주 · 카카오증권",
+          "SK하이닉스 1주 · 미래에셋",
+          "ETH 0.6396개 · 업비트",
+          "XRP 2,017개 · 업비트"
+        ],
+        "profitDetails": [
+          {
+            "item": "SK하이닉스 7주 · 카카오증권",
+            "pnl": 930510
+          },
+          {
+            "item": "SK하이닉스 1주 · 미래에셋",
+            "pnl": 93912
+          },
+          {
+            "item": "ETH 0.6396개 · 업비트",
+            "pnl": 91461
+          },
+          {
+            "item": "XRP 2,017개 · 업비트",
+            "pnl": 150205,
+            "note": "최근매수평단"
+          }
+        ]
+      }
+    ]
+  },
+  "strategy": {
+    "title": "📊 Phase 1: 커스텀 스나이퍼 투자 작전 지침\n(실전 실행본)",
+    "entryPrinciple": "펀더멘털 악재가 아닌 '매크로 노이즈'에 의한 급락 시에만 사격 개시.",
+    "entryNotes": [
+      "• 생존 예비비: 3차 매수 후에도 전체 현금의 약 15%는 반드시 '최후의 보루'로 남겨둠.",
+      "• 시간 제한: 마지막 매수 후 4~5 거래일 내 반등 실패 시 '시간 손절' 고려."
+    ],
+    "entrySteps": [
+      {
+        "label": "1차 매수",
+        "allocation": "전체 자금의 40%",
+        "trigger": "매크로 노이즈로 인한 첫 급락",
+        "splitGuide": "삼성(50%) / 하이닉스(30%) / 제3종목(20%)"
+      },
+      {
+        "label": "2차 매수",
+        "allocation": "잔여 자금의 50%",
+        "trigger": "1차 매수가 대비 추가 하락 시",
+        "splitGuide": "위 동일 비율 유지"
+      },
+      {
+        "label": "3차 매수",
+        "allocation": "잔여 자금의 50%",
+        "trigger": "패닉 셀링 극대화 구간 (바닥)",
+        "splitGuide": "위 동일 비율 유지"
+      }
+    ],
+    "exitPrinciple": "감정을 배제하고 기계적으로 숫자에 반응함.",
+    "exitRules": [
+      {
+        "label": "1차 익절",
+        "trigger": "평단가 대비 +3% ~ +5%",
+        "action": "보유 물량의 50% 매도",
+        "note": "수익 확정 및 심리적 안정 확보"
+      },
+      {
+        "label": "2차 익절",
+        "trigger": "최고점 대비 -5% 하락",
+        "action": "잔여 물량 100% 청산",
+        "note": "트레일링 스탑: 추세 끝까지 추적"
+      },
+      {
+        "label": "완전 손절",
+        "trigger": "최종 평단가 대비 -5%",
+        "action": "보유 물량 100% 매도",
+        "note": "시나리오 폐기 및 현금 회수"
+      },
+      {
+        "label": "시간 손절",
+        "trigger": "마지막 매수 후 3~5일 경과",
+        "action": "보유 물량 100% 매도",
+        "note": "기회비용 보존 (타임 스탑)"
+      }
+    ],
+    "checklistTitle": "3. 실전 체크리스트 (Daily Routine)",
+    "checklistWindow": "오전 09:00 ~ 09:15 (사격 개시)",
+    "checklist": [
+      "• 필라델피아 반도체 지수, 환율, VIX 지수 확인.",
+      "• 갭하락 발생 시 정해진 비중(40%)대로 시총 가중치를 두어 분할 매수.",
+      "• 8시 ATS 거래는 노이즈이므로 철저히 무시.",
+      "오후 15:15 ~ 15:30 (작전 점검)",
+      "• 고가 확인: 오늘 찍은 '최고가'를 확인하여 내일의 트레일링 스탑 가격 갱신.",
+      "• 예약 매도: 내일 자 '익절/손절/트레일링 스탑' 가격을 MTS 예약 매도에 입력."
+    ]
+  },
+  "trades": {
+    "stocks": [
+      {
+        "date": "3/30",
+        "broker": "카카오증권",
+        "asset": "SK하이닉스",
+        "side": "매수",
+        "quantity": 10,
+        "price": 868000,
+        "amount": 8680000,
+        "fee": 1214,
+        "note": null
+      },
+      {
+        "date": "3/30",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매수",
+        "quantity": 15,
+        "price": 171700,
+        "amount": 2575500,
+        "fee": 360,
+        "note": null
+      },
+      {
+        "date": "3/31",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매수",
+        "quantity": 42,
+        "price": 169466,
+        "amount": 7117600,
+        "fee": 997,
+        "note": null
+      },
+      {
+        "date": "3/31",
+        "broker": "카카오증권",
+        "asset": "SK하이닉스",
+        "side": "매수",
+        "quantity": 3,
+        "price": 813333,
+        "amount": 2440000,
+        "fee": 357,
+        "note": null
+      },
+      {
+        "date": "4/01",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매도",
+        "quantity": 57,
+        "price": 187556,
+        "amount": 10690700,
+        "fee": 20847,
+        "note": "+896,964원 (9.18%)"
+      },
+      {
+        "date": "4/01",
+        "broker": "카카오증권",
+        "asset": "SK하이닉스",
+        "side": "매도",
+        "quantity": 6,
+        "price": 893500,
+        "amount": 5361000,
+        "fee": 10454,
+        "note": "+118,453원 (2.26%)"
+      },
+      {
+        "date": "4/02",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매수",
+        "quantity": 20,
+        "price": 182900,
+        "amount": 3658000,
+        "fee": 549,
+        "note": null
+      },
+      {
+        "date": "4/02",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매수",
+        "quantity": 10,
+        "price": 182340,
+        "amount": 1823400,
+        "fee": 274,
+        "note": null
+      },
+      {
+        "date": "4/02",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매수",
+        "quantity": 12,
+        "price": 178900,
+        "amount": 2146800,
+        "fee": 322,
+        "note": null
+      },
+      {
+        "date": "4/02",
+        "broker": "카카오증권",
+        "asset": "SK하이닉스",
+        "side": "매수",
+        "quantity": 3,
+        "price": 837000,
+        "amount": 2511000,
+        "fee": 377,
+        "note": null
+      },
+      {
+        "date": "4/03",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매도",
+        "quantity": 7,
+        "price": 183700,
+        "amount": 1285900,
+        "fee": 2508,
+        "note": "+41,865원 (3.37%)"
+      },
+      {
+        "date": "4/03",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매도",
+        "quantity": 39,
+        "price": 186243,
+        "amount": 7263477,
+        "fee": 15616,
+        "note": null
+      },
+      {
+        "date": "4/03",
+        "broker": "카카오증권",
+        "asset": "SK하이닉스",
+        "side": "매도",
+        "quantity": 4,
+        "price": 881000,
+        "amount": 3524000,
+        "fee": 7442,
+        "note": "+52,846원 (1.53%)"
+      },
+      {
+        "date": "4/06",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매도",
+        "quantity": 16,
+        "price": 192700,
+        "amount": 3083200,
+        "fee": 6628,
+        "note": "+238,796원 (8.41%)"
+      },
+      {
+        "date": "4/07",
+        "broker": "카카오증권",
+        "asset": "SK하이닉스",
+        "side": "매도",
+        "quantity": 7,
+        "price": 912000,
+        "amount": 6384000,
+        "fee": 13726,
+        "note": "+308,778원 (5.09%)"
+      },
+      {
+        "date": "4/07",
+        "broker": "카카오증권",
+        "asset": "삼성전자",
+        "side": "매도",
+        "quantity": 17,
+        "price": 192600,
+        "amount": 3274200,
+        "fee": 7040,
+        "note": "+253,723원 (8.42%)"
+      },
+      {
+        "date": "4/01",
+        "broker": "미래에셋",
+        "asset": "SK하이닉스",
+        "side": "매수",
+        "quantity": 1,
+        "price": 903000,
+        "amount": 903000,
+        "fee": 1654,
+        "note": null
+      },
+      {
+        "date": "4/01",
+        "broker": "미래에셋",
+        "asset": "삼성전자",
+        "side": "매도",
+        "quantity": 4,
+        "price": 183900,
+        "amount": 735600,
+        "fee": 1654,
+        "note": "+37,546원 (5.38%)"
+      },
+      {
+        "date": "4/08",
+        "broker": "카카오증권",
+        "asset": "SK하이닉스",
+        "side": "매도",
+        "quantity": 7,
+        "price": 1001000,
+        "amount": 7007000,
+        "fee": 14994,
+        "note": "+930,510원 (15.35%)"
+      },
+      {
+        "date": "4/08",
+        "broker": "미래에셋",
+        "asset": "SK하이닉스",
+        "side": "매도",
+        "quantity": 1,
+        "price": 1001000,
+        "amount": 1001000,
+        "fee": 4088,
+        "note": "+93,912원 (10.40%)"
+      }
+    ],
+    "crypto": [
+      {
+        "date": "3/25",
+        "asset": "XRP",
+        "side": "매도",
+        "quantity": 100,
+        "price": 2108,
+        "amount": 210800,
+        "fee": 105.4
+      },
+      {
+        "date": "3/26",
+        "asset": "XRP",
+        "side": "매도",
+        "quantity": 100,
+        "price": 2077,
+        "amount": 207700,
+        "fee": 103.85
+      },
+      {
+        "date": "3/27",
+        "asset": "XRP",
+        "side": "매도",
+        "quantity": 2600,
+        "price": 2061,
+        "amount": 5358600,
+        "fee": 2679.3
+      },
+      {
+        "date": "3/27",
+        "asset": "XRP",
+        "side": "매도",
+        "quantity": 5000,
+        "price": 2060,
+        "amount": 10300000,
+        "fee": 5150
+      },
+      {
+        "date": "3/28",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 200,
+        "price": 2021,
+        "amount": 404200,
+        "fee": 202.1
+      },
+      {
+        "date": "3/30",
+        "asset": "XRP",
+        "side": "매도",
+        "quantity": 2200,
+        "price": 2017,
+        "amount": 4437400,
+        "fee": 2218.7
+      },
+      {
+        "date": "3/30",
+        "asset": "XRP",
+        "side": "매도",
+        "quantity": 3000,
+        "price": 2018,
+        "amount": 6054000,
+        "fee": 3027
+      },
+      {
+        "date": "3/31",
+        "asset": "XRP",
+        "side": "매도",
+        "quantity": 5999.5,
+        "price": 2015,
+        "amount": 12088992.5,
+        "fee": 6044.5
+      },
+      {
+        "date": "3/31",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 246.31,
+        "price": 2030,
+        "amount": 500009.3,
+        "fee": 250
+      },
+      {
+        "date": "3/31",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 249,
+        "price": 2006,
+        "amount": 499494,
+        "fee": 249.75
+      },
+      {
+        "date": "4/01",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 246.79,
+        "price": 2026,
+        "amount": 499996.54,
+        "fee": 250
+      },
+      {
+        "date": "4/01",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 246.18,
+        "price": 2029,
+        "amount": 499499.22,
+        "fee": 249.75
+      },
+      {
+        "date": "4/02",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 244.64,
+        "price": 2043,
+        "amount": 499799.52,
+        "fee": 249.9
+      },
+      {
+        "date": "4/02",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 65.17,
+        "price": 1996,
+        "amount": 130075,
+        "fee": 65
+      },
+      {
+        "date": "4/03",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 249.38,
+        "price": 2005,
+        "amount": 500000,
+        "fee": 250
+      },
+      {
+        "date": "4/03",
+        "asset": "ETH",
+        "side": "매수",
+        "quantity": 0.6396,
+        "price": 3127000,
+        "amount": 2000000,
+        "fee": 1000
+      },
+      {
+        "date": "4/03",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 115.1,
+        "price": 1998,
+        "amount": 230000,
+        "fee": 115
+      },
+      {
+        "date": "4/05",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 505.30570995,
+        "price": 1979,
+        "amount": 1000000,
+        "fee": 499.99
+      },
+      {
+        "date": "4/05",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 143,
+        "price": 1980,
+        "amount": 283140,
+        "fee": 141.57
+      },
+      {
+        "date": "4/05",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 50.50505051,
+        "price": 1980,
+        "amount": 100000,
+        "fee": 50
+      },
+      {
+        "date": "4/05",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 9.39059222,
+        "price": 1980,
+        "amount": 18594,
+        "fee": 9.29
+      },
+      {
+        "date": "4/05",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 191.94330143,
+        "price": 1980,
+        "amount": 380048,
+        "fee": 190.02
+      },
+      {
+        "date": "4/06",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 248.01587302,
+        "price": 2016,
+        "amount": 500000,
+        "fee": 250
+      },
+      {
+        "date": "4/07",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 500.2,
+        "price": 1998,
+        "amount": 999400,
+        "fee": 499.7
+      },
+      {
+        "date": "4/07",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 505.8,
+        "price": 1976,
+        "amount": 999461,
+        "fee": 499.73
+      },
+      {
+        "date": "4/07",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 252,
+        "price": 1984,
+        "amount": 499968,
+        "fee": 249.98
+      },
+      {
+        "date": "4/08",
+        "asset": "ETH",
+        "side": "매도",
+        "quantity": 0.6396,
+        "price": 3270000,
+        "amount": 2091461,
+        "fee": 1045
+      },
+      {
+        "date": "4/08",
+        "asset": "XRP",
+        "side": "매도",
+        "quantity": 2017,
+        "price": 2076,
+        "amount": 4187292,
+        "fee": 2094
+      }
+    ]
+  },
+  "analytics": {
+    "prices": {
+      "samsungElectronics": 199000,
+      "skHynix": 907000,
+      "xrp": 2076,
+      "eth": 3216000
+    },
+    "xrpDefense": {
+      "initialQuantity": 23200.61,
+      "initialAveragePrice": 2544.5,
+      "soldQuantity": 21016.5,
+      "averageSellNet": 2033.64108266007,
+      "rebuyQuantity": 4268.73052713,
+      "averageRebuyGross": 2002.458647992253,
+      "defenseGain": 133109.4107767453,
+      "finalAveragePrice": 2265,
+      "averageCutAmount": 279.5156163876122,
+      "averageCutRate": 0.1098509005256876,
+      "realizedPnl": -9706064,
+      "remainingQuantity": 6052.34052713,
+      "breakevenTargetBuyPrice": 2042.677230501627
+    }
+  }
+};

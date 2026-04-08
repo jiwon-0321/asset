@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sniper Capital Board</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero reveal">
+        <div class="hero-copy">
+          <p class="eyebrow">Task #1 · Portfolio Overview</p>
+          <h1 id="page-title">Sniper Capital Board</h1>
+          <p class="hero-summary" id="hero-summary"></p>
+          <div class="hero-meta">
+            <span id="basis-date"></span>
+            <span id="workbook-name"></span>
+          </div>
+        </div>
+        <aside class="hero-panel">
+          <p class="panel-kicker">Live posture</p>
+          <p class="panel-mantra" id="mantra"></p>
+          <div class="price-strip" id="price-strip"></div>
+        </aside>
+      </header>
+
+      <main class="dashboard">
+        <section class="metric-grid reveal" id="metric-grid"></section>
+
+        <section class="section split reveal">
+          <div class="panel panel-accordion" id="allocation-section">
+            <div class="section-heading section-heading--accordion">
+              <button
+                type="button"
+                class="section-toggle"
+                id="allocation-toggle"
+                aria-expanded="false"
+                aria-controls="allocation-panel"
+              >
+                <div class="section-heading-main">
+                  <span class="section-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 3v9l7.5 4.5A9 9 0 1 1 12 3Z" />
+                      <path d="M13.5 3.2A9 9 0 0 1 21 12h-7.5V3.2Z" />
+                    </svg>
+                  </span>
+                  <div class="section-heading-copy">
+                    <p class="eyebrow">Allocation</p>
+                    <h2>자산 분포</h2>
+                  </div>
+                </div>
+                <span class="section-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="panel-collapse" id="allocation-panel" aria-hidden="true">
+              <div class="allocation-layout">
+                <div class="allocation-visual" id="allocation-visual"></div>
+                <div class="allocation-legend" id="allocation-legend"></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel panel-accordion" id="platform-section">
+            <div class="section-heading section-heading--accordion">
+              <button
+                type="button"
+                class="section-toggle"
+                id="platform-toggle"
+                aria-expanded="false"
+                aria-controls="platform-panel"
+              >
+                <div class="section-heading-main">
+                  <span class="section-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 5.5h16" />
+                      <path d="M4 12h16" />
+                      <path d="M4 18.5h16" />
+                      <path d="M8 4v16" />
+                      <path d="M16 4v16" />
+                    </svg>
+                  </span>
+                  <div class="section-heading-copy">
+                    <p class="eyebrow">By Platform</p>
+                    <h2>자산별 현황</h2>
+                  </div>
+                </div>
+                <span class="section-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="panel-collapse" id="platform-panel" aria-hidden="true">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>구분</th>
+                      <th>플랫폼</th>
+                      <th>평가금액</th>
+                      <th>원금</th>
+                      <th>손익</th>
+                      <th>수익률</th>
+                    </tr>
+                  </thead>
+                  <tbody id="asset-status-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal charts-section panel-accordion" id="performance-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="performance-toggle"
+              aria-expanded="false"
+              aria-controls="performance-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 18V6" />
+                    <path d="M4 18h16" />
+                    <path d="M8 14v-3" />
+                    <path d="M12 14V9" />
+                    <path d="M16 14V7" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Performance View</p>
+                  <h2>수익률 및 손익 추이</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="performance-panel" aria-hidden="true">
+            <div class="chart-grid">
+              <article class="chart-card chart-card--performance">
+                <div class="chart-card-header">
+                  <div>
+                    <p class="chart-kicker">Relative Performance</p>
+                    <h3>자산별 수익률 비교</h3>
+                  </div>
+                  <div class="chart-stat" id="returns-chart-stat"></div>
+                </div>
+                <div class="chart-canvas-wrap">
+                  <canvas id="returns-chart"></canvas>
+                </div>
+              </article>
+
+              <article class="chart-card chart-card--history">
+                <div class="chart-card-header">
+                  <div>
+                    <p class="chart-kicker">Realized History</p>
+                    <h3>실현손익 히스토리</h3>
+                  </div>
+                  <div class="chart-stat" id="realized-chart-stat"></div>
+                </div>
+                <div class="chart-canvas-wrap">
+                  <canvas id="realized-chart"></canvas>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal panel-accordion" id="holdings-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="holdings-toggle"
+              aria-expanded="false"
+              aria-controls="holdings-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 7.5h16v10H4z" />
+                    <path d="M8 7.5V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5" />
+                    <path d="M4 12h16" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Holdings</p>
+                  <h2>보유 종목 상세</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="holdings-panel" aria-hidden="true">
+            <div class="holdings-grid" id="holdings-grid"></div>
+          </div>
+        </section>
+
+        <section class="section split reveal">
+          <div class="panel panel-accordion" id="realized-section">
+            <div class="section-heading section-heading--accordion">
+              <button
+                type="button"
+                class="section-toggle"
+                id="realized-toggle"
+                aria-expanded="false"
+                aria-controls="realized-panel"
+              >
+                <div class="section-heading-main">
+                  <span class="section-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 18V6" />
+                      <path d="M4 18h16" />
+                      <path d="m7 14 3-3 3 2 4-5" />
+                      <path d="m17 8 3-.5-.5 3" />
+                    </svg>
+                  </span>
+                  <div class="section-heading-copy">
+                    <p class="eyebrow">Realized PnL</p>
+                    <h2>실현 손익</h2>
+                  </div>
+                </div>
+                <span class="section-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="panel-collapse" id="realized-panel" aria-hidden="true">
+              <div class="realized-list" id="realized-list"></div>
+            </div>
+          </div>
+          <div class="panel panel-accordion" id="defense-section">
+            <div class="section-heading section-heading--accordion">
+              <button
+                type="button"
+                class="section-toggle"
+                id="defense-toggle"
+                aria-expanded="false"
+                aria-controls="defense-panel"
+              >
+                <div class="section-heading-main">
+                  <span class="section-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 3 5 6v5c0 5 2.8 8.3 7 10 4.2-1.7 7-5 7-10V6l-7-3Z" />
+                      <path d="m9.5 12 1.7 1.7 3.8-4.2" />
+                    </svg>
+                  </span>
+                  <div class="section-heading-copy">
+                    <p class="eyebrow">XRP Defense</p>
+                    <h2>방어매매 핵심 지표</h2>
+                  </div>
+                </div>
+                <span class="section-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="panel-collapse" id="defense-panel" aria-hidden="true">
+              <div class="defense-grid" id="defense-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="timeline-section">
+          <div class="panel panel-accordion">
+            <div class="section-heading section-heading--accordion">
+              <button
+                type="button"
+                class="section-toggle"
+                id="timeline-toggle"
+                aria-expanded="false"
+                aria-controls="timeline-panel"
+              >
+                <div class="section-heading-main">
+                  <span class="section-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 7v5l3 2" />
+                      <circle cx="12" cy="12" r="8.5" />
+                    </svg>
+                  </span>
+                  <div class="section-heading-copy">
+                      <p class="eyebrow">Grouped Timeline</p>
+                      <h2>전체 거래 타임라인</h2>
+                  </div>
+                </div>
+                <span class="section-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="panel-collapse" id="timeline-panel" aria-hidden="true">
+              <div class="view-tabs" role="tablist" aria-label="거래 타임라인 보기">
+                <button
+                  type="button"
+                  class="view-tab is-active"
+                  id="timeline-tab-list"
+                  role="tab"
+                  aria-selected="true"
+                  aria-controls="timeline-view-list"
+                  data-view-target="list"
+                >
+                  리스트 뷰
+                </button>
+                <button
+                  type="button"
+                  class="view-tab"
+                  id="timeline-tab-calendar"
+                  role="tab"
+                  aria-selected="false"
+                  aria-controls="timeline-view-calendar"
+                  data-view-target="calendar"
+                  tabindex="-1"
+                >
+                  캘린더 뷰
+                </button>
+              </div>
+              <div class="timeline-views">
+                <div
+                  class="timeline-view is-active"
+                  id="timeline-view-list"
+                  data-view="list"
+                  role="tabpanel"
+                  aria-labelledby="timeline-tab-list"
+                >
+                  <div class="timeline" id="timeline"></div>
+                </div>
+                <div
+                  class="timeline-view"
+                  id="timeline-view-calendar"
+                  data-view="calendar"
+                  role="tabpanel"
+                  aria-labelledby="timeline-tab-calendar"
+                  hidden
+                >
+                  <div class="timeline-calendar" id="timeline-calendar"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section strategy reveal panel-accordion" id="strategy-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="strategy-toggle"
+              aria-expanded="false"
+              aria-controls="strategy-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M7 4.5h10a2 2 0 0 1 2 2v13l-4-2-4 2-4-2-4 2v-13a2 2 0 0 1 2-2h2" />
+                    <path d="M8.5 8.5h7" />
+                    <path d="M8.5 12h5.5" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Playbook</p>
+                  <h2>페이즈 1 전략</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="strategy-panel" aria-hidden="true">
+            <div class="strategy-grid">
+              <div class="panel">
+                <h3>매수 플레이</h3>
+                <p class="strategy-principle" id="entry-principle"></p>
+                <div class="rule-list" id="entry-steps"></div>
+                <div class="note-stack" id="entry-notes"></div>
+              </div>
+              <div class="panel">
+                <h3>매도 플레이</h3>
+                <p class="strategy-principle" id="exit-principle"></p>
+                <div class="rule-list" id="exit-rules"></div>
+              </div>
+              <div class="panel checklist-panel">
+                <h3 id="checklist-title"></h3>
+                <p class="strategy-window" id="checklist-window"></p>
+                <ul class="checklist" id="checklist"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="calendar-modal" id="calendar-detail-modal" hidden>
+      <div class="calendar-modal-backdrop" data-calendar-modal-close></div>
+      <div
+        class="calendar-modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calendar-detail-title"
+        aria-describedby="calendar-detail-summary"
+      >
+        <div class="calendar-modal-header">
+          <div>
+            <p class="eyebrow">Trade Detail</p>
+            <h3 id="calendar-detail-title"></h3>
+            <p class="calendar-modal-summary" id="calendar-detail-summary"></p>
+          </div>
+          <button type="button" class="calendar-modal-close" data-calendar-modal-close aria-label="상세 내역 닫기">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+        <div class="calendar-modal-list" id="calendar-detail-list"></div>
+      </div>
+    </div>
+
+    <template id="metric-card-template">
+      <article class="metric-card">
+        <p class="metric-label"></p>
+        <strong class="metric-value"></strong>
+        <p class="metric-detail"></p>
+      </article>
+    </template>
+
+    <script src="./data/portfolio-data.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js" defer></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
