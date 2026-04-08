@@ -40,6 +40,15 @@ html {
   scroll-behavior: smooth;
 }
 
+html {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(23, 249, 166, 0.14), transparent 24%),
+    radial-gradient(circle at 88% 10%, rgba(94, 200, 255, 0.14), transparent 22%),
+    radial-gradient(circle at 50% 100%, rgba(255, 184, 77, 0.08), transparent 30%),
+    linear-gradient(180deg, #030808 0%, #071010 38%, #081212 100%);
+  min-height: 100%;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -50,11 +59,7 @@ body {
   line-height: 1.6;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  background:
-    radial-gradient(circle at 12% 18%, rgba(23, 249, 166, 0.14), transparent 24%),
-    radial-gradient(circle at 88% 10%, rgba(94, 200, 255, 0.14), transparent 22%),
-    radial-gradient(circle at 50% 100%, rgba(255, 184, 77, 0.08), transparent 30%),
-    linear-gradient(180deg, #030808 0%, #071010 38%, #081212 100%);
+  background: transparent;
 }
 
 body.modal-open {
@@ -1836,6 +1841,18 @@ th.align-right {
   font-variant-numeric: tabular-nums;
 }
 
+/* 캘린더 모달 실현손익 강조 */
+.calendar-modal-pnl {
+  grid-column: 1 / -1;
+  background: rgba(94, 200, 255, 0.05);
+  border: 1px solid rgba(94, 200, 255, 0.2);
+}
+
+.calendar-pnl-value {
+  font-size: 1.05rem !important;
+  font-weight: 900 !important;
+}
+
 .timeline-title {
   display: block;
   margin-top: 4px;
@@ -2013,6 +2030,10 @@ th.align-right {
 }
 
 @media (max-width: 760px) {
+  html, body {
+    overflow-x: hidden;
+  }
+
   .page-shell {
     width: min(100vw - 20px, 100%);
     padding: 16px 0 42px;
@@ -2069,6 +2090,40 @@ th.align-right {
   .section-icon {
     width: 40px;
     height: 40px;
+  }
+
+  /* 터치 영역 확대 */
+  .section-toggle,
+  .timeline-toggle {
+    min-height: 44px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .section-toggle-icon,
+  .timeline-toggle-icon {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 버튼 터치 영역 */
+  .view-tab,
+  .calendar-select,
+  button {
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 가로 스크롤 방지 */
+  * {
+    max-width: 100%;
+  }
+
+  table {
+    table-layout: fixed;
   }
 
   .chart-card,
@@ -2147,6 +2202,21 @@ th.align-right {
 
   tbody tr td:last-child {
     border-bottom: 0;
+  }
+
+  /* 모바일에서 손익/수익률 색상 강조 */
+  tbody td.gain {
+    color: var(--gain);
+    font-weight: 600;
+  }
+
+  tbody td.loss {
+    color: var(--loss);
+    font-weight: 600;
+  }
+
+  tbody td.neutral {
+    color: var(--text);
   }
 
   .legend-item {

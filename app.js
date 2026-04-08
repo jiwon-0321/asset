@@ -1114,6 +1114,12 @@ function openCalendarDetailModal(detailKey) {
               <span>수수료</span>
               <strong>${formatCurrency(trade.fee)}</strong>
             </div>
+            ${trade.note && trade.side === "매도" ? `
+            <div class="calendar-modal-metric calendar-modal-pnl">
+              <span>실현손익</span>
+              <strong class="calendar-pnl-value ${trade.note.includes("+") ? "gain" : trade.note.includes("-") ? "loss" : "neutral"}">${trade.note}</strong>
+            </div>
+            ` : ""}
           </div>
         </article>
       `
