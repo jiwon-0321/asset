@@ -54,14 +54,10 @@ function renderDashboard(data) {
   const { metadata, summary, assetStatus, cashPositions, holdings, realized, strategy, trades, analytics, charts } =
     data;
 
-  text("#page-title", "Sniper Capital Board");
-  text(
-    "#hero-summary",
-    `총 자산 ${formatCurrency(summary.totalAssets)}를 기준으로, 현금 비중과 리스크 자산을 한 화면에서 파악하도록 구성한 1차 대시보드입니다.`
-  );
+  text("#page-title", metadata.mantra);
+  text("#hero-summary", "");
   text("#basis-date", `기준일 · ${metadata.basisDateLabel}`);
   text("#workbook-name", `소스 파일 · ${metadata.workbook}`);
-  text("#mantra", metadata.mantra);
 
   renderPriceStrip(analytics.prices, holdings);
   renderMetricCards(summary);
