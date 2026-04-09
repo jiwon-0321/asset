@@ -2,34 +2,34 @@
   "metadata": {
     "title": "📊 투자 총괄 현황",
     "mantra": "항상 돈에대한 자세는 겸손하게, 욕심부리지말자",
-    "basisDateLabel": "2026.04.08 기준",
-    "workbook": "투자현황_4월8일.xlsx"
+    "basisDateLabel": "2026.04.09 기준",
+    "workbook": "투자현황_4월9일.xlsx"
   },
   "summary": {
     "initialInvestment": 59034182,
-    "totalAssets": 48315645.93432188,
-    "investedPrincipal": 13708551.29394945,
-    "assetValuationTotal": 12564658.93432188,
-    "cashTotal": 35750987,
-    "portfolioPnl": -1143892.359627569,
-    "portfolioReturnRate": -0.08344370860927146,
+    "totalAssets": 47803180.85162435,
+    "investedPrincipal": 19407927.95394945,
+    "assetValuationTotal": 17761166.85162435,
+    "cashTotal": 30042014,
+    "portfolioPnl": -1646761.1023251005,
+    "portfolioReturnRate": -0.08484991835462734,
     "realizedProfitTotal": 3545841,
-    "liquidityRatio": 0.7399463736570611
+    "liquidityRatio": 0.6284521963767851
   },
   "assetStatus": [
     {
       "category": "암호화폐",
       "platform": "업비트",
-      "valuation": 12564658.93432188,
-      "principal": 13708551.29394945,
-      "pnl": -1143892.359627569,
-      "returnRate": -0.08344370860927153
+      "valuation": 17761166.85162435,
+      "principal": 19407927.95394945,
+      "pnl": -1646761.1023251005,
+      "returnRate": -0.08484991835462734
     }
   ],
   "cashPositions": [
     {
       "platform": "카카오증권 예수금",
-      "amount": 17633938
+      "amount": 6991936
     },
     {
       "platform": "카카오페이머니",
@@ -37,17 +37,21 @@
     },
     {
       "platform": "업비트 KRW잔액",
-      "amount": 18117049
+      "amount": 22053167
+    },
+    {
+      "platform": "미래에셋 예수금",
+      "amount": 996911
     }
   ],
   "holdings": [
     {
       "platform": "업비트",
       "asset": "XRP",
-      "quantity": 6052.34052713,
-      "averagePrice": 2265,
-      "valuation": 12564658.93432188,
-      "returnRate": -0.08344370860927153
+      "quantity": 8902.84052713,
+      "averagePrice": 2179.9703021532123,
+      "valuation": 17761166.85162435,
+      "returnRate": -0.08484991835462734
     }
   ],
   "realized": [
@@ -165,9 +169,9 @@
     "returnsComparison": [
       {
         "label": "XRP",
-        "valuation": 12564658.93432188,
-        "pnl": -1143892.359627569,
-        "returnRate": -0.08344370860927153
+        "valuation": 17761166.85162435,
+        "pnl": -1646761.1023251005,
+        "returnRate": -0.08484991835462734
       }
     ],
     "realizedHistory": [
@@ -819,7 +823,8 @@
         "quantity": 0.6396,
         "price": 3270000,
         "amount": 2091461,
-        "fee": 1045
+        "fee": 1045,
+        "note": "+91,461원 (4.57%)"
       },
       {
         "date": "4/08",
@@ -828,7 +833,71 @@
         "quantity": 2017,
         "price": 2076,
         "amount": 4187292,
-        "fee": 2094
+        "fee": 2094,
+        "note": "+150,205원 (3.72%)"
+      },
+      {
+        "date": "4/08",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 244,
+        "price": 2045,
+        "amount": 498980,
+        "fee": 249.49
+      },
+      {
+        "date": "4/09",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 248,
+        "price": 2015,
+        "amount": 499720,
+        "fee": 249.86
+      },
+      {
+        "date": "4/09",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 1000,
+        "price": 2000,
+        "amount": 2000000,
+        "fee": 1000
+      },
+      {
+        "date": "4/09",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 502,
+        "price": 1992,
+        "amount": 999984,
+        "fee": 499.99
+      },
+      {
+        "date": "4/09",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 252.2,
+        "price": 1982,
+        "amount": 499860.4,
+        "fee": 249.93
+      },
+      {
+        "date": "4/09",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 252.3,
+        "price": 1982,
+        "amount": 500058.6,
+        "fee": 250.03
+      },
+      {
+        "date": "4/09",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 352,
+        "price": 1987,
+        "amount": 699424,
+        "fee": 349.71
       }
     ]
   },
@@ -836,23 +905,23 @@
     "prices": {
       "samsungElectronics": 199000,
       "skHynix": 907000,
-      "xrp": 2076,
+      "xrp": 1995,
       "eth": 3216000
     },
     "xrpDefense": {
-      "initialQuantity": 23200.61,
+      "initialQuantity": 22800.11,
       "initialAveragePrice": 2544.5,
       "soldQuantity": 21016.5,
-      "averageSellNet": 2033.64108266007,
-      "rebuyQuantity": 4268.73052713,
-      "averageRebuyGross": 2002.458647992253,
-      "defenseGain": 133109.4107767453,
-      "finalAveragePrice": 2265,
-      "averageCutAmount": 279.5156163876122,
-      "averageCutRate": 0.1098509005256876,
-      "realizedPnl": -9706064,
-      "remainingQuantity": 6052.34052713,
-      "breakevenTargetBuyPrice": 2042.677230501627
+      "averageSellNet": 2037.6067256679275,
+      "rebuyQuantity": 7119.23052713,
+      "averageRebuyGross": 2001.4568029087523,
+      "defenseGain": 257359.63366051234,
+      "finalAveragePrice": 2179.9703021532123,
+      "averageCutAmount": 364.5296978467877,
+      "averageCutRate": 0.14326181876470337,
+      "realizedPnl": -10653122.5,
+      "remainingQuantity": 13897.26947287,
+      "breakevenTargetBuyPrice": 2056.1254450583033
     }
   }
 }

@@ -15,8 +15,10 @@ python3 scripts/export_workbook.py
 
 이후 `index.html`을 브라우저에서 바로 열면 됩니다.
 
-선택적으로 로컬 서버에서 보고 싶다면 아래처럼 실행해도 됩니다.
+거래 추가 저장 기능까지 쓰려면 아래 서버로 실행하세요.
 
 ```bash
-python3 -m http.server 4173
+node scripts/dev-server.js
 ```
+
+그 다음 브라우저에서 `http://127.0.0.1:4173` 로 접속하면 됩니다.

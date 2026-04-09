@@ -16,6 +16,7 @@ const compactNumberFormatter = new Intl.NumberFormat("ko-KR", {
 const colors = ["#17F9A6", "#5EC8FF", "#FFB84D", "#FF6B87"];
 let chartRegistry = [];
 let calendarDetailStore = new Map();
+let currentPortfolioData = null;
 let timelineCalendarState = {
   trades: [],
   basisYear: new Date().getFullYear(),
@@ -25,7 +26,10 @@ let timelineCalendarState = {
 
 document.addEventListener("DOMContentLoaded", () => {
   loadPortfolio()
-    .then((data) => renderDashboard(data))
+    .then((data) => {
+      applyPortfolioData(data);
+      initTradeModal();
+    })
     .catch((error) => {
       console.error(error);
       document.body.innerHTML = `
@@ -48,6 +52,12 @@ async function loadPortfolio() {
   }
 
   return response.json();
+}
+
+function applyPortfolioData(data) {
+  currentPortfolioData = data;
+  window.__PORTFOLIO_DATA__ = data;
+  renderDashboard(data);
 }
 
 function renderDashboard(data) {
@@ -178,11 +188,13 @@ function renderMetricCards(summary) {
 }
 
 function renderAllocation(summary, assetStatus, cashPositions) {
+  const isCryptoAsset = (item) => item.category === "암호화폐" || item.platform === "업비트";
+
   const allocation = [
     {
       label: "암호화폐",
       value: assetStatus
-        .filter((item) => item.category === "암호화폐")
+        .filter(isCryptoAsset)
         .reduce((total, item) => total + item.valuation, 0),
     },
     {
@@ -401,11 +413,11 @@ function renderCharts(charts) {
               label: "일자별 실현손익",
               data: charts.realizedHistory.map((item) => item.dailyPnl),
               backgroundColor: charts.realizedHistory.map((item) =>
-                item.dailyPnl >= 0 ? alpha(theme.cash, 0.46) : alpha(theme.loss, 0.48)
+                item.dailyPnl >= 0 ? alpha(theme.gain, 0.6) : alpha(theme.loss, 0.2)
               ),
-              borderColor: charts.realizedHistory.map((item) => (item.dailyPnl >= 0 ? theme.cash : theme.loss)),
-              borderWidth: 1.4,
-              borderRadius: 10,
+              borderColor: charts.realizedHistory.map((item) => (item.dailyPnl >= 0 ? theme.gain : alpha(theme.loss, 0.4))),
+              borderWidth: 1.2,
+              borderRadius: 8,
               borderSkipped: false,
               yAxisID: "y",
             },
@@ -414,14 +426,14 @@ function renderCharts(charts) {
               label: "누적 실현손익",
               data: charts.realizedHistory.map((item) => item.cumulativePnl),
               borderColor: theme.accent,
-              backgroundColor: alpha(theme.accent, 0.22),
+              backgroundColor: alpha(theme.accent, 0.15),
               pointBackgroundColor: theme.accent,
               pointBorderColor: theme.surface,
-              pointRadius: 4,
-              pointHoverRadius: 5,
-              borderWidth: 2.5,
-              tension: 0.34,
-              fill: false,
+              pointRadius: 5,
+              pointHoverRadius: 6,
+              borderWidth: 3,
+              tension: 0.3,
+              fill: true,
               yAxisID: "y",
             },
           ],
@@ -632,6 +644,11 @@ function bindPanelAccordion(panel) {
   }
 
   panel.addEventListener("click", (event) => {
+    // 거래 추가 버튼 클릭은 무시
+    if (event.target.closest(".btn-add-trade")) {
+      return;
+    }
+
     const trigger = event.target.closest(".section-toggle");
     if (!trigger || !panel.contains(trigger)) {
       return;
@@ -1402,4 +1419,227 @@ function alpha(hex, opacity) {
   const g = (bigint >> 8) & 255;
   const b = bigint & 255;
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+// 거래 추가 모달 관리
+function initTradeModal() {
+  const modal = document.querySelector("#trade-modal");
+  const openBtn = document.querySelector("#btn-add-trade");
+  const form = document.querySelector("#trade-form");
+  const marketSelect = document.querySelector("#trade-market");
+  const quantityInput = document.querySelector("#trade-quantity");
+  const priceInput = document.querySelector("#trade-price");
+  const amountInput = document.querySelector("#trade-amount");
+  const brokerSelect = document.querySelector("#trade-broker");
+  const sideSelect = document.querySelector("#trade-side");
+  const feeInput = document.querySelector("#trade-fee");
+  const status = document.querySelector("#trade-form-status");
+  const submitButton = form?.querySelector(".btn-primary");
+  const cancelButton = form?.querySelector(".btn-secondary");
+
+  if (!modal || !openBtn || !form) {
+    console.error("거래 추가 모달 요소를 찾을 수 없습니다");
+    return;
+  }
+
+  const setStatus = (message = "", tone = "neutral") => {
+    if (!status) {
+      return;
+    }
+
+    status.textContent = message;
+    status.dataset.tone = tone;
+  };
+
+  const setSubmitting = (isSubmitting) => {
+    if (submitButton) {
+      submitButton.disabled = isSubmitting;
+      submitButton.textContent = isSubmitting ? "저장 중..." : "저장";
+    }
+    if (cancelButton) {
+      cancelButton.disabled = isSubmitting;
+    }
+  };
+
+  const parseBasisMonthDay = () => {
+    const label = currentPortfolioData?.metadata?.basisDateLabel || "";
+    const match = label.match(/\d{4}\.(\d{1,2})\.(\d{1,2})/);
+    if (!match) {
+      return "";
+    }
+
+    return `${Number(match[1])}/${String(Number(match[2])).padStart(2, "0")}`;
+  };
+
+  const formatEditableNumber = (value, decimals = 8) => {
+    if (!value) {
+      return "";
+    }
+
+    return Number(value.toFixed(decimals)).toString();
+  };
+
+  const syncBrokerOptions = () => {
+    const market = marketSelect.value;
+    const optionRules = {
+      카카오증권: market === "암호화폐",
+      미래에셋: market === "암호화폐",
+      업비트: market === "국내주식",
+    };
+
+    [...brokerSelect.options].forEach((option) => {
+      if (!option.value) {
+        option.disabled = false;
+        return;
+      }
+
+      option.disabled = Boolean(optionRules[option.value]);
+    });
+
+    if (market === "암호화폐") {
+      brokerSelect.value = "업비트";
+    } else if (market === "국내주식" && brokerSelect.value === "업비트") {
+      brokerSelect.value = "";
+    }
+
+    calculateFee();
+  };
+
+  const openModal = () => {
+    setStatus("");
+    setSubmitting(false);
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    modal.classList.add("is-open");
+    document.body.classList.add("modal-open");
+    tradeDateInput.value = tradeDateInput.value || parseBasisMonthDay();
+    syncBrokerOptions();
+  };
+
+  // 모달 열기
+  openBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openModal();
+  });
+
+  // 모달 닫기
+  const closeModal = () => {
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    modal.classList.remove("is-open");
+    document.body.classList.remove("modal-open");
+    setStatus("");
+    setSubmitting(false);
+    form.reset();
+    syncBrokerOptions();
+  };
+
+  modal.addEventListener("click", (e) => {
+    if (e.target.closest("[data-trade-modal-close]") || e.target === modal) {
+      closeModal();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.hidden) {
+      closeModal();
+    }
+  });
+
+  // 거래금액 자동 계산
+  const calculateAmount = () => {
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    const amount = quantity * price;
+    amountInput.value = amount ? formatEditableNumber(amount) : "";
+    calculateFee();
+  };
+
+  // 수수료 자동 계산
+  const calculateFee = () => {
+    const broker = brokerSelect.value;
+    const side = sideSelect.value;
+    const amount = parseFloat(amountInput.value) || 0;
+
+    if (!broker || !side || !amount) {
+      feeInput.value = "";
+      return;
+    }
+
+    const rates = {
+      업비트: 0.0005,
+      카카오증권: 0.00014,
+      미래에셋: 0.0001,
+    };
+
+    let fee = amount * (rates[broker] || 0);
+
+    // 증권 매도 시 증권거래세 추가
+    if ((broker === "카카오증권" || broker === "미래에셋") && side === "매도") {
+      fee += amount * 0.002;
+    }
+
+    feeInput.value = fee ? formatEditableNumber(fee, 8) : "";
+  };
+
+  const persistTrade = async (tradeData) => {
+    if (window.location.protocol === "file:") {
+      throw new Error("거래 저장은 로컬 서버에서만 가능합니다. `node scripts/dev-server.js` 실행 후 접속하세요.");
+    }
+
+    const response = await fetch("./api/trades", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(tradeData),
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(payload?.error || "거래 저장에 실패했습니다.");
+    }
+
+    return payload;
+  };
+
+  const tradeDateInput = document.querySelector("#trade-date");
+
+  quantityInput.addEventListener("input", calculateAmount);
+  priceInput.addEventListener("input", calculateAmount);
+  brokerSelect.addEventListener("change", calculateFee);
+  sideSelect.addEventListener("change", calculateFee);
+  marketSelect.addEventListener("change", syncBrokerOptions);
+  syncBrokerOptions();
+
+  // 폼 제출
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    setStatus("");
+
+    const formData = new FormData(form);
+    const tradeData = {
+      date: formData.get("date"),
+      market: formData.get("market"),
+      broker: formData.get("broker"),
+      asset: formData.get("asset"),
+      side: formData.get("side"),
+      quantity: parseFloat(formData.get("quantity")),
+      price: parseFloat(formData.get("price")),
+      amount: parseFloat(amountInput.value),
+      fee: parseFloat(feeInput.value),
+      note: formData.get("note") || "",
+    };
+
+    try {
+      setSubmitting(true);
+      const updatedPortfolio = await persistTrade(tradeData);
+      applyPortfolioData(updatedPortfolio);
+      closeModal();
+    } catch (error) {
+      console.error(error);
+      setStatus(error.message || "거래 저장에 실패했습니다.", "error");
+      setSubmitting(false);
+    }
+  });
 }

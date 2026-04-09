@@ -320,23 +320,24 @@
               </button>
             </div>
             <div class="panel-collapse" id="timeline-panel" aria-hidden="true">
-              <div class="view-tabs" role="tablist" aria-label="거래 타임라인 보기">
-                <button
-                  type="button"
-                  class="view-tab is-active"
-                  id="timeline-tab-list"
-                  role="tab"
-                  aria-selected="true"
-                  aria-controls="timeline-view-list"
-                  data-view-target="list"
-                >
-                  리스트 뷰
-                </button>
-                <button
-                  type="button"
-                  class="view-tab"
-                  id="timeline-tab-calendar"
-                  role="tab"
+              <div class="timeline-toolbar">
+                <div class="view-tabs" role="tablist" aria-label="거래 타임라인 보기">
+                  <button
+                    type="button"
+                    class="view-tab is-active"
+                    id="timeline-tab-list"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="timeline-view-list"
+                    data-view-target="list"
+                  >
+                    리스트 뷰
+                  </button>
+                  <button
+                    type="button"
+                    class="view-tab"
+                    id="timeline-tab-calendar"
+                    role="tab"
                   aria-selected="false"
                   aria-controls="timeline-view-calendar"
                   data-view-target="calendar"
@@ -345,6 +346,13 @@
                   캘린더 뷰
                 </button>
               </div>
+              <button type="button" class="btn-add-trade" id="btn-add-trade" aria-label="거래 추가">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                거래 추가
+              </button>
+            </div>
               <div class="timeline-views">
                 <div
                   class="timeline-view is-active"
@@ -449,6 +457,97 @@
       </div>
     </div>
 
+    <!-- 거래 추가 모달 -->
+    <div class="trade-modal" id="trade-modal" hidden aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="trade-modal-dialog">
+        <div class="trade-modal-header">
+          <h3>거래 추가</h3>
+          <button type="button" class="trade-modal-close" data-trade-modal-close aria-label="닫기">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+        <form class="trade-form" id="trade-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="trade-date">날짜</label>
+              <input type="text" id="trade-date" name="date" placeholder="4/08" required />
+            </div>
+            <div class="form-group">
+              <label for="trade-market">시장</label>
+              <select id="trade-market" name="market" required>
+                <option value="">선택</option>
+                <option value="국내주식">국내주식</option>
+                <option value="암호화폐">암호화폐</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="trade-broker">플랫폼</label>
+              <select id="trade-broker" name="broker" required>
+                <option value="">선택</option>
+                <option value="카카오증권">카카오증권</option>
+                <option value="미래에셋">미래에셋증권</option>
+                <option value="업비트">업비트</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="trade-asset">자산</label>
+              <input type="text" id="trade-asset" name="asset" placeholder="SK하이닉스" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="trade-side">매수/매도</label>
+              <select id="trade-side" name="side" required>
+                <option value="">선택</option>
+                <option value="매수">매수</option>
+                <option value="매도">매도</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="trade-quantity">수량</label>
+              <input type="number" id="trade-quantity" name="quantity" placeholder="7" step="any" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="trade-price">단가 (원)</label>
+              <input type="number" id="trade-price" name="price" placeholder="1001000" step="any" required />
+            </div>
+            <div class="form-group">
+              <label for="trade-amount">거래금액 (원)</label>
+              <input type="number" id="trade-amount" name="amount" placeholder="자동 계산" step="any" readonly />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="trade-fee">수수료 (원)</label>
+              <input type="number" id="trade-fee" name="fee" placeholder="자동 계산" step="any" readonly />
+            </div>
+            <div class="form-group">
+              <label for="trade-note">메모 (선택)</label>
+              <input type="text" id="trade-note" name="note" placeholder="수익률 등" />
+            </div>
+          </div>
+
+          <p class="trade-form-status" id="trade-form-status" role="status" aria-live="polite"></p>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" data-trade-modal-close>취소</button>
+            <button type="submit" class="btn-primary">저장</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <template id="metric-card-template">
       <article class="metric-card">
         <p class="metric-label"></p>
@@ -459,6 +558,6 @@
 
     <script src="./data/portfolio-data.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js" defer></script>
-    <script src="./app.js" defer></script>
+    <script src="./app.js"></script>
   </body>
 </html>
