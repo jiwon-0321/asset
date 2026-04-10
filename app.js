@@ -61,8 +61,19 @@ function applyPortfolioData(data) {
 }
 
 function renderDashboard(data) {
-  const { metadata, summary, assetStatus, cashPositions, holdings, realized, strategy, trades, analytics, charts } =
-    data;
+  const {
+    metadata,
+    summary,
+    assetStatus,
+    cashPositions,
+    holdings,
+    targets,
+    realized,
+    strategy,
+    trades,
+    analytics,
+    charts,
+  } = data;
 
   text("#page-title", metadata.mantra);
   text("#hero-summary", "");
@@ -71,9 +82,10 @@ function renderDashboard(data) {
 
   renderPriceStrip(analytics.prices, holdings);
   renderMetricCards(summary);
+  renderTargets(targets);
   renderCharts(charts);
   renderAllocation(summary, assetStatus, cashPositions);
-  renderAssetTable(assetStatus);
+  renderAssetTable(assetStatus, holdings);
   renderHoldings(holdings);
   renderRealized(realized, summary.realizedProfitTotal);
   renderDefense(analytics.xrpDefense);
@@ -185,6 +197,125 @@ function renderMetricCards(summary) {
     node.querySelector(".metric-detail").textContent = metric.detail;
     grid.appendChild(node);
   });
+}
+
+function renderTargets(targets) {
+  const hero = document.querySelector("#targets-hero");
+  const grid = document.querySelector("#targets-grid");
+  if (!hero || !grid) {
+    return;
+  }
+
+  const groups = Array.isArray(targets?.groups) ? targets.groups : [];
+  const totalCount = groups.reduce((total, group) => {
+    const items = Array.isArray(group?.items) ? group.items.filter(Boolean) : [];
+    return total + items.length;
+  }, 0);
+
+  hero.innerHTML = `
+    <div class="targets-hero-top">
+      <div>
+        <p class="eyebrow">${escapeHtml(targets?.eyebrow || "Target Board")}</p>
+        <h3 class="targets-hero-title">${escapeHtml(targets?.title || "지금 노리는 종목")}</h3>
+      </div>
+      <div class="targets-counter">
+        <span>총 후보</span>
+        <strong>${formatNumber(totalCount)}</strong>
+      </div>
+    </div>
+    <p class="targets-hero-summary">${escapeHtml(
+      targets?.summary || "매수 버튼보다 먼저 보는 후보군입니다."
+    )}</p>
+    <div class="targets-strip">
+      ${groups
+        .map((group) => {
+          const items = Array.isArray(group?.items) ? group.items.filter(Boolean) : [];
+          const tone = normalizeTargetTone(group?.tone);
+          return `
+            <div class="targets-strip-item targets-strip-item--${tone}">
+              <span>${escapeHtml(group?.title || "목표")}</span>
+              <strong>${items.length ? `${formatNumber(items.length)}종목` : "대기중"}</strong>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+    ${
+      totalCount
+        ? `
+          <div class="targets-pill-row">
+            ${groups
+              .flatMap((group) => {
+                const tone = normalizeTargetTone(group?.tone);
+                const items = Array.isArray(group?.items) ? group.items.filter(Boolean) : [];
+                return items.map((item) => {
+                  const name = typeof item === "string" ? item : item?.name || "";
+                  return `<span class="targets-pill targets-pill--${tone}">${escapeHtml(name)}</span>`;
+                });
+              })
+              .join("")}
+          </div>
+        `
+        : `
+          <div class="targets-empty">
+            <strong>아직 없음</strong>
+            <p>후보 종목이 정리되면 이 보드부터 채워집니다.</p>
+          </div>
+        `
+    }
+  `;
+
+  grid.innerHTML = groups.map((group) => renderTargetGroupCard(group)).join("");
+}
+
+function renderTargetGroupCard(group = {}) {
+  const items = Array.isArray(group.items) ? group.items.filter(Boolean) : [];
+  const tone = normalizeTargetTone(group.tone);
+
+  return `
+    <article class="panel targets-market-card targets-market-card--${tone}">
+      <div class="targets-market-top">
+        <div>
+          <p class="targets-market-label">${escapeHtml(group.label || group.title || "Target Group")}</p>
+          <h3 class="targets-market-title">${escapeHtml(group.title || "목표 종목")}</h3>
+        </div>
+        <span class="targets-market-count">${items.length ? `${formatNumber(items.length)}종목` : "비어 있음"}</span>
+      </div>
+      ${group.summary ? `<p class="targets-market-summary">${escapeHtml(group.summary)}</p>` : ""}
+      ${
+        items.length
+          ? `
+            <ul class="targets-list">
+              ${items
+                .map((item) => {
+                  const name = typeof item === "string" ? item : item?.name || "";
+                  const note = typeof item === "string" ? "" : item?.note || "";
+                  return `
+                    <li>
+                      <span class="targets-item-name">${escapeHtml(name)}</span>
+                      ${note ? `<span class="targets-item-note">${escapeHtml(note)}</span>` : ""}
+                    </li>
+                  `;
+                })
+                .join("")}
+            </ul>
+          `
+          : `
+            <div class="targets-empty">
+              <strong>${escapeHtml(group.emptyTitle || "아직 없음")}</strong>
+              <p>${escapeHtml(group.emptyDescription || "새 후보가 생기면 여기에 추가합니다.")}</p>
+            </div>
+          `
+      }
+    </article>
+  `;
+}
+
+function normalizeTargetTone(value) {
+  if (value === "crypto" || value === "global" || value === "domestic") {
+    return value;
+  }
+  return "neutral";
 }
 
 function renderAllocation(summary, assetStatus, cashPositions) {
@@ -503,13 +634,36 @@ function renderCharts(charts) {
   }
 }
 
-function renderAssetTable(assetStatus) {
+function renderAssetTable(assetStatus, holdings = []) {
   const body = document.querySelector("#asset-status-body");
-  body.innerHTML = assetStatus
+  const rows = holdings.length
+    ? holdings.map((item) => {
+        const principal = (item.quantity || 0) * (item.averagePrice || 0);
+        const pnl = (item.valuation || 0) - principal;
+
+        return {
+          asset: item.asset,
+          platform: item.platform,
+          valuation: item.valuation || 0,
+          principal,
+          pnl,
+          returnRate: item.returnRate || 0,
+        };
+      })
+    : assetStatus.map((item) => ({
+        asset: item.asset || item.assetName || item.category,
+        platform: item.platform,
+        valuation: item.valuation || 0,
+        principal: item.principal || 0,
+        pnl: item.pnl || 0,
+        returnRate: item.returnRate || 0,
+      }));
+
+  body.innerHTML = rows
     .map((item) =>
       `
         <tr>
-          ${tableCell("구분", item.category)}
+          ${tableCell("종목", item.asset)}
           ${tableCell("플랫폼", item.platform)}
           ${tableCell("평가금액", formatCurrency(item.valuation), "align-right numeric-cell")}
           ${tableCell("원금", formatCurrency(item.principal), "align-right numeric-cell")}
@@ -1096,33 +1250,6 @@ function renderStrategy(strategy) {
           </section>
         </div>
       </article>
-
-      <article class="panel strategy-block strategy-block--payoff">
-        <div class="strategy-block-head">
-          <span class="strategy-section-index">${escapeHtml(strategy.payoff.section)}</span>
-          <div>
-            <p class="eyebrow">Risk / Reward</p>
-            <h3>${escapeHtml(strategy.payoff.title)}</h3>
-          </div>
-        </div>
-        <div class="strategy-compare-wrap">
-          <table class="strategy-compare-table">
-            <thead>
-              <tr>
-                <th>항목</th>
-                <th>기존</th>
-                <th>개선</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${strategy.payoff.comparisons.map(renderStrategyComparisonRow).join("")}
-            </tbody>
-          </table>
-        </div>
-        <div class="strategy-payoff-copy">
-          ${renderStrategyBulletList(strategy.payoff.insights)}
-        </div>
-      </article>
     </div>
   `;
 }
@@ -1150,16 +1277,6 @@ function renderExitStepCard(step) {
       <p class="strategy-step-summary">${escapeHtml(step.action)}</p>
       <p class="strategy-step-note">${escapeHtml(step.note)}</p>
     </article>
-  `;
-}
-
-function renderStrategyComparisonRow(row) {
-  return `
-    <tr>
-      <td>${escapeHtml(row.label)}</td>
-      <td>${escapeHtml(row.before)}</td>
-      <td>${escapeHtml(row.after)}</td>
-    </tr>
   `;
 }
 

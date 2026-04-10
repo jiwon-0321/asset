@@ -13,6 +13,10 @@
     />
     <link
       rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;800&display=swap"
+    />
+    <link
+      rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
     />
     <link rel="stylesheet" href="./styles.css" />
@@ -22,7 +26,7 @@
       <header class="hero reveal">
         <div class="hero-copy">
           <p class="eyebrow">Task #1 · Portfolio Overview</p>
-          <h1 id="page-title">Sniper Capital Board</h1>
+          <h1 id="page-title" class="hero-title">Sniper Capital Board</h1>
           <p class="hero-summary" id="hero-summary"></p>
           <div class="hero-meta">
             <span id="basis-date"></span>
@@ -37,6 +41,46 @@
 
       <main class="dashboard">
         <section class="metric-grid reveal" id="metric-grid"></section>
+
+        <section class="section reveal panel-accordion is-open" id="targets-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="targets-toggle"
+              aria-expanded="true"
+              aria-controls="targets-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="7.5" />
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 2.5v3" />
+                    <path d="M12 18.5v3" />
+                    <path d="M2.5 12h3" />
+                    <path d="M18.5 12h3" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Target Board</p>
+                  <h2>목표</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="targets-panel" aria-hidden="false">
+            <div class="targets-layout">
+              <article class="panel targets-hero-card" id="targets-hero"></article>
+              <div class="targets-grid" id="targets-grid"></div>
+            </div>
+          </div>
+        </section>
 
         <section class="section split reveal">
           <div class="panel panel-accordion" id="allocation-section">
@@ -110,7 +154,7 @@
                 <table>
                   <thead>
                     <tr>
-                      <th>구분</th>
+                      <th>종목</th>
                       <th>플랫폼</th>
                       <th>평가금액</th>
                       <th>원금</th>

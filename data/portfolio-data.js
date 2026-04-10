@@ -7,23 +7,23 @@ window.__PORTFOLIO_DATA__ = {
   },
   "summary": {
     "initialInvestment": 59034182,
-    "totalAssets": 47804430.851624355,
-    "investedPrincipal": 19905427.953949448,
-    "assetValuationTotal": 18259916.85162435,
-    "cashTotal": 29544514,
-    "portfolioPnl": -1645511.1023250967,
-    "portfolioReturnRate": -0.08266645189100841,
+    "totalAssets": 47821236.78567861,
+    "investedPrincipal": 22906421.70099048,
+    "assetValuationTotal": 21277716.53267861,
+    "cashTotal": 26543520.253,
+    "portfolioPnl": -1628705.16831187,
+    "portfolioReturnRate": -0.071102557596,
     "realizedProfitTotal": 3545841,
-    "liquidityRatio": 0.6180287783720387
+    "liquidityRatio": 0.555057167843
   },
   "assetStatus": [
     {
       "category": "암호화폐",
       "platform": "업비트",
-      "valuation": 18259916.85162435,
-      "principal": 19905427.953949448,
-      "pnl": -1645511.1023250967,
-      "returnRate": -0.08266645189100841
+      "valuation": 21277716.53267861,
+      "principal": 22906421.70099048,
+      "pnl": -1628705.16831187,
+      "returnRate": -0.071102557596
     }
   ],
   "cashPositions": [
@@ -37,7 +37,7 @@ window.__PORTFOLIO_DATA__ = {
     },
     {
       "platform": "업비트 KRW잔액",
-      "amount": 21555667
+      "amount": 18554673.253
     },
     {
       "platform": "미래에셋 예수금",
@@ -48,12 +48,47 @@ window.__PORTFOLIO_DATA__ = {
     {
       "platform": "업비트",
       "asset": "XRP",
-      "quantity": 9152.84052713,
-      "averagePrice": 2174.7814675616414,
-      "valuation": 18259916.85162435,
-      "returnRate": -0.08266645189100841
+      "quantity": 10654.84052713,
+      "averagePrice": 2149.86058615,
+      "valuation": 21277716.53267861,
+      "returnRate": -0.071102557596
     }
   ],
+  "targets": {
+    "eyebrow": "Target Board",
+    "title": "지금 노리는 종목",
+    "summary": "매수 버튼을 누르기 전에 먼저 점검할 후보군입니다. 시장이 열리면 아래 종목부터 우선 확인합니다.",
+    "groups": [
+      {
+        "title": "암호화폐",
+        "label": "Crypto",
+        "tone": "crypto",
+        "summary": "가격이 열리면 가장 먼저 체크할 메인 코인",
+        "items": [
+          "ETH"
+        ]
+      },
+      {
+        "title": "해외주식",
+        "label": "Global Equity",
+        "tone": "global",
+        "summary": "중장기 관점에서 우선순위가 높은 미국 주식",
+        "items": [
+          "팔란티어",
+          "써클"
+        ]
+      },
+      {
+        "title": "국내주식",
+        "label": "Korea Equity",
+        "tone": "domestic",
+        "summary": "국내주식은 아직 후보를 비워두고 시장 강도부터 확인",
+        "items": [],
+        "emptyTitle": "아직 없음",
+        "emptyDescription": "국내주식은 다시 보고 싶은 섹터가 잡히는 순간 바로 추가합니다."
+      }
+    ]
+  },
   "realized": [
     {
       "platform": "카카오증권",
@@ -169,9 +204,9 @@ window.__PORTFOLIO_DATA__ = {
     "returnsComparison": [
       {
         "label": "XRP",
-        "valuation": 17761166.85162435,
-        "pnl": -1646761.1023251005,
-        "returnRate": -0.08484991835462734
+        "valuation": 21277716.53267861,
+        "pnl": -1628705.16831187,
+        "returnRate": -0.071102557596
       }
     ],
     "realizedHistory": [
@@ -287,7 +322,7 @@ window.__PORTFOLIO_DATA__ = {
           {
             "item": "XRP 2,017개 · 업비트",
             "pnl": 150205,
-            "note": "최근매수평단"
+            "note": "최근 매수 평균가 2,000.49원 기준"
           }
         ]
       }
@@ -1005,6 +1040,15 @@ window.__PORTFOLIO_DATA__ = {
         "price": 1990,
         "amount": 497500,
         "fee": 248.75
+      },
+      {
+        "date": "4/10",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 1502,
+        "price": 1997,
+        "amount": 2999494,
+        "fee": 1499.747
       }
     ]
   },
@@ -1012,7 +1056,7 @@ window.__PORTFOLIO_DATA__ = {
     "prices": {
       "samsungElectronics": 199000,
       "skHynix": 907000,
-      "xrp": 1995,
+      "xrp": 1997,
       "eth": 3216000
     },
     "xrpDefense": {
@@ -1020,15 +1064,16 @@ window.__PORTFOLIO_DATA__ = {
       "initialAveragePrice": 2544.5,
       "soldQuantity": 21016.5,
       "averageSellNet": 2037.6067256679275,
-      "rebuyQuantity": 7369.23052713,
-      "averageRebuyGross": 2001.0681326511665,
+      "rebuyQuantity": 8871.23052713,
+      "averageRebuyGross": 2000.54840901,
       "defenseGain": 257359.63366051234,
-      "finalAveragePrice": 2179.9703021532123,
-      "averageCutAmount": 364.5296978467877,
-      "averageCutRate": 0.14326181876470337,
+      "finalAveragePrice": 2149.86058615,
+      "averageCutAmount": 394.63941385,
+      "averageCutRate": 0.155095073236,
       "realizedPnl": -10653122.5,
-      "remainingQuantity": 13897.26947287,
+      "remainingQuantity": 10654.84052713,
       "breakevenTargetBuyPrice": 2056.1254450583033
-    }
+    },
+    "assetPrices": {}
   }
 };
