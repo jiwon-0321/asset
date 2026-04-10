@@ -53,6 +53,9 @@ html {
   background-color: #040b0b;
   min-height: 100%;
   min-height: var(--app-height);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 body {
@@ -68,6 +71,10 @@ body {
   -webkit-font-smoothing: antialiased;
   background: #040b0b;
   overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 body.modal-open {
@@ -119,7 +126,7 @@ body::after {
 .access-gate {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 2100;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -250,6 +257,16 @@ body.access-locked .page-shell {
   user-select: none;
 }
 
+body.access-locked .trade-modal,
+body.access-locked .calendar-modal,
+body.access-locked .asset-chart-modal,
+body.access-locked .mobile-section-overlay {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 img,
 svg {
   display: block;
@@ -308,6 +325,8 @@ h3 {
   margin: 0 auto;
   min-height: var(--app-height);
   padding: calc(26px + env(safe-area-inset-top, 0px)) 0 calc(72px + env(safe-area-inset-bottom, 0px));
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .hero {
@@ -798,18 +817,38 @@ h3 {
   backdrop-filter: blur(12px);
   animation: mobileOverlayFade 180ms ease;
   overscroll-behavior: contain;
+  pointer-events: auto;
+}
+
+.mobile-section-overlay[hidden] {
+  display: none !important;
 }
 
 .mobile-section-shell {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-height: var(--app-height);
   height: 100%;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  pointer-events: auto;
   padding: calc(18px + env(safe-area-inset-top, 0px)) 16px calc(28px + env(safe-area-inset-bottom, 0px));
   background:
     radial-gradient(circle at top, rgba(23, 249, 166, 0.08), transparent 24%),
     radial-gradient(circle at bottom, rgba(94, 200, 255, 0.08), transparent 22%),
     rgba(4, 11, 11, 0.98);
+}
+
+.mobile-section-content {
+  display: grid;
+  gap: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  pointer-events: auto;
 }
 
 .mobile-section-topbar {
@@ -860,6 +899,11 @@ body.mobile-section-open {
   overflow: hidden;
 }
 
+body.mobile-section-open .mobile-section-overlay,
+body.mobile-section-open .mobile-section-overlay * {
+  pointer-events: auto;
+}
+
 .asset-chart-modal {
   position: fixed;
   inset: 0;
@@ -867,6 +911,10 @@ body.mobile-section-open {
   display: grid;
   place-items: center;
   padding: 20px;
+}
+
+.asset-chart-modal[hidden] {
+  display: none !important;
 }
 
 .asset-chart-backdrop {
@@ -906,6 +954,69 @@ body.mobile-section-open {
   color: var(--muted-strong);
   font-size: 0.92rem;
   line-height: 1.65;
+}
+
+.asset-chart-toolbar {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.asset-chart-granularity-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 8px;
+  align-items: center;
+}
+
+.asset-chart-range-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, max-content));
+  gap: 8px;
+  align-items: center;
+}
+
+.asset-chart-range-tabs[hidden] {
+  display: none !important;
+}
+
+.asset-chart-range {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(94, 200, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted-strong);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.asset-chart-range:hover,
+.asset-chart-range:focus-visible {
+  border-color: rgba(23, 249, 166, 0.28);
+  background: rgba(23, 249, 166, 0.08);
+  color: var(--text-strong);
+  outline: none;
+}
+
+.asset-chart-range.is-active {
+  border-color: rgba(23, 249, 166, 0.36);
+  background: rgba(23, 249, 166, 0.12);
+  color: var(--text-strong);
+}
+
+.asset-chart-refresh {
+  margin: 0;
+  color: rgba(176, 202, 197, 0.68);
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .asset-chart-close {
@@ -970,34 +1081,38 @@ body.mobile-menu-mode .dashboard > .section {
   display: none !important;
 }
 
-body.mobile-menu-mode .dashboard > .section.mobile-section-active {
-  position: fixed;
-  inset: calc(82px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
-  z-index: 96;
+body.mobile-menu-mode .dashboard > .section.mobile-section-active,
+body.mobile-menu-mode .mobile-section-shell-section {
   display: block !important;
-  overflow: auto;
+  overflow: visible !important;
   padding: 0 0 24px;
   border: 0;
   background: transparent;
   box-shadow: none;
   animation: mobileSectionReveal 220ms cubic-bezier(0.22, 1, 0.36, 1);
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  pointer-events: auto;
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active::before,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active::after {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active::after,
+body.mobile-menu-mode .mobile-section-shell-section::before,
+body.mobile-menu-mode .mobile-section-shell-section::after {
   display: none;
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .section-heading,
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-toggle-icon,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active .section-toggle-icon {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active .section-toggle-icon,
+body.mobile-menu-mode .mobile-section-shell-section .section-heading,
+body.mobile-menu-mode .mobile-section-shell-section .timeline-toggle-icon,
+body.mobile-menu-mode .mobile-section-shell-section .section-toggle-icon {
   display: none !important;
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .panel-collapse,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-panel {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-panel,
+body.mobile-menu-mode .mobile-section-shell-section .panel-collapse,
+body.mobile-menu-mode .mobile-section-shell-section .timeline-panel {
   display: grid !important;
   grid-template-rows: 1fr !important;
   opacity: 1 !important;
@@ -1008,20 +1123,26 @@ body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-pane
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .panel-collapse > *,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-panel > * {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-panel > *,
+body.mobile-menu-mode .mobile-section-shell-section .panel-collapse > *,
+body.mobile-menu-mode .mobile-section-shell-section .timeline-panel > * {
   overflow: visible !important;
   visibility: visible !important;
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .panel-accordion,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-group {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-group,
+body.mobile-menu-mode .mobile-section-shell-section .panel-accordion,
+body.mobile-menu-mode .mobile-section-shell-section .timeline-group {
   border: 0;
   background: transparent;
   box-shadow: none;
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .notes-layout,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active .notes-list {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active .notes-list,
+body.mobile-menu-mode .mobile-section-shell-section .notes-layout,
+body.mobile-menu-mode .mobile-section-shell-section .notes-list {
   gap: 12px;
 }
 
@@ -1034,25 +1155,42 @@ body.mobile-menu-mode .dashboard > .section.mobile-section-active .chart-card,
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .holding-card,
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .defense-card,
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-item,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-group {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active .timeline-group,
+body.mobile-menu-mode .mobile-section-shell-section .notes-composer,
+body.mobile-menu-mode .mobile-section-shell-section .memo-card,
+body.mobile-menu-mode .mobile-section-shell-section .targets-entry-card,
+body.mobile-menu-mode .mobile-section-shell-section .targets-hero-card,
+body.mobile-menu-mode .mobile-section-shell-section .targets-market-card,
+body.mobile-menu-mode .mobile-section-shell-section .chart-card,
+body.mobile-menu-mode .mobile-section-shell-section .holding-card,
+body.mobile-menu-mode .mobile-section-shell-section .defense-card,
+body.mobile-menu-mode .mobile-section-shell-section .timeline-item,
+body.mobile-menu-mode .mobile-section-shell-section .timeline-group {
   border-radius: 20px;
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .memo-card-head,
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .memo-card-meta,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active .notes-composer-head {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active .notes-composer-head,
+body.mobile-menu-mode .mobile-section-shell-section .memo-card-head,
+body.mobile-menu-mode .mobile-section-shell-section .memo-card-meta,
+body.mobile-menu-mode .mobile-section-shell-section .notes-composer-head {
   flex-direction: column;
   align-items: stretch;
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .memo-card-actions,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active .form-actions {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active .form-actions,
+body.mobile-menu-mode .mobile-section-shell-section .memo-card-actions,
+body.mobile-menu-mode .mobile-section-shell-section .form-actions {
   width: 100%;
   justify-content: stretch;
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active .memo-card-actions > *,
-body.mobile-menu-mode .dashboard > .section.mobile-section-active .form-actions > * {
+body.mobile-menu-mode .dashboard > .section.mobile-section-active .form-actions > *,
+body.mobile-menu-mode .mobile-section-shell-section .memo-card-actions > *,
+body.mobile-menu-mode .mobile-section-shell-section .form-actions > * {
   flex: 1 1 0;
 }
 
@@ -3790,6 +3928,16 @@ th.align-right {
     grid-template-columns: 1fr;
   }
 
+  .dashboard,
+  .hero,
+  .section,
+  .panel,
+  .mobile-section-shell,
+  .mobile-section-active {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
   .timeline-toggle {
     grid-template-columns: 1fr;
     align-items: start;
@@ -4393,6 +4541,34 @@ th.align-right {
 
   .asset-chart-header {
     gap: 12px;
+  }
+
+  .asset-chart-toolbar {
+    gap: 8px;
+  }
+
+  .asset-chart-granularity-tabs,
+  .asset-chart-range-tabs {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .asset-chart-range {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 0.8rem;
+  }
+
+  .asset-chart-granularity-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .asset-chart-range-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .asset-chart-refresh {
+    font-size: 0.74rem;
   }
 
   .asset-chart-stats {

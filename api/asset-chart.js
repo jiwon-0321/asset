@@ -27,12 +27,16 @@ module.exports = async (request, response) => {
     const market = url.searchParams.get("market") || "";
     const symbol = url.searchParams.get("symbol") || "";
     const name = url.searchParams.get("name") || symbol;
+    const range = url.searchParams.get("range") || "1M";
+    const granularity = url.searchParams.get("granularity") || "day";
 
     const payload = await buildAssetChartSnapshot({
       rootDir: path.resolve(__dirname, ".."),
       market,
       symbol,
       name,
+      range,
+      granularity,
     });
 
     response.statusCode = 200;

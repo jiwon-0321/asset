@@ -21,7 +21,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260410-3" />
+    <link rel="stylesheet" href="./styles.css?v=20260411-2" />
   </head>
   <body class="access-locked">
     <div class="access-gate" id="access-gate" aria-hidden="false">
@@ -510,6 +510,7 @@
             </svg>
           </button>
         </div>
+        <div class="mobile-section-content" id="mobile-section-content"></div>
       </div>
     </div>
 
@@ -527,6 +528,18 @@
             <p class="eyebrow">Live Chart</p>
             <h3 id="asset-chart-title">종목 차트</h3>
             <p class="asset-chart-summary" id="asset-chart-summary">최근 흐름을 불러오는 중입니다.</p>
+            <div class="asset-chart-toolbar">
+              <div class="asset-chart-granularity-tabs" id="asset-chart-granularity-tabs" role="tablist" aria-label="차트 봉 타입 선택">
+                <button type="button" class="asset-chart-range is-active" data-asset-chart-granularity="day">일봉</button>
+                <button type="button" class="asset-chart-range" data-asset-chart-granularity="minute">분봉</button>
+              </div>
+              <div class="asset-chart-range-tabs" id="asset-chart-range-tabs" role="tablist" aria-label="차트 기간 선택">
+                <button type="button" class="asset-chart-range is-active" data-asset-chart-range="1W">1주</button>
+                <button type="button" class="asset-chart-range" data-asset-chart-range="1M">1개월</button>
+                <button type="button" class="asset-chart-range" data-asset-chart-range="1Y">1년</button>
+              </div>
+              <p class="asset-chart-refresh" id="asset-chart-refresh">자동 갱신 대기 중</p>
+            </div>
           </div>
           <button type="button" class="asset-chart-close" data-asset-chart-close aria-label="차트 닫기">
             <svg viewBox="0 0 24 24">
@@ -694,6 +707,6 @@
     </template>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js" defer></script>
-    <script src="./app.js?v=20260410-3"></script>
+    <script src="./app.js?v=20260411-2"></script>
   </body>
 </html>

@@ -151,6 +151,8 @@ async function handleApi(request, response, url) {
         market: url.searchParams.get("market") || "",
         symbol: url.searchParams.get("symbol") || "",
         name: url.searchParams.get("name") || "",
+        range: url.searchParams.get("range") || "1M",
+        granularity: url.searchParams.get("granularity") || "day",
       });
       sendJson(response, 200, snapshot, requestOrigin);
     } catch (error) {

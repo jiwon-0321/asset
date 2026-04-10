@@ -74,6 +74,7 @@ Cloud (unused): Firebase config + upload_to_firestore.py (prepared but not integ
 - No data export feature (CSV, PDF report)
 - No multi-year support -- all dates assume a single year
 - No error boundary or graceful degradation if Chart.js fails to load
+- Mobile timeline/menu interaction is still unstable -- the trade timeline can fail to render or lose scroll/click behavior inside the mobile overlay, and trade saves do not always reflect immediately in the mobile calendar/holdings views
 
 ---
 
@@ -155,6 +156,25 @@ Cloud (unused): Firebase config + upload_to_firestore.py (prepared but not integ
 **Files to modify:**
 - `/Users/jojiwon/vibecording/new asset/scripts/portfolio-store.js` -- Modify `savePortfolio()`
 - `/Users/jojiwon/vibecording/new asset/.gitignore` -- Add `data/backups/`
+
+### 2.6 [P0] Mobile Timeline and Overlay Stabilization
+**Objective:** Make the mobile menu usable enough for daily operation, especially around the trade timeline and trade entry flow.
+
+**Implementation steps:**
+1. Remove duplicate mobile-only timeline rendering paths and reuse the main timeline render result inside the mobile overlay
+2. Make the mobile overlay the only scrolling container while it is open, and keep the background page fixed without blocking taps inside the overlay
+3. Preserve the currently active timeline view (`list` / `calendar`) across rerenders and after trade save/edit/delete operations
+4. Standardize mutation flow for trades/targets/notes so successful writes always:
+   - update local UI immediately
+   - reload `/api/portfolio`
+   - rerender dashboard state
+   - restore the previously open mobile section when needed
+5. Ensure that opening `거래 추가` from the mobile timeline closes the overlay cleanly and restores it after save/cancel
+
+**Files to modify:**
+- `/Users/jojiwon/vibecording/new asset/app.js` -- Simplify mobile section state, restore flow, and timeline state handling
+- `/Users/jojiwon/vibecording/new asset/styles.css` -- Remove conflicting mobile scroll/pointer rules and stabilize overlay interaction
+- `/Users/jojiwon/vibecording/new asset/index.html` -- Keep cache-busting asset versions aligned with mobile fixes
 
 ---
 

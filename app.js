@@ -293,6 +293,7 @@ const ASSET_AUTOCOMPLETE_SEEDS = Object.freeze({
 const colors = ["#17F9A6", "#5EC8FF", "#FFB84D", "#FF6B87"];
 let chartRegistry = [];
 let assetDetailChart = null;
+let assetChartRefreshTimer = null;
 let calendarDetailStore = new Map();
 let currentPortfolioData = null;
 let basePortfolioData = null;
@@ -314,11 +315,50 @@ let timelineCalendarState = {
   basisYear: new Date().getFullYear(),
   selectedMonthKey: null,
   realizedHistory: [],
+  activeView: "list",
 };
 let mobileSectionState = {
   section: null,
   sectionId: "",
+  placeholder: null,
+  originalParent: null,
 };
+let mobileSectionScrollTop = 0;
+let pendingMobileSectionRestoreId = "";
+let interactionLockUntil = 0;
+let assetChartState = {
+  market: "",
+  symbol: "",
+  name: "",
+  range: "1M",
+  granularity: "day",
+};
+
+const ASSET_CHART_RANGES = Object.freeze({
+  day: Object.freeze([
+    { key: "1W", label: "1주" },
+    { key: "1M", label: "1개월" },
+    { key: "1Y", label: "1년" },
+  ]),
+  minute: Object.freeze([
+    { key: "1D", label: "1일" },
+    { key: "1W", label: "1주" },
+    { key: "1M", label: "1개월" },
+  ]),
+});
+
+const ASSET_CHART_GRANULARITIES = Object.freeze([
+  { key: "day", label: "일봉" },
+  { key: "minute", label: "분봉" },
+]);
+
+function getAssetChartRanges(granularity = "day") {
+  return ASSET_CHART_RANGES[granularity === "minute" ? "minute" : "day"];
+}
+
+function getDefaultAssetChartRange(granularity = "day") {
+  return getAssetChartRanges(granularity)[0]?.key || "1M";
+}
 
 const MOBILE_SECTION_SHORTCUTS = Object.freeze([
   { id: "targets-section", eyebrow: "Watchlist", title: "관심종목", icon: "◎", summary: "지금 보는 후보 종목" },
@@ -785,6 +825,65 @@ function unlockAccessGate() {
     gate.setAttribute("aria-hidden", "true");
   }
   document.body.classList.remove("access-locked");
+  interactionLockUntil = Date.now() + 900;
+  closeMobileSectionOverlay();
+  closeCalendarDetailModal();
+  closeAssetChartModal();
+
+  const tradeModal = document.querySelector("#trade-modal");
+  if (tradeModal) {
+    tradeModal.hidden = true;
+    tradeModal.setAttribute("aria-hidden", "true");
+    tradeModal.classList.remove("is-open");
+  }
+
+  document.body.classList.remove("modal-open", "mobile-section-open", "asset-chart-open");
+}
+
+function relockAccessGate(options = {}) {
+  const { focusInput = false, clearInput = true } = options;
+  const gate = document.querySelector("#access-gate");
+  const input = document.querySelector("#access-gate-code");
+
+  activeAccessCode = "";
+  activeAccessMode = "owner";
+
+  if (liveRefreshTimer) {
+    window.clearInterval(liveRefreshTimer);
+    liveRefreshTimer = null;
+  }
+
+  closeMobileSectionOverlay();
+  closeCalendarDetailModal();
+  closeAssetChartModal();
+
+  const tradeModal = document.querySelector("#trade-modal");
+  if (tradeModal) {
+    tradeModal.hidden = true;
+    tradeModal.setAttribute("aria-hidden", "true");
+    tradeModal.classList.remove("is-open");
+  }
+
+  document.body.classList.remove("modal-open", "mobile-section-open");
+  document.body.classList.add("access-locked");
+
+  if (gate) {
+    gate.hidden = false;
+    gate.setAttribute("aria-hidden", "false");
+  }
+
+  if (input) {
+    if (clearInput) {
+      input.value = "";
+    }
+    if (focusInput) {
+      window.setTimeout(() => {
+        input.focus();
+      }, 30);
+    }
+  }
+
+  setAccessGateStatus("접속 코드를 입력해주세요.");
 }
 
 function initAccessGate() {
@@ -795,6 +894,7 @@ function initAccessGate() {
   let autoSubmitTimer = null;
 
   syncViewportHeight();
+  relockAccessGate();
 
   if (!gate || !form || !input) {
     bootDashboard();
@@ -835,7 +935,12 @@ function initAccessGate() {
         "success"
       );
       unlockAccessGate();
-      bootDashboard();
+      if (hasBootedDashboard) {
+        refreshLivePortfolio();
+        scheduleLivePortfolioRefresh();
+      } else {
+        bootDashboard();
+      }
     } catch (error) {
       setAccessGateStatus(error.message || "코드가 맞지 않습니다. 다시 확인해주세요.", "error");
       isSubmittingCode = false;
@@ -869,6 +974,14 @@ function initAccessGate() {
   window.setTimeout(() => {
     input.focus();
   }, 60);
+
+  window.addEventListener("pagehide", () => {
+    relockAccessGate({ focusInput: false, clearInput: true });
+  });
+
+  window.addEventListener("pageshow", () => {
+    relockAccessGate({ focusInput: true, clearInput: true });
+  });
 }
 
 document.addEventListener("DOMContentLoaded", initAccessGate);
@@ -959,22 +1072,110 @@ function forceOpenPanelAccordionsWithin(root) {
   });
 }
 
+function prepareTimelineSectionForMobile(section) {
+  if (!section) {
+    return;
+  }
+
+  activateTimelineView(section, timelineCalendarState.activeView || "list");
+  forceOpenPanelAccordionsWithin(section);
+
+  if ((timelineCalendarState.activeView || "list") !== "list") {
+    return;
+  }
+
+  const firstGroup = section.querySelector(".timeline-group");
+  const firstToggle = firstGroup?.querySelector(".timeline-toggle");
+  const firstPanel = firstGroup?.querySelector(".timeline-panel");
+  if (firstGroup && firstToggle && firstPanel) {
+    toggleDisclosure(firstGroup, firstToggle, firstPanel, true);
+  }
+}
+
+function recoverDetachedMobileSection() {
+  const section = mobileSectionState.section;
+  const placeholder = mobileSectionState.placeholder;
+  if (!section || section.isConnected) {
+    return;
+  }
+
+  if (placeholder?.parentNode) {
+    section.classList.remove("mobile-section-active");
+    section.classList.remove("mobile-section-shell-section");
+    placeholder.replaceWith(section);
+  }
+}
+
+function rememberMobileSectionRestore(sectionId = mobileSectionState.sectionId || "") {
+  pendingMobileSectionRestoreId = sectionId || "";
+}
+
+function consumeMobileSectionRestore() {
+  const sectionId = pendingMobileSectionRestoreId;
+  pendingMobileSectionRestoreId = "";
+  return sectionId;
+}
+
+function reopenPendingMobileSection() {
+  const sectionId = consumeMobileSectionRestore();
+  if (!sectionId || !isMobileSectionMode()) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    openMobileSectionOverlay(sectionId);
+  });
+}
+
+function lockMobileSectionBackgroundScroll() {
+  mobileSectionScrollTop = window.scrollY || window.pageYOffset || 0;
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${mobileSectionScrollTop}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
+  document.body.style.width = "100%";
+}
+
+function unlockMobileSectionBackgroundScroll() {
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  document.body.style.width = "";
+  window.scrollTo(0, mobileSectionScrollTop);
+}
+
 function closeMobileSectionOverlay() {
   const overlay = document.querySelector("#mobile-section-overlay");
+  const content = document.querySelector("#mobile-section-content");
+  recoverDetachedMobileSection();
   if (!overlay) {
     return;
   }
 
   if (mobileSectionState.section) {
     mobileSectionState.section.classList.remove("mobile-section-active");
+    mobileSectionState.section.classList.remove("mobile-section-shell-section");
+    if (mobileSectionState.placeholder?.parentNode) {
+      mobileSectionState.placeholder.replaceWith(mobileSectionState.section);
+    } else if (mobileSectionState.originalParent) {
+      mobileSectionState.originalParent.appendChild(mobileSectionState.section);
+    }
+  }
+
+  if (content) {
+    content.innerHTML = "";
   }
 
   overlay.hidden = true;
   overlay.setAttribute("aria-hidden", "true");
   document.body.classList.remove("mobile-section-open");
+  unlockMobileSectionBackgroundScroll();
   mobileSectionState = {
     section: null,
     sectionId: "",
+    placeholder: null,
+    originalParent: null,
   };
 }
 
@@ -991,18 +1192,31 @@ function openMobileSectionOverlay(sectionId) {
   }
 
   const overlay = document.querySelector("#mobile-section-overlay");
+  const content = document.querySelector("#mobile-section-content");
   const kicker = document.querySelector("#mobile-section-kicker");
   const title = document.querySelector("#mobile-section-title");
   const section = document.getElementById(sectionId);
   const config = MOBILE_SECTION_SHORTCUTS.find((item) => item.id === sectionId);
 
-  if (!overlay || !section || !config) {
+  if (!overlay || !content || !section || !config) {
     return;
   }
 
   closeMobileSectionOverlay();
+
+  const originalParent = section.parentElement;
+  const placeholder = document.createElement("div");
+  placeholder.hidden = true;
+  placeholder.dataset.mobileSectionPlaceholder = sectionId;
+  section.before(placeholder);
   section.classList.add("mobile-section-active");
-  forceOpenPanelAccordionsWithin(section);
+  section.classList.add("mobile-section-shell-section");
+  content.appendChild(section);
+  if (sectionId === "timeline-section") {
+    prepareTimelineSectionForMobile(section);
+  } else {
+    forceOpenPanelAccordionsWithin(section);
+  }
 
   if (kicker) {
     kicker.textContent = config.eyebrow;
@@ -1014,13 +1228,31 @@ function openMobileSectionOverlay(sectionId) {
   mobileSectionState = {
     section,
     sectionId,
+    placeholder,
+    originalParent,
   };
 
   overlay.hidden = false;
   overlay.setAttribute("aria-hidden", "false");
   document.body.classList.add("mobile-section-open");
+  lockMobileSectionBackgroundScroll();
   window.requestAnimationFrame(() => {
+    const shell = overlay.querySelector(".mobile-section-shell");
+    if (shell) {
+      shell.scrollTop = 0;
+    }
     document.querySelector("#mobile-section-close")?.focus();
+  });
+}
+
+function syncActiveMobileSectionOverlay() {
+  const activeSectionId = mobileSectionState.sectionId;
+  if (!activeSectionId || !isMobileSectionMode()) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    openMobileSectionOverlay(activeSectionId);
   });
 }
 
@@ -1065,6 +1297,7 @@ function bindMobileSectionOverlay() {
 }
 
 function applyPortfolioData(data, liveSnapshot = livePortfolioSnapshot, options = {}) {
+  recoverDetachedMobileSection();
   basePortfolioData = data;
   window.__PORTFOLIO_DATA__ = data;
 
@@ -1193,6 +1426,7 @@ function renderDashboard(data, options = {}) {
   bindMobileSectionOverlay();
   bindNotesSection(document.querySelector("#notes-section"));
   initializeMotion();
+  syncActiveMobileSectionOverlay();
 }
 
 function getDisplayAssetName(item = {}) {
@@ -2393,13 +2627,31 @@ async function requestTargetMutation(method, targetData) {
   return payload;
 }
 
+async function reconcilePortfolioAfterMutation(updatedPortfolio, options = {}) {
+  const initialSnapshot = options.resetLiveSnapshot ? null : livePortfolioSnapshot;
+  if (options.resetLiveSnapshot) {
+    livePortfolioSnapshot = null;
+  }
+
+  applyPortfolioData(updatedPortfolio, initialSnapshot, { renderMode: "full" });
+  await refreshLivePortfolio();
+
+  let confirmedPortfolio = updatedPortfolio;
+  try {
+    confirmedPortfolio = await loadPortfolio();
+  } catch (error) {
+    confirmedPortfolio = updatedPortfolio;
+  }
+
+  applyPortfolioData(confirmedPortfolio, livePortfolioSnapshot, { renderMode: "full" });
+  return confirmedPortfolio;
+}
+
 async function applyTargetMutation(method, targetData, successMessage) {
   const updatedPortfolio = await requestTargetMutation(method, targetData);
-  livePortfolioSnapshot = null;
-  applyPortfolioData(updatedPortfolio, null, { renderMode: "full" });
+  const confirmedPortfolio = await reconcilePortfolioAfterMutation(updatedPortfolio);
   setTargetFormStatus(successMessage, "success");
-  await refreshLivePortfolio();
-  return updatedPortfolio;
+  return confirmedPortfolio;
 }
 
 async function requestTradeMutation(method, payload) {
@@ -2425,10 +2677,18 @@ async function requestTradeMutation(method, payload) {
 
 async function applyTradeMutation(method, payload) {
   const updatedPortfolio = await requestTradeMutation(method, payload);
-  livePortfolioSnapshot = null;
-  applyPortfolioData(updatedPortfolio, null, { renderMode: "full" });
-  await refreshLivePortfolio();
-  return updatedPortfolio;
+  return reconcilePortfolioAfterMutation(updatedPortfolio, {
+    resetLiveSnapshot: true,
+  });
+}
+
+function finalizeMobileModalLaunch(sectionId = mobileSectionState.sectionId || "") {
+  if (!isMobileSectionMode() || !sectionId) {
+    return;
+  }
+
+  rememberMobileSectionRestore(sectionId);
+  closeMobileSectionOverlay();
 }
 
 function initTargetManager() {
@@ -2468,7 +2728,7 @@ function initTargetManager() {
 
     if (market === "미국주식") {
       assetInput.placeholder = "Apple Inc. (AAPL)";
-      help.textContent = "미국주식은 자동완성 없이 영어 회사명 또는 티커로 입력합니다. 예시: Apple Inc. (AAPL), TSLA, NVDA";
+      help.textContent = "영어 회사명이나 티커를 몇 글자만 입력해도 아래 추천 목록이 뜹니다. 예시: Apple Inc. (AAPL), TSLA, NVDA";
       return;
     }
 
@@ -2486,7 +2746,6 @@ function initTargetManager() {
     marketSelect,
     panel: suggestionPanel,
     asyncSource: fetchRemoteAssetSuggestions,
-    disabledMarkets: ["미국주식"],
   });
 
   marketSelect.addEventListener("change", syncTargetFormMode);
@@ -3301,6 +3560,7 @@ function renderTimeline(trades, basisDateLabel, realizedHistory = [], realizedEn
   bindTimelineSection(document.querySelector("#timeline-section"));
   bindCalendarDetailModal(document.querySelector("#calendar-detail-modal"));
   bindPanelAccordion(document.querySelector("#timeline-section .panel"));
+  activateTimelineView(document.querySelector("#timeline-section"), timelineCalendarState.activeView || "list");
 }
 
 function renderStrategy(strategy) {
@@ -3678,6 +3938,8 @@ function activateTimelineView(section, viewName) {
     return;
   }
 
+  timelineCalendarState.activeView = viewName === "calendar" ? "calendar" : "list";
+
   section.querySelectorAll(".view-tab").forEach((button) => {
     const isActive = button.dataset.viewTarget === viewName;
     button.classList.toggle("is-active", isActive);
@@ -3731,6 +3993,7 @@ function bindTimelineSection(section) {
       const trade = timelineTradeRegistry.get(key);
       if (trade) {
         closeCalendarDetailModal();
+        finalizeMobileModalLaunch("timeline-section");
         tradeModalController?.openEdit?.(trade);
       }
       return;
@@ -3843,11 +4106,13 @@ function readChartTheme() {
   };
 }
 
-async function requestAssetChartSnapshot({ market, symbol, name }) {
+async function requestAssetChartSnapshot({ market, symbol, name, range = "1M", granularity = "day" }) {
   const url = new URL("./api/asset-chart", window.location.origin);
   url.searchParams.set("market", market);
   url.searchParams.set("symbol", symbol);
   url.searchParams.set("name", name || symbol);
+  url.searchParams.set("range", range);
+  url.searchParams.set("granularity", granularity);
 
   const response = await fetchWithAccess(url.toString(), {
     headers: {
@@ -3879,6 +4144,13 @@ function ensureAssetChartCanvas() {
   return wrap.querySelector("#asset-chart-canvas");
 }
 
+function clearAssetChartRefreshTimer() {
+  if (assetChartRefreshTimer) {
+    window.clearTimeout(assetChartRefreshTimer);
+    assetChartRefreshTimer = null;
+  }
+}
+
 function setAssetChartCanvasMessage(message) {
   const wrap = document.querySelector("#asset-chart-canvas-wrap");
   if (!wrap) {
@@ -3891,6 +4163,95 @@ function setAssetChartCanvasMessage(message) {
 
 function formatAssetChartValue(value, market) {
   return market === "us-stock" ? formatUsd(value) : formatCurrency(value);
+}
+
+function getAssetChartRefreshIntervalSeconds(market) {
+  if (market === "crypto") {
+    return Math.max(10, Number(currentPortfolioData?.live?.cryptoRefreshIntervalSeconds || 10));
+  }
+
+  return Math.max(60, Number(currentPortfolioData?.live?.marketRefreshIntervalSeconds || 120));
+}
+
+function setActiveAssetChartGranularity(granularity = "day") {
+  document.querySelectorAll("[data-asset-chart-granularity]").forEach((button) => {
+    const isActive = button.dataset.assetChartGranularity === granularity;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+
+function renderAssetChartRangeTabs(granularity = assetChartState.granularity || "day", rangeKey = assetChartState.range || "1M") {
+  const ranges = getAssetChartRanges(granularity);
+  document.querySelectorAll("[data-asset-chart-range]").forEach((button, index) => {
+    const range = ranges[index];
+    if (!range) {
+      button.hidden = true;
+      return;
+    }
+
+    button.hidden = false;
+    button.dataset.assetChartRange = range.key;
+    button.textContent = range.label;
+    const isActive = range.key === rangeKey;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+
+function setActiveAssetChartRange(rangeKey = "1M", granularity = assetChartState.granularity || "day") {
+  renderAssetChartRangeTabs(granularity, rangeKey);
+}
+
+function syncAssetChartRangeVisibility(granularity = "day") {
+  const nextGranularity = granularity === "minute" ? "minute" : "day";
+  const ranges = getAssetChartRanges(nextGranularity);
+  const fallbackRange = getDefaultAssetChartRange(nextGranularity);
+  const isSupported = ranges.some((item) => item.key === assetChartState.range);
+  const nextRange = isSupported ? assetChartState.range : fallbackRange;
+
+  assetChartState = {
+    ...assetChartState,
+    granularity: nextGranularity,
+    range: nextRange,
+  };
+
+  renderAssetChartRangeTabs(nextGranularity, nextRange);
+}
+
+function renderAssetChartRefreshHint(snapshot = null) {
+  const target = document.querySelector("#asset-chart-refresh");
+  if (!target) {
+    return;
+  }
+
+  const intervalSeconds = getAssetChartRefreshIntervalSeconds(assetChartState.market);
+  const updatedAt = snapshot?.summary?.updatedAt ? formatDateTime(snapshot.summary.updatedAt) : "";
+  const intervalLabel =
+    assetChartState.market === "crypto"
+      ? `자동 갱신 ${intervalSeconds}초`
+      : `자동 갱신 ${intervalSeconds}초`;
+
+  target.textContent = updatedAt ? `${intervalLabel} · 최근 반영 ${updatedAt}` : `${intervalLabel} · 새 차트 대기 중`;
+}
+
+function scheduleAssetChartAutoRefresh() {
+  clearAssetChartRefreshTimer();
+
+  const modal = document.querySelector("#asset-chart-modal");
+  if (!modal || modal.hidden || !assetChartState.market || !assetChartState.symbol) {
+    return;
+  }
+
+  const nextDelay = getAssetChartRefreshIntervalSeconds(assetChartState.market) * 1000;
+  assetChartRefreshTimer = window.setTimeout(() => {
+    if (document.hidden || modal.hidden) {
+      scheduleAssetChartAutoRefresh();
+      return;
+    }
+
+    loadAssetChartModal({ silent: true });
+  }, nextDelay);
 }
 
 function renderAssetChartStats(snapshot) {
@@ -3911,7 +4272,7 @@ function renderAssetChartStats(snapshot) {
       <strong>${escapeHtml(formatAssetChartValue(latest, market))}</strong>
     </article>
     <article class="asset-chart-stat">
-      <span>기간 변화</span>
+      <span>${escapeHtml(snapshot?.rangeLabel || "기간 변화")}</span>
       <strong class="${getSignedPriceToneClass(changeAmount)}">${escapeHtml(
         `${market === "us-stock" ? formatSignedUsd(changeAmount) : formatSignedCurrency(changeAmount)} · ${formatSignedPercent(changePercent)}`
       )}</strong>
@@ -3938,11 +4299,16 @@ function renderAssetChart(snapshot) {
   if (footnote) {
     footnote.textContent =
       snapshot?.instrument?.market === "us-stock"
-        ? "미국주식은 최근 30거래일 종가 기준으로 보여줍니다."
-        : "암호화폐는 최근 30일 업비트 일봉 기준으로 보여줍니다.";
+        ? snapshot?.granularity === "minute"
+          ? "미국주식 분봉은 선택 기간에 맞는 장중 흐름으로 보여주며, 장중에는 120초 · 장마감에는 900초 주기로 다시 불러옵니다."
+          : "미국주식 일봉은 선택한 기간 기준 종가 흐름으로 보여주며, 장중에는 120초 · 장마감에는 900초 주기로 다시 불러옵니다."
+        : snapshot?.granularity === "minute"
+          ? "암호화폐 분봉은 선택 기간에 맞는 분봉 흐름으로 보여주며, 차트가 열려 있으면 10초마다 다시 불러옵니다."
+          : "암호화폐 일봉은 선택한 기간 기준 업비트 일봉 흐름으로 보여주며, 차트가 열려 있으면 10초마다 다시 불러옵니다.";
   }
 
   renderAssetChartStats(snapshot);
+  renderAssetChartRefreshHint(snapshot);
 
   if (!window.Chart) {
     setAssetChartCanvasMessage("Chart.js 로드 실패");
@@ -4061,46 +4427,85 @@ function closeAssetChartModal() {
     return;
   }
 
+  clearAssetChartRefreshTimer();
   destroyAssetChartModalChart();
   modal.hidden = true;
   document.body.classList.remove("asset-chart-open");
 }
 
-async function openAssetChartModal({ market, symbol, name }) {
+async function loadAssetChartModal(options = {}) {
+  const { silent = false } = options;
   const modal = document.querySelector("#asset-chart-modal");
   const title = document.querySelector("#asset-chart-title");
   const summary = document.querySelector("#asset-chart-summary");
   const stats = document.querySelector("#asset-chart-stats");
   const footnote = document.querySelector("#asset-chart-footnote");
-  if (!modal) {
+  const market = assetChartState.market;
+  const symbol = assetChartState.symbol;
+  const name = assetChartState.name;
+  const range = assetChartState.range || "1M";
+  const granularity = assetChartState.granularity || "day";
+
+  if (!modal || !market || !symbol) {
     return;
   }
 
-  modal.hidden = false;
-  document.body.classList.add("asset-chart-open");
+  clearAssetChartRefreshTimer();
+
   if (title) {
     title.textContent = name || symbol || "종목 차트";
   }
-  if (summary) {
+  if (summary && !silent) {
     summary.textContent = "최근 흐름을 불러오는 중입니다.";
   }
-  if (stats) {
+  if (stats && !silent) {
     stats.innerHTML = "";
   }
-  if (footnote) {
+  if (footnote && !silent) {
     footnote.textContent = "";
   }
-  setAssetChartCanvasMessage("차트 데이터를 불러오는 중입니다.");
+  if (!silent) {
+    setAssetChartCanvasMessage("차트 데이터를 불러오는 중입니다.");
+  }
+  renderAssetChartRefreshHint();
 
   try {
-    const snapshot = await requestAssetChartSnapshot({ market, symbol, name });
+    const snapshot = await requestAssetChartSnapshot({ market, symbol, name, range, granularity });
     renderAssetChart(snapshot);
+    scheduleAssetChartAutoRefresh();
   } catch (error) {
     if (summary) {
       summary.textContent = error.message || "차트 데이터를 불러오지 못했습니다.";
     }
     setAssetChartCanvasMessage(error.message || "차트 데이터를 불러오지 못했습니다.");
+    renderAssetChartRefreshHint();
+    scheduleAssetChartAutoRefresh();
   }
+}
+
+async function openAssetChartModal({ market, symbol, name, range = "1M", granularity = "day" }) {
+  const modal = document.querySelector("#asset-chart-modal");
+  if (!modal) {
+    return;
+  }
+
+  clearAssetChartRefreshTimer();
+  const nextGranularity = granularity === "minute" ? "minute" : "day";
+  const supportedRanges = getAssetChartRanges(nextGranularity);
+  const nextRange = supportedRanges.some((item) => item.key === range) ? range : getDefaultAssetChartRange(nextGranularity);
+  assetChartState = {
+    market,
+    symbol,
+    name,
+    range: nextRange,
+    granularity: nextGranularity,
+  };
+
+  setActiveAssetChartGranularity(nextGranularity);
+  syncAssetChartRangeVisibility(nextGranularity);
+  modal.hidden = false;
+  document.body.classList.add("asset-chart-open");
+  await loadAssetChartModal();
 }
 
 function bindPriceStripInteractions() {
@@ -4108,6 +4513,10 @@ function bindPriceStripInteractions() {
   const modal = document.querySelector("#asset-chart-modal");
   if (strip && strip.dataset.chartBound !== "true") {
     strip.addEventListener("click", (event) => {
+      if (Date.now() < interactionLockUntil || document.body.classList.contains("access-locked")) {
+        return;
+      }
+
       const trigger = event.target.closest("[data-asset-chart-trigger]");
       if (!trigger || !strip.contains(trigger)) {
         return;
@@ -4124,6 +4533,29 @@ function bindPriceStripInteractions() {
 
   if (modal && modal.dataset.bound !== "true") {
     modal.addEventListener("click", (event) => {
+      const granularityButton = event.target.closest("[data-asset-chart-granularity]");
+      if (granularityButton && modal.contains(granularityButton)) {
+        const nextGranularity = granularityButton.dataset.assetChartGranularity || "day";
+        setActiveAssetChartGranularity(nextGranularity);
+        syncAssetChartRangeVisibility(nextGranularity);
+        loadAssetChartModal();
+        return;
+      }
+
+      const rangeButton = event.target.closest("[data-asset-chart-range]");
+      if (rangeButton && modal.contains(rangeButton)) {
+        const nextRange = rangeButton.dataset.assetChartRange || "1M";
+        if (assetChartState.range !== nextRange) {
+          assetChartState = {
+            ...assetChartState,
+            range: nextRange,
+          };
+          setActiveAssetChartRange(nextRange, assetChartState.granularity);
+          loadAssetChartModal();
+        }
+        return;
+      }
+
       if (event.target === modal || event.target.closest("[data-asset-chart-close]")) {
         closeAssetChartModal();
       }
@@ -4624,20 +5056,30 @@ function buildLiveTimestampCopy(live) {
 
 function buildHoldingQuoteMarkup(quote, item) {
   const movementClass = getQuoteToneClass(quote);
+  const primaryText =
+    item?.market === "us-stock" ? formatTargetPricePrimary(quote, item) : formatQuotePrimary(quote, item);
+  const secondaryText = formatQuoteSecondary(quote, item, {
+    includeKrwForUsStock: false,
+  });
   return `
     <span class="mini-value-stack">
-      <strong class="mini-value ${movementClass}">${escapeHtml(formatQuotePrimary(quote, item))}</strong>
-      <span class="mini-subvalue ${movementClass}">${escapeHtml(formatQuoteSecondary(quote, item))}</span>
+      <strong class="mini-value ${movementClass}">${escapeHtml(primaryText)}</strong>
+      <span class="mini-subvalue ${movementClass}">${escapeHtml(secondaryText)}</span>
     </span>
   `;
 }
 
 function buildTableQuoteMarkup(quote, item) {
   const movementClass = getQuoteToneClass(quote);
+  const primaryText =
+    item?.market === "us-stock" ? formatTargetPricePrimary(quote, item) : formatQuotePrimary(quote, item);
+  const secondaryText = formatQuoteSecondary(quote, item, {
+    includeKrwForUsStock: false,
+  });
   return `
     <div class="table-price-stack">
-      <strong class="table-price-primary ${movementClass}">${escapeHtml(formatQuotePrimary(quote, item))}</strong>
-      <span class="table-price-secondary ${movementClass}">${escapeHtml(formatQuoteSecondary(quote, item))}</span>
+      <strong class="table-price-primary ${movementClass}">${escapeHtml(primaryText)}</strong>
+      <span class="table-price-secondary ${movementClass}">${escapeHtml(secondaryText)}</span>
     </div>
   `;
 }
@@ -5358,7 +5800,7 @@ function initTradeModal() {
 
     if (priceHelp) {
       priceHelp.textContent = isUsStock
-        ? "미국주식은 자동완성 없이 영어 회사명 또는 티커로 입력하고, 원화 환산 체결단가 기준으로 적습니다."
+        ? "미국주식은 영문 회사명 또는 티커로 입력하고, 체결 단가는 원화 기준으로 적습니다."
         : isCrypto
           ? "업비트 체결 단가 기준으로 입력합니다."
           : "체결 단가 기준으로 입력합니다.";
@@ -5477,6 +5919,7 @@ function initTradeModal() {
 
   openBtn.addEventListener("click", (e) => {
     e.stopPropagation();
+    finalizeMobileModalLaunch("timeline-section");
     openModal();
   });
 
@@ -5489,6 +5932,7 @@ function initTradeModal() {
     setStatus("");
     setSubmitting(false);
     resetFormState();
+    reopenPendingMobileSection();
   };
 
   modal.addEventListener("click", (e) => {
@@ -5574,6 +6018,7 @@ function initTradeModal() {
 
   tradeModalController = {
     openCreate: () => openModal(),
+    openAdd: () => openModal(),
     openEdit: (trade) => openModal(trade),
   };
 }
