@@ -139,6 +139,125 @@ const ASSET_AUTOCOMPLETE_SEEDS = Object.freeze({
       symbol: "META",
       aliases: ["메타", "meta", "meta platforms"],
     },
+    {
+      value: "Alphabet Inc. Class A (GOOGL)",
+      title: "Alphabet Inc. Class A (GOOGL)",
+      meta: "미국주식 티커",
+      symbol: "GOOGL",
+      aliases: ["알파벳", "구글", "google", "alphabet", "googl"],
+    },
+    {
+      value: "Alphabet Inc. Class C (GOOG)",
+      title: "Alphabet Inc. Class C (GOOG)",
+      meta: "미국주식 티커",
+      symbol: "GOOG",
+      aliases: ["알파벳c", "구글c", "google", "alphabet", "goog"],
+    },
+    {
+      value: "Advanced Micro Devices, Inc. (AMD)",
+      title: "Advanced Micro Devices, Inc. (AMD)",
+      meta: "미국주식 티커",
+      symbol: "AMD",
+      aliases: ["amd", "에이엠디", "어드밴스드마이크로디바이시스"],
+    },
+    {
+      value: "Broadcom Inc. (AVGO)",
+      title: "Broadcom Inc. (AVGO)",
+      meta: "미국주식 티커",
+      symbol: "AVGO",
+      aliases: ["브로드컴", "broadcom", "avgo"],
+    },
+    {
+      value: "Coinbase Global, Inc. (COIN)",
+      title: "Coinbase Global, Inc. (COIN)",
+      meta: "미국주식 티커",
+      symbol: "COIN",
+      aliases: ["코인베이스", "coinbase", "coin"],
+    },
+    {
+      value: "Netflix, Inc. (NFLX)",
+      title: "Netflix, Inc. (NFLX)",
+      meta: "미국주식 티커",
+      symbol: "NFLX",
+      aliases: ["넷플릭스", "netflix", "nflx"],
+    },
+    {
+      value: "Snowflake Inc. (SNOW)",
+      title: "Snowflake Inc. (SNOW)",
+      meta: "미국주식 티커",
+      symbol: "SNOW",
+      aliases: ["스노우플레이크", "스노우", "snowflake", "snow"],
+    },
+    {
+      value: "Oracle Corporation (ORCL)",
+      title: "Oracle Corporation (ORCL)",
+      meta: "미국주식 티커",
+      symbol: "ORCL",
+      aliases: ["오라클", "oracle", "orcl"],
+    },
+    {
+      value: "Uber Technologies, Inc. (UBER)",
+      title: "Uber Technologies, Inc. (UBER)",
+      meta: "미국주식 티커",
+      symbol: "UBER",
+      aliases: ["우버", "uber"],
+    },
+    {
+      value: "Adobe Inc. (ADBE)",
+      title: "Adobe Inc. (ADBE)",
+      meta: "미국주식 티커",
+      symbol: "ADBE",
+      aliases: ["어도비", "adobe", "adbe"],
+    },
+    {
+      value: "Salesforce, Inc. (CRM)",
+      title: "Salesforce, Inc. (CRM)",
+      meta: "미국주식 티커",
+      symbol: "CRM",
+      aliases: ["세일즈포스", "salesforce", "crm"],
+    },
+    {
+      value: "Taiwan Semiconductor Manufacturing Company Limited (TSM)",
+      title: "Taiwan Semiconductor Manufacturing Company Limited (TSM)",
+      meta: "미국주식 티커",
+      symbol: "TSM",
+      aliases: ["tsmc", "tsm", "대만tsmc", "대만반도체"],
+    },
+    {
+      value: "Arm Holdings plc American Depositary Shares (ARM)",
+      title: "Arm Holdings plc American Depositary Shares (ARM)",
+      meta: "미국주식 티커",
+      symbol: "ARM",
+      aliases: ["암홀딩스", "암", "arm"],
+    },
+    {
+      value: "Palo Alto Networks, Inc. (PANW)",
+      title: "Palo Alto Networks, Inc. (PANW)",
+      meta: "미국주식 티커",
+      symbol: "PANW",
+      aliases: ["팔로알토", "palo alto", "panw"],
+    },
+    {
+      value: "CrowdStrike Holdings, Inc. (CRWD)",
+      title: "CrowdStrike Holdings, Inc. (CRWD)",
+      meta: "미국주식 티커",
+      symbol: "CRWD",
+      aliases: ["크라우드스트라이크", "crowdstrike", "crwd"],
+    },
+    {
+      value: "Robinhood Markets, Inc. (HOOD)",
+      title: "Robinhood Markets, Inc. (HOOD)",
+      meta: "미국주식 티커",
+      symbol: "HOOD",
+      aliases: ["로빈후드", "robinhood", "hood"],
+    },
+    {
+      value: "SoFi Technologies, Inc. (SOFI)",
+      title: "SoFi Technologies, Inc. (SOFI)",
+      meta: "미국주식 티커",
+      symbol: "SOFI",
+      aliases: ["소파이", "sofi"],
+    },
   ],
   국내주식: [
     {
@@ -173,6 +292,7 @@ const ASSET_AUTOCOMPLETE_SEEDS = Object.freeze({
 });
 const colors = ["#17F9A6", "#5EC8FF", "#FFB84D", "#FF6B87"];
 let chartRegistry = [];
+let assetDetailChart = null;
 let calendarDetailStore = new Map();
 let currentPortfolioData = null;
 let basePortfolioData = null;
@@ -186,12 +306,30 @@ let noteEditorState = {
 let tradeModalController = null;
 let timelineTradeRegistry = new Map();
 let hasLoadedNotes = false;
+let hasBootedDashboard = false;
+let activeAccessCode = "";
+let activeAccessMode = "owner";
 let timelineCalendarState = {
   trades: [],
   basisYear: new Date().getFullYear(),
   selectedMonthKey: null,
   realizedHistory: [],
 };
+let mobileSectionState = {
+  section: null,
+  sectionId: "",
+};
+
+const MOBILE_SECTION_SHORTCUTS = Object.freeze([
+  { id: "targets-section", eyebrow: "Watchlist", title: "관심종목", icon: "◎", summary: "지금 보는 후보 종목" },
+  { id: "portfolio-overview-section", eyebrow: "Portfolio Mix", title: "자산 분포", icon: "◔", summary: "비중과 현금 흐름" },
+  { id: "timeline-section", eyebrow: "Trade Log", title: "거래 타임라인", icon: "↗", summary: "매수·매도 기록 확인" },
+  { id: "notes-section", eyebrow: "Memo Board", title: "메모", icon: "✎", summary: "투자 아이디어 정리" },
+  { id: "holdings-section", eyebrow: "Positions", title: "보유 종목", icon: "◫", summary: "현재 보유 상세 보기" },
+  { id: "performance-section", eyebrow: "Realized PnL", title: "실현손익 추이", icon: "∿", summary: "누적 손익 흐름 확인" },
+  { id: "insights-section", eyebrow: "Defense", title: "XRP 방어지표", icon: "◇", summary: "방어 매매 기준 점검" },
+  { id: "strategy-section", eyebrow: "Playbook", title: "플레이 전략", icon: "▣", summary: "매매 원칙 다시 보기" },
+]);
 
 function normalizeAutocompleteToken(value = "") {
   return String(value || "")
@@ -312,11 +450,11 @@ function buildAssetAutocompleteCatalog() {
 function getAssetAutocompleteSuggestions(market, query = "") {
   const normalizedMarket = String(market || "").trim();
   const normalizedQuery = normalizeAutocompleteToken(query);
-  const candidates = buildAssetAutocompleteCatalog().filter((item) => item.market === normalizedMarket);
-
   if (!normalizedQuery) {
-    return candidates.slice(0, 12);
+    return [];
   }
+
+  const candidates = buildAssetAutocompleteCatalog().filter((item) => item.market === normalizedMarket);
 
   return candidates
     .map((item) => {
@@ -361,7 +499,64 @@ function resolveBestAssetAutocomplete(market, query = "") {
   return suggestions.length === 1 ? suggestions[0] : null;
 }
 
-function setupAssetAutocomplete({ input, marketSelect, panel, onSelect }) {
+function mergeAutocompleteSuggestions(primary = [], secondary = []) {
+  const registry = new Map();
+
+  [...primary, ...secondary].forEach((item) => {
+    if (!item) {
+      return;
+    }
+
+    const key = `${item.market || ""}:${item.symbol || normalizeAutocompleteToken(item.value || item.title || "")}`;
+    if (!key) {
+      return;
+    }
+
+    if (!registry.has(key)) {
+      registry.set(key, {
+        ...item,
+        aliases: [...new Set([...(item.aliases || [])].filter(Boolean))],
+      });
+      return;
+    }
+
+    const existing = registry.get(key);
+    registry.set(key, {
+      ...existing,
+      ...item,
+      aliases: [...new Set([...(existing.aliases || []), ...(item.aliases || [])].filter(Boolean))],
+    });
+  });
+
+  return [...registry.values()].slice(0, 12);
+}
+
+async function fetchRemoteAssetSuggestions(market, query) {
+  const trimmedMarket = String(market || "").trim();
+  const trimmedQuery = String(query || "").trim();
+
+  if (!trimmedMarket || !normalizeAutocompleteToken(trimmedQuery)) {
+    return [];
+  }
+
+  const url = new URL("/api/asset-search", window.location.origin);
+  url.searchParams.set("market", trimmedMarket);
+  url.searchParams.set("query", trimmedQuery);
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || "자산 검색에 실패했습니다.");
+  }
+
+  return Array.isArray(payload?.suggestions) ? payload.suggestions : [];
+}
+
+function setupAssetAutocomplete({ input, marketSelect, panel, onSelect, asyncSource, disabledMarkets = [] }) {
   if (!input || !marketSelect || !panel || panel.dataset.bound === "true") {
     return {
       hide() {},
@@ -371,6 +566,9 @@ function setupAssetAutocomplete({ input, marketSelect, panel, onSelect }) {
 
   let currentSuggestions = [];
   let blurTimer = null;
+  let latestRequestId = 0;
+  const disabledMarketSet = new Set(disabledMarkets.map((item) => String(item || "").trim()));
+  const isDisabledMarket = () => disabledMarketSet.has(String(marketSelect.value || "").trim());
 
   const hidePanel = () => {
     panel.hidden = true;
@@ -389,14 +587,23 @@ function setupAssetAutocomplete({ input, marketSelect, panel, onSelect }) {
   };
 
   const syncValue = () => {
-    const suggestion = resolveBestAssetAutocomplete(marketSelect.value, input.value);
+    if (isDisabledMarket()) {
+      return;
+    }
+
+    const normalizedInput = normalizeAutocompleteToken(input.value);
+    const fromCurrent = currentSuggestions.find((item) =>
+      (item.aliases || [item.value, item.title, item.symbol]).some(
+        (alias) => normalizeAutocompleteToken(alias) === normalizedInput
+      )
+    );
+    const suggestion = fromCurrent || resolveBestAssetAutocomplete(marketSelect.value, input.value);
     if (suggestion) {
       applySuggestion(suggestion);
     }
   };
 
-  const renderSuggestions = () => {
-    const suggestions = getAssetAutocompleteSuggestions(marketSelect.value, input.value);
+  const renderSuggestionItems = (suggestions) => {
     currentSuggestions = suggestions;
 
     if (!suggestions.length) {
@@ -417,7 +624,53 @@ function setupAssetAutocomplete({ input, marketSelect, panel, onSelect }) {
       .join("");
   };
 
-  input.addEventListener("focus", renderSuggestions);
+  const renderSuggestions = async () => {
+    if (isDisabledMarket()) {
+      hidePanel();
+      return;
+    }
+
+    const query = input.value;
+    const normalizedQuery = normalizeAutocompleteToken(query);
+
+    if (!normalizedQuery) {
+      hidePanel();
+      return;
+    }
+
+    const localSuggestions = getAssetAutocompleteSuggestions(marketSelect.value, query);
+    if (!asyncSource) {
+      renderSuggestionItems(localSuggestions);
+      return;
+    }
+
+    const requestId = ++latestRequestId;
+    try {
+      const remoteSuggestions = await asyncSource(marketSelect.value, query);
+      if (requestId !== latestRequestId) {
+        return;
+      }
+      renderSuggestionItems(mergeAutocompleteSuggestions(remoteSuggestions, localSuggestions));
+    } catch (error) {
+      if (requestId !== latestRequestId) {
+        return;
+      }
+      renderSuggestionItems(localSuggestions);
+    }
+  };
+
+  input.addEventListener("focus", () => {
+    if (isDisabledMarket()) {
+      hidePanel();
+      return;
+    }
+
+    if (normalizeAutocompleteToken(input.value)) {
+      renderSuggestions();
+    } else {
+      hidePanel();
+    }
+  });
   input.addEventListener("input", renderSuggestions);
   input.addEventListener("blur", () => {
     blurTimer = window.setTimeout(() => {
@@ -426,6 +679,7 @@ function setupAssetAutocomplete({ input, marketSelect, panel, onSelect }) {
     }, 120);
   });
   marketSelect.addEventListener("change", () => {
+    latestRequestId += 1;
     input.value = "";
     hidePanel();
   });
@@ -456,10 +710,44 @@ function setupAssetAutocomplete({ input, marketSelect, panel, onSelect }) {
   };
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function getNotesStorageKey() {
+  const suffix = activeAccessCode ? `:${String(activeAccessCode).trim().toLowerCase()}` : "";
+  return `${NOTES_STORAGE_KEY}${suffix}`;
+}
+
+function buildAccessHeaders(headers = {}) {
+  const nextHeaders = {
+    ...headers,
+  };
+
+  if (activeAccessCode) {
+    nextHeaders["X-Access-Code"] = activeAccessCode;
+  }
+
+  return nextHeaders;
+}
+
+async function fetchWithAccess(input, options = {}) {
+  const headers = buildAccessHeaders(options.headers || {});
+  return fetch(input, {
+    ...options,
+    headers,
+  });
+}
+
+function bootDashboard() {
+  if (hasBootedDashboard) {
+    return;
+  }
+
+  hasBootedDashboard = true;
+  syncViewportHeight();
+  syncResponsiveShellMode();
   scheduleCurrentDateBadgeRefresh();
   ensureNotesLoaded();
   initNotesBoard();
+  renderNotes(notesState);
+  hydrateNotesFromServer();
   initTargetManager();
   initTargetRemovalActions();
   loadPortfolio()
@@ -478,9 +766,130 @@ document.addEventListener("DOMContentLoaded", () => {
         </main>
       `;
     });
-});
+}
+
+function setAccessGateStatus(message = "", tone = "neutral") {
+  const status = document.querySelector("#access-gate-status");
+  if (!status) {
+    return;
+  }
+
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+function unlockAccessGate() {
+  const gate = document.querySelector("#access-gate");
+  if (gate) {
+    gate.hidden = true;
+    gate.setAttribute("aria-hidden", "true");
+  }
+  document.body.classList.remove("access-locked");
+}
+
+function initAccessGate() {
+  const gate = document.querySelector("#access-gate");
+  const form = document.querySelector("#access-gate-form");
+  const input = document.querySelector("#access-gate-code");
+  let isSubmittingCode = false;
+  let autoSubmitTimer = null;
+
+  syncViewportHeight();
+
+  if (!gate || !form || !input) {
+    bootDashboard();
+    return;
+  }
+
+  setAccessGateStatus("접속 코드를 입력해주세요.");
+
+  const submitAccessCode = async (submittedCode) => {
+    if (isSubmittingCode) {
+      return;
+    }
+
+    isSubmittingCode = true;
+    setAccessGateStatus("코드를 확인하는 중입니다.");
+
+    try {
+      const response = await fetch("./api/access", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          code: submittedCode,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "코드가 맞지 않습니다.");
+      }
+
+      activeAccessCode = submittedCode;
+      activeAccessMode = payload?.mode || "owner";
+      setAccessGateStatus(
+        activeAccessMode === "owner" ? "확인되었습니다. 내 보드를 여는 중입니다." : "확인되었습니다. 비어 있는 보드를 여는 중입니다.",
+        "success"
+      );
+      unlockAccessGate();
+      bootDashboard();
+    } catch (error) {
+      setAccessGateStatus(error.message || "코드가 맞지 않습니다. 다시 확인해주세요.", "error");
+      isSubmittingCode = false;
+      input.focus();
+      input.select();
+    }
+  };
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submittedCode = String(input.value || "").trim();
+    await submitAccessCode(submittedCode);
+  });
+
+  input.addEventListener("input", () => {
+    if (autoSubmitTimer) {
+      window.clearTimeout(autoSubmitTimer);
+      autoSubmitTimer = null;
+    }
+
+    const submittedCode = String(input.value || "").trim();
+    if (submittedCode !== "0321" || isSubmittingCode) {
+      return;
+    }
+
+    autoSubmitTimer = window.setTimeout(() => {
+      form.requestSubmit();
+    }, 120);
+  });
+
+  window.setTimeout(() => {
+    input.focus();
+  }, 60);
+}
+
+document.addEventListener("DOMContentLoaded", initAccessGate);
 
 async function loadPortfolio() {
+  if (window.location.protocol !== "file:") {
+    try {
+      const response = await fetchWithAccess("./api/portfolio", {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (response.ok) {
+        return response.json();
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   if (window.__PORTFOLIO_DATA__) {
     return window.__PORTFOLIO_DATA__;
   }
@@ -491,6 +900,168 @@ async function loadPortfolio() {
   }
 
   return response.json();
+}
+
+function isMobileSectionMode() {
+  return window.matchMedia("(max-width: 980px)").matches;
+}
+
+function syncViewportHeight() {
+  const viewportHeight = window.visualViewport?.height || window.innerHeight;
+  if (!viewportHeight) {
+    return;
+  }
+
+  document.documentElement.style.setProperty("--app-height", `${Math.round(viewportHeight)}px`);
+}
+
+function syncResponsiveShellMode() {
+  syncViewportHeight();
+  document.body.classList.toggle("mobile-menu-mode", isMobileSectionMode());
+  if (!isMobileSectionMode()) {
+    closeMobileSectionOverlay();
+  }
+}
+
+function renderMobileSectionHub() {
+  const container = document.querySelector("#mobile-hub-grid");
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = MOBILE_SECTION_SHORTCUTS.map((item) => {
+    return `
+      <button type="button" class="mobile-hub-button" data-mobile-section-open="${escapeHtml(item.id)}">
+        <div class="mobile-hub-button-top">
+          <span class="mobile-hub-button-icon" aria-hidden="true">${escapeHtml(item.icon || "•")}</span>
+          <span class="mobile-hub-button-eyebrow">${escapeHtml(item.eyebrow)}</span>
+        </div>
+        <strong class="mobile-hub-button-title">${escapeHtml(item.title)}</strong>
+        <span class="mobile-hub-button-summary">${escapeHtml(item.summary || "")}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function forceOpenPanelAccordionsWithin(root) {
+  if (!root) {
+    return;
+  }
+
+  const panels = [root, ...root.querySelectorAll(".panel-accordion")].filter((panel) => panel?.classList?.contains("panel-accordion"));
+  panels.forEach((panel) => {
+    const trigger = panel.querySelector(".section-toggle");
+    const body = panel.querySelector(".panel-collapse");
+    if (!trigger || !body) {
+      return;
+    }
+    toggleDisclosure(panel, trigger, body, true);
+  });
+}
+
+function closeMobileSectionOverlay() {
+  const overlay = document.querySelector("#mobile-section-overlay");
+  if (!overlay) {
+    return;
+  }
+
+  if (mobileSectionState.section) {
+    mobileSectionState.section.classList.remove("mobile-section-active");
+  }
+
+  overlay.hidden = true;
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("mobile-section-open");
+  mobileSectionState = {
+    section: null,
+    sectionId: "",
+  };
+}
+
+function openMobileSectionOverlay(sectionId) {
+  if (!isMobileSectionMode()) {
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({
+        block: "start",
+        behavior: "smooth",
+      });
+    }
+    return;
+  }
+
+  const overlay = document.querySelector("#mobile-section-overlay");
+  const kicker = document.querySelector("#mobile-section-kicker");
+  const title = document.querySelector("#mobile-section-title");
+  const section = document.getElementById(sectionId);
+  const config = MOBILE_SECTION_SHORTCUTS.find((item) => item.id === sectionId);
+
+  if (!overlay || !section || !config) {
+    return;
+  }
+
+  closeMobileSectionOverlay();
+  section.classList.add("mobile-section-active");
+  forceOpenPanelAccordionsWithin(section);
+
+  if (kicker) {
+    kicker.textContent = config.eyebrow;
+  }
+  if (title) {
+    title.textContent = config.title;
+  }
+
+  mobileSectionState = {
+    section,
+    sectionId,
+  };
+
+  overlay.hidden = false;
+  overlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("mobile-section-open");
+  window.requestAnimationFrame(() => {
+    document.querySelector("#mobile-section-close")?.focus();
+  });
+}
+
+function bindMobileSectionOverlay() {
+  const hub = document.querySelector("#mobile-hub-grid");
+  const overlay = document.querySelector("#mobile-section-overlay");
+  const closeButton = document.querySelector("#mobile-section-close");
+
+  if (hub && hub.dataset.mobileHubBound !== "true") {
+    hub.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-mobile-section-open]");
+      if (!button || !hub.contains(button)) {
+        return;
+      }
+
+      openMobileSectionOverlay(button.dataset.mobileSectionOpen || "");
+    });
+    hub.dataset.mobileHubBound = "true";
+  }
+
+  if (overlay && overlay.dataset.mobileOverlayBound !== "true") {
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        closeMobileSectionOverlay();
+      }
+    });
+
+    closeButton?.addEventListener("click", closeMobileSectionOverlay);
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !overlay.hidden) {
+        closeMobileSectionOverlay();
+      }
+    });
+
+    window.addEventListener("resize", syncResponsiveShellMode);
+    window.visualViewport?.addEventListener("resize", syncViewportHeight);
+    window.visualViewport?.addEventListener("scroll", syncViewportHeight);
+
+    overlay.dataset.mobileOverlayBound = "true";
+  }
 }
 
 function applyPortfolioData(data, liveSnapshot = livePortfolioSnapshot, options = {}) {
@@ -531,7 +1102,7 @@ async function refreshLivePortfolio() {
   }
 
   try {
-    const response = await fetch("./api/live-prices", {
+    const response = await fetchWithAccess("./api/live-prices", {
       cache: "no-store",
     });
     const payload = await response.json().catch(() => null);
@@ -594,6 +1165,7 @@ function renderDashboard(data, options = {}) {
   renderCurrentDateBadge();
 
   renderPriceStrip(live?.quotes || {}, holdings, targets, live?.fx || {});
+  bindPriceStripInteractions();
   renderMetricCards(summary, realized, metadata);
   renderTargets(targets, live);
   renderAllocation(summary, assetStatus, cashPositions);
@@ -611,12 +1183,14 @@ function renderDashboard(data, options = {}) {
     return;
   }
 
+  renderMobileSectionHub();
   renderCharts(charts);
   renderRealized(realized, summary.realizedProfitTotal);
   renderTimeline(trades, getCurrentBasisYear(), charts.realizedHistory, realized);
   renderNotes(notesState);
   renderStrategy(strategy);
   bindAllPanelAccordions();
+  bindMobileSectionOverlay();
   bindNotesSection(document.querySelector("#notes-section"));
   initializeMotion();
 }
@@ -666,6 +1240,39 @@ function getDisplayAssetName(item = {}) {
   return rawName;
 }
 
+function renderPricePillMarkup(instrument, quotes = {}, fx = {}) {
+  const quote = instrument.liveQuote || quotes[instrument.name] || null;
+  const tone = normalizeTargetTone(instrument.market);
+  const quoteStateClass = quote?.available ? "" : " price-pill--inactive";
+  const staleClass = quote?.isDelayed ? " price-pill--stale" : "";
+  const movementClass = getQuoteToneClass(quote);
+  const displayName = getDisplayAssetName(instrument);
+
+  return `
+    <button
+      type="button"
+      class="price-pill price-pill--${tone}${quoteStateClass}${staleClass}"
+      data-asset-chart-trigger
+      data-asset-chart-name="${escapeHtml(displayName)}"
+      data-asset-chart-market="${escapeHtml(instrument.market || "")}"
+      data-asset-chart-symbol="${escapeHtml(instrument.symbol || "")}"
+      aria-label="${escapeHtml(displayName)} 차트 보기"
+    >
+      <div class="price-copy">
+        <span class="price-name">${escapeHtml(displayName)}</span>
+        <span class="price-meta">${escapeHtml(buildInstrumentMeta(instrument, quote))}</span>
+      </div>
+      <div class="price-value-wrap">
+        <strong class="price-value ${movementClass}">${escapeHtml(formatLivePricePrimary(quote, instrument, fx))}</strong>
+        <span class="price-secondary">${renderQuoteSecondaryMarkup(quote, instrument, {
+          includeKimchiPremium: true,
+          includeKrwForUsStock: false,
+        })}</span>
+      </div>
+    </button>
+  `;
+}
+
 function renderPriceStrip(quotes = {}, holdings = [], targets = {}, fx = {}) {
   const container = document.querySelector("#price-strip");
   if (!container) {
@@ -685,27 +1292,29 @@ function renderPriceStrip(quotes = {}, holdings = [], targets = {}, fx = {}) {
     return;
   }
 
-  container.innerHTML = instruments
-    .map((instrument) => {
-      const quote = instrument.liveQuote || quotes[instrument.name] || null;
-      const tone = normalizeTargetTone(instrument.market);
-      const quoteStateClass = quote?.available ? "" : " price-pill--inactive";
-      const staleClass = quote?.isDelayed ? " price-pill--stale" : "";
-      const movementClass = getQuoteToneClass(quote);
+  const sections = [
+    { key: "crypto", label: "암호화폐", tone: "crypto" },
+    { key: "us-stock", label: "미국주식", tone: "global" },
+    { key: "kr-stock", label: "국내주식", tone: "domestic" },
+  ];
+
+  container.innerHTML = sections
+    .map((section) => {
+      const items = instruments.filter((instrument) => instrument.market === section.key);
+      if (!items.length) {
+        return "";
+      }
+
       return `
-        <div class="price-pill price-pill--${tone}${quoteStateClass}${staleClass}">
-          <div class="price-copy">
-            <span class="price-name">${escapeHtml(getDisplayAssetName(instrument))}</span>
-            <span class="price-meta">${escapeHtml(buildInstrumentMeta(instrument, quote))}</span>
+        <section class="price-sector price-sector--${section.tone}">
+          <div class="price-sector-head">
+            <span class="price-sector-label">${escapeHtml(section.label)}</span>
+            <span class="price-sector-count">${formatNumber(items.length)}종목</span>
           </div>
-          <div class="price-value-wrap">
-            <strong class="price-value ${movementClass}">${escapeHtml(formatLivePricePrimary(quote, instrument, fx))}</strong>
-            <span class="price-secondary">${renderQuoteSecondaryMarkup(quote, instrument, {
-              includeKimchiPremium: true,
-              includeKrwForUsStock: false,
-            })}</span>
+          <div class="price-sector-list">
+            ${items.map((instrument) => renderPricePillMarkup(instrument, quotes, fx)).join("")}
           </div>
-        </div>
+        </section>
       `;
     })
     .join("");
@@ -1465,8 +2074,8 @@ function renderDefense(context = {}) {
 }
 
 function buildXrpDefenseSnapshot({ metadata = {}, trades = {}, holdings = [], realized = [] } = {}) {
-  const startLabel = formatPerformanceStartLabel(metadata?.realizedPerformanceStartDate) || "기준일";
   const startDate = parsePerformanceStartDateValue(metadata?.realizedPerformanceStartDate);
+  const startLabel = startDate ? `${startDate.getMonth() + 1}월${startDate.getDate()}일` : "기준일";
   const xrpTrades = (Array.isArray(trades?.crypto) ? trades.crypto : []).filter(
     (trade) => String(trade.asset || "").toUpperCase() === "XRP"
   );
@@ -1559,13 +2168,13 @@ function buildXrpDefenseSnapshot({ metadata = {}, trades = {}, holdings = [], re
         tone: "neutral",
       },
       {
-        label: `${startLabel} 평균 재매수 단가`,
+        label: `${startLabel} 기준 평균 재매수 단가`,
         value: rebuyAverage,
         type: "currency",
         tone: "neutral",
       },
       {
-        label: `${startLabel} XRP 실현손익`,
+        label: `${startLabel} 기준 XRP 실현손익`,
         value: realizedPnl,
         type: "currency",
         tone: toneClass(realizedPnl),
@@ -1590,27 +2199,31 @@ function loadNotesFromStorage() {
   }
 
   try {
-    const raw = window.localStorage.getItem(NOTES_STORAGE_KEY);
+    const raw = window.localStorage.getItem(getNotesStorageKey());
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) {
       return [];
     }
 
-    return parsed
-      .filter((note) => note && typeof note.id === "string")
-      .map((note) => ({
-        id: note.id,
-        title: String(note.title || "").trim(),
-        body: String(note.body || "").trim(),
-        createdAt: note.createdAt || new Date().toISOString(),
-        updatedAt: note.updatedAt || note.createdAt || new Date().toISOString(),
-      }))
-      .filter((note) => note.title || note.body)
-      .sort((left, right) => new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime());
+    return normalizeStoredNotes(parsed);
   } catch (error) {
     console.error(error);
     return [];
   }
+}
+
+function normalizeStoredNotes(notes = []) {
+  return (Array.isArray(notes) ? notes : [])
+    .filter((note) => note && typeof note.id === "string")
+    .map((note) => ({
+      id: note.id,
+      title: String(note.title || "").trim(),
+      body: String(note.body || "").trim(),
+      createdAt: note.createdAt || new Date().toISOString(),
+      updatedAt: note.updatedAt || note.createdAt || new Date().toISOString(),
+    }))
+    .filter((note) => note.title || note.body)
+    .sort((left, right) => new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime());
 }
 
 function persistNotesToStorage(notes) {
@@ -1619,11 +2232,50 @@ function persistNotesToStorage(notes) {
   }
 
   try {
-    window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
+    window.localStorage.setItem(getNotesStorageKey(), JSON.stringify(notes));
     return true;
   } catch (error) {
     console.error(error);
     return false;
+  }
+}
+
+async function requestNotesMutation(method = "GET", payload = null) {
+  if (window.location.protocol === "file:") {
+    throw new Error("메모 서버 저장은 배포 사이트 또는 로컬 서버에서만 가능합니다.");
+  }
+
+  const response = await fetchWithAccess("./api/notes", {
+    method,
+    headers: {
+      Accept: "application/json",
+      ...(method === "GET" ? {} : { "Content-Type": "application/json" }),
+    },
+    ...(method === "GET" ? {} : { body: JSON.stringify(payload || {}) }),
+  });
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(result?.error || "메모 처리에 실패했습니다.");
+  }
+
+  return result;
+}
+
+async function hydrateNotesFromServer() {
+  if (window.location.protocol === "file:") {
+    return;
+  }
+
+  try {
+    const result = await requestNotesMutation("GET");
+    const nextNotes = normalizeStoredNotes(result?.notes);
+    notesState = nextNotes;
+    hasLoadedNotes = true;
+    persistNotesToStorage(nextNotes);
+    renderNotes(notesState);
+  } catch (error) {
+    console.error(error);
   }
 }
 
@@ -1725,7 +2377,7 @@ async function requestTargetMutation(method, targetData) {
     throw new Error("관심종목 저장/삭제는 로컬 서버에서만 가능합니다. `node scripts/dev-server.js` 실행 후 접속하세요.");
   }
 
-  const response = await fetch("./api/targets", {
+  const response = await fetchWithAccess("./api/targets", {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -1755,7 +2407,7 @@ async function requestTradeMutation(method, payload) {
     throw new Error("거래 저장/수정/삭제는 로컬 서버에서만 가능합니다. `node scripts/dev-server.js` 실행 후 접속하세요.");
   }
 
-  const response = await fetch("./api/trades", {
+  const response = await fetchWithAccess("./api/trades", {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -1815,8 +2467,8 @@ function initTargetManager() {
     }
 
     if (market === "미국주식") {
-      assetInput.placeholder = "애플(AAPL)";
-      help.textContent = "예시: 애플(AAPL), 테슬라(TSLA), 엔비디아(NVDA)";
+      assetInput.placeholder = "Apple Inc. (AAPL)";
+      help.textContent = "미국주식은 자동완성 없이 영어 회사명 또는 티커로 입력합니다. 예시: Apple Inc. (AAPL), TSLA, NVDA";
       return;
     }
 
@@ -1833,6 +2485,8 @@ function initTargetManager() {
     input: assetInput,
     marketSelect,
     panel: suggestionPanel,
+    asyncSource: fetchRemoteAssetSuggestions,
+    disabledMarkets: ["미국주식"],
   });
 
   marketSelect.addEventListener("change", syncTargetFormMode);
@@ -1970,7 +2624,7 @@ function bindNotesSection(section) {
     }
   };
 
-  form?.addEventListener("submit", (event) => {
+  form?.addEventListener("submit", async (event) => {
     event.preventDefault();
     ensureNotesLoaded();
 
@@ -1982,36 +2636,48 @@ function bindNotesSection(section) {
       return;
     }
 
-    const timestamp = new Date().toISOString();
     const isEditing = Boolean(noteEditorState.editingId);
-    const nextNotes = noteEditorState.editingId
-      ? notesState.map((note) =>
-          note.id === noteEditorState.editingId
-            ? {
-                ...note,
-                title,
-                body,
-                updatedAt: timestamp,
-              }
-            : note
-        )
-      : [
-          {
-            id: `note-${Date.now()}`,
-            title,
-            body,
-            createdAt: timestamp,
-            updatedAt: timestamp,
-          },
-          ...notesState,
-        ];
-    nextNotes.sort(
-      (left, right) => new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime()
-    );
-    if (!persistNotesToStorage(nextNotes)) {
-      setStatus("메모 저장에 실패했습니다. 브라우저 저장 공간을 확인해주세요.", "error");
-      return;
+    let nextNotes = [];
+
+    if (window.location.protocol !== "file:") {
+      try {
+        const result = await requestNotesMutation(isEditing ? "PUT" : "POST", {
+          ...(isEditing ? { id: noteEditorState.editingId } : {}),
+          title,
+          body,
+        });
+        nextNotes = normalizeStoredNotes(result?.notes);
+      } catch (error) {
+        setStatus(error.message || "메모 저장에 실패했습니다.", "error");
+        return;
+      }
+    } else {
+      const timestamp = new Date().toISOString();
+      nextNotes = noteEditorState.editingId
+        ? notesState.map((note) =>
+            note.id === noteEditorState.editingId
+              ? {
+                  ...note,
+                  title,
+                  body,
+                  updatedAt: timestamp,
+                }
+              : note
+          )
+        : [
+            {
+              id: `note-${Date.now()}`,
+              title,
+              body,
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            },
+            ...notesState,
+          ];
+      nextNotes = normalizeStoredNotes(nextNotes);
     }
+
+    persistNotesToStorage(nextNotes);
 
     notesState = nextNotes;
     renderNotes(notesState);
@@ -2028,7 +2694,7 @@ function bindNotesSection(section) {
     titleInput?.focus();
   });
 
-  section.addEventListener("click", (event) => {
+  section.addEventListener("click", async (event) => {
     const editButton = event.target.closest("[data-note-edit]");
     if (editButton && section.contains(editButton)) {
       ensureNotesLoaded();
@@ -2055,11 +2721,21 @@ function bindNotesSection(section) {
     if (!confirmed) {
       return;
     }
-    const nextNotes = notesState.filter((note) => note.id !== noteId);
-    if (!persistNotesToStorage(nextNotes)) {
-      setStatus("메모 삭제에 실패했습니다.", "error");
-      return;
+    let nextNotes = [];
+
+    if (window.location.protocol !== "file:") {
+      try {
+        const result = await requestNotesMutation("DELETE", { id: noteId });
+        nextNotes = normalizeStoredNotes(result?.notes);
+      } catch (error) {
+        setStatus(error.message || "메모 삭제에 실패했습니다.", "error");
+        return;
+      }
+    } else {
+      nextNotes = notesState.filter((note) => note.id !== noteId);
     }
+
+    persistNotesToStorage(nextNotes);
 
     notesState = nextNotes;
     renderNotes(notesState);
@@ -2158,6 +2834,21 @@ function parseTradeOutcomeNote(note = "") {
     pnl: (matched[1] === "-" ? -1 : 1) * Number(matched[2].replace(/,/g, "")),
     returnRate: matched[3] == null ? null : Number(matched[3]) / 100,
   };
+}
+
+function getDisplayTradeNote(note = "") {
+  const trimmed = String(note || "").trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const normalized = trimmed.replace(/\s+/g, " ");
+  const outcomeOnlyPattern = /^([+-])\s*[\d,]+(?:\.\d+)?원(?:\s*\(([+-]?\d+(?:\.\d+)?)%\))?$/;
+  if (outcomeOnlyPattern.test(normalized)) {
+    return "";
+  }
+
+  return trimmed;
 }
 
 function formatRealizedTradeDisplay(pnl, returnRate = null) {
@@ -2415,6 +3106,11 @@ function renderTimelineList(trades, basisYear, realizedHistory = []) {
                             : "실현손익 집계 없음"
                         }
                       </strong>
+                      ${
+                        getDisplayTradeNote(trade.note)
+                          ? `<p class="timeline-note">메모 · ${escapeHtml(getDisplayTradeNote(trade.note))}</p>`
+                          : ""
+                      }
                     </article>
                   `
                 )
@@ -2876,6 +3572,11 @@ function openCalendarDetailModal(detailKey) {
             </div>
             ` : ""}
           </div>
+          ${
+            getDisplayTradeNote(trade.note)
+              ? `<p class="calendar-modal-note">메모 · ${escapeHtml(getDisplayTradeNote(trade.note))}</p>`
+              : ""
+          }
         </article>
       `
     )
@@ -3129,6 +3830,8 @@ function readChartTheme() {
     cash: root.getPropertyValue("--cash").trim(),
     gain: root.getPropertyValue("--gain").trim(),
     loss: root.getPropertyValue("--loss").trim(),
+    priceUp: root.getPropertyValue("--price-up").trim(),
+    priceDown: root.getPropertyValue("--price-down").trim(),
     muted: root.getPropertyValue("--muted").trim(),
     mutedStrong: root.getPropertyValue("--muted-strong").trim(),
     text: root.getPropertyValue("--text-strong").trim(),
@@ -3140,11 +3843,310 @@ function readChartTheme() {
   };
 }
 
+async function requestAssetChartSnapshot({ market, symbol, name }) {
+  const url = new URL("./api/asset-chart", window.location.origin);
+  url.searchParams.set("market", market);
+  url.searchParams.set("symbol", symbol);
+  url.searchParams.set("name", name || symbol);
+
+  const response = await fetchWithAccess(url.toString(), {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || "차트 데이터를 불러오지 못했습니다.");
+  }
+
+  return payload;
+}
+
+function destroyAssetChartModalChart() {
+  if (assetDetailChart) {
+    assetDetailChart.destroy();
+    assetDetailChart = null;
+  }
+}
+
+function ensureAssetChartCanvas() {
+  const wrap = document.querySelector("#asset-chart-canvas-wrap");
+  if (!wrap) {
+    return null;
+  }
+
+  wrap.innerHTML = `<canvas id="asset-chart-canvas"></canvas>`;
+  return wrap.querySelector("#asset-chart-canvas");
+}
+
+function setAssetChartCanvasMessage(message) {
+  const wrap = document.querySelector("#asset-chart-canvas-wrap");
+  if (!wrap) {
+    return;
+  }
+
+  destroyAssetChartModalChart();
+  wrap.innerHTML = `<div class="chart-empty">${escapeHtml(message)}</div>`;
+}
+
+function formatAssetChartValue(value, market) {
+  return market === "us-stock" ? formatUsd(value) : formatCurrency(value);
+}
+
+function renderAssetChartStats(snapshot) {
+  const stats = document.querySelector("#asset-chart-stats");
+  if (!stats) {
+    return;
+  }
+
+  const market = snapshot?.instrument?.market || "";
+  const latest = Number(snapshot?.summary?.latest || 0);
+  const changeAmount = Number(snapshot?.summary?.changeAmount || 0);
+  const changePercent = Number(snapshot?.summary?.changePercent || 0);
+  const updatedAt = snapshot?.summary?.updatedAt ? formatDateTime(snapshot.summary.updatedAt) : "시간 정보 없음";
+
+  stats.innerHTML = `
+    <article class="asset-chart-stat">
+      <span>현재가</span>
+      <strong>${escapeHtml(formatAssetChartValue(latest, market))}</strong>
+    </article>
+    <article class="asset-chart-stat">
+      <span>기간 변화</span>
+      <strong class="${getSignedPriceToneClass(changeAmount)}">${escapeHtml(
+        `${market === "us-stock" ? formatSignedUsd(changeAmount) : formatSignedCurrency(changeAmount)} · ${formatSignedPercent(changePercent)}`
+      )}</strong>
+    </article>
+    <article class="asset-chart-stat">
+      <span>업데이트</span>
+      <strong>${escapeHtml(updatedAt)}</strong>
+    </article>
+  `;
+}
+
+function renderAssetChart(snapshot) {
+  const title = document.querySelector("#asset-chart-title");
+  const summary = document.querySelector("#asset-chart-summary");
+  const footnote = document.querySelector("#asset-chart-footnote");
+  const points = Array.isArray(snapshot?.points) ? snapshot.points : [];
+
+  if (title) {
+    title.textContent = snapshot?.instrument?.name || "종목 차트";
+  }
+  if (summary) {
+    summary.textContent = `${snapshot?.rangeLabel || "최근 흐름"} · ${snapshot?.sourceLabel || "일봉"}`;
+  }
+  if (footnote) {
+    footnote.textContent =
+      snapshot?.instrument?.market === "us-stock"
+        ? "미국주식은 최근 30거래일 종가 기준으로 보여줍니다."
+        : "암호화폐는 최근 30일 업비트 일봉 기준으로 보여줍니다.";
+  }
+
+  renderAssetChartStats(snapshot);
+
+  if (!window.Chart) {
+    setAssetChartCanvasMessage("Chart.js 로드 실패");
+    return;
+  }
+
+  if (!points.length) {
+    setAssetChartCanvasMessage("차트 데이터가 없습니다.");
+    return;
+  }
+
+  destroyAssetChartModalChart();
+  const canvas = ensureAssetChartCanvas();
+  if (!canvas) {
+    return;
+  }
+
+  const theme = readChartTheme();
+  const market = snapshot?.instrument?.market || "";
+  const changeAmount = Number(snapshot?.summary?.changeAmount || 0);
+  const lineColor = changeAmount >= 0 ? theme.priceUp : theme.priceDown;
+
+  assetDetailChart = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels: points.map((item) => item.label),
+      datasets: [
+        {
+          label: "종가",
+          data: points.map((item) => item.close),
+          borderColor: lineColor,
+          backgroundColor: alpha(lineColor, 0.12),
+          fill: true,
+          borderWidth: 2.5,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          tension: 0.28,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: "index",
+        intersect: false,
+      },
+      scales: {
+        x: {
+          grid: {
+            color: alpha(theme.cash, 0.08),
+          },
+          ticks: {
+            color: theme.muted,
+            font: {
+              family: theme.mono,
+            },
+          },
+        },
+        y: {
+          grid: {
+            color: theme.grid,
+          },
+          ticks: {
+            color: theme.muted,
+            font: {
+              family: theme.mono,
+            },
+            callback(value) {
+              return market === "us-stock" ? formatUsd(value) : formatCompactCurrency(value);
+            },
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          backgroundColor: "rgba(5, 12, 12, 0.94)",
+          borderColor: theme.lineStrong,
+          borderWidth: 1,
+          titleColor: theme.text,
+          bodyColor: theme.text,
+          padding: 14,
+          titleFont: {
+            family: theme.sans,
+            weight: "700",
+          },
+          bodyFont: {
+            family: theme.sans,
+          },
+          callbacks: {
+            label(context) {
+              const point = points[context.dataIndex];
+              if (!point) {
+                return "";
+              }
+
+              return [
+                `종가: ${formatAssetChartValue(point.close, market)}`,
+                `고가: ${formatAssetChartValue(point.high, market)}`,
+                `저가: ${formatAssetChartValue(point.low, market)}`,
+              ];
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function closeAssetChartModal() {
+  const modal = document.querySelector("#asset-chart-modal");
+  if (!modal) {
+    return;
+  }
+
+  destroyAssetChartModalChart();
+  modal.hidden = true;
+  document.body.classList.remove("asset-chart-open");
+}
+
+async function openAssetChartModal({ market, symbol, name }) {
+  const modal = document.querySelector("#asset-chart-modal");
+  const title = document.querySelector("#asset-chart-title");
+  const summary = document.querySelector("#asset-chart-summary");
+  const stats = document.querySelector("#asset-chart-stats");
+  const footnote = document.querySelector("#asset-chart-footnote");
+  if (!modal) {
+    return;
+  }
+
+  modal.hidden = false;
+  document.body.classList.add("asset-chart-open");
+  if (title) {
+    title.textContent = name || symbol || "종목 차트";
+  }
+  if (summary) {
+    summary.textContent = "최근 흐름을 불러오는 중입니다.";
+  }
+  if (stats) {
+    stats.innerHTML = "";
+  }
+  if (footnote) {
+    footnote.textContent = "";
+  }
+  setAssetChartCanvasMessage("차트 데이터를 불러오는 중입니다.");
+
+  try {
+    const snapshot = await requestAssetChartSnapshot({ market, symbol, name });
+    renderAssetChart(snapshot);
+  } catch (error) {
+    if (summary) {
+      summary.textContent = error.message || "차트 데이터를 불러오지 못했습니다.";
+    }
+    setAssetChartCanvasMessage(error.message || "차트 데이터를 불러오지 못했습니다.");
+  }
+}
+
+function bindPriceStripInteractions() {
+  const strip = document.querySelector("#price-strip");
+  const modal = document.querySelector("#asset-chart-modal");
+  if (strip && strip.dataset.chartBound !== "true") {
+    strip.addEventListener("click", (event) => {
+      const trigger = event.target.closest("[data-asset-chart-trigger]");
+      if (!trigger || !strip.contains(trigger)) {
+        return;
+      }
+
+      openAssetChartModal({
+        market: trigger.dataset.assetChartMarket || "",
+        symbol: trigger.dataset.assetChartSymbol || "",
+        name: trigger.dataset.assetChartName || "",
+      });
+    });
+    strip.dataset.chartBound = "true";
+  }
+
+  if (modal && modal.dataset.bound !== "true") {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal || event.target.closest("[data-asset-chart-close]")) {
+        closeAssetChartModal();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !modal.hidden) {
+        closeAssetChartModal();
+      }
+    });
+
+    modal.dataset.bound = "true";
+  }
+}
+
 function initializeMotion() {
+  const mobileMotion = window.matchMedia("(max-width: 980px)").matches;
+  const revealDistance = mobileMotion ? "18px" : "24px";
+  const revealDuration = mobileMotion ? "420ms" : "560ms";
   const nodes = [
     ...document.querySelectorAll(".reveal"),
     ...document.querySelectorAll(
-      ".metric-card, .panel, .chart-card, .holding-card, .legend-item, .realized-item, .defense-card, .timeline-group, .calendar-month, .rule-card, .note-card"
+      ".metric-card, .panel, .chart-card, .holding-card, .legend-item, .realized-item, .defense-card, .timeline-group, .calendar-month, .rule-card, .note-card, .price-sector, .mobile-hub-button"
     ),
   ];
 
@@ -3152,6 +4154,8 @@ function initializeMotion() {
   uniqueNodes.forEach((node, index) => {
     node.classList.add("scroll-reveal");
     node.style.setProperty("--reveal-delay", `${Math.min(index % 8, 7) * 60}ms`);
+    node.style.setProperty("--reveal-distance", revealDistance);
+    node.style.setProperty("--reveal-duration", revealDuration);
   });
 
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) {
@@ -3186,7 +4190,7 @@ function buildLiveState(liveSnapshot) {
       updatedAt: null,
       refreshIntervalSeconds: 10,
       cryptoRefreshIntervalSeconds: 10,
-      marketRefreshIntervalSeconds: 180,
+      marketRefreshIntervalSeconds: 120,
       quotes: {},
       fx: {
         usdkrw: null,
@@ -3206,7 +4210,7 @@ function buildLiveState(liveSnapshot) {
       updatedAt: null,
       refreshIntervalSeconds: 10,
       cryptoRefreshIntervalSeconds: 10,
-      marketRefreshIntervalSeconds: 180,
+      marketRefreshIntervalSeconds: 120,
       quotes: {},
       fx: {
         usdkrw: null,
@@ -3225,7 +4229,7 @@ function buildLiveState(liveSnapshot) {
     updatedAt: liveSnapshot.live?.updatedAt || liveSnapshot.updatedAt || null,
     refreshIntervalSeconds: liveSnapshot.live?.refreshIntervalSeconds || 10,
     cryptoRefreshIntervalSeconds: liveSnapshot.live?.cryptoRefreshIntervalSeconds || 10,
-    marketRefreshIntervalSeconds: liveSnapshot.live?.marketRefreshIntervalSeconds || 180,
+    marketRefreshIntervalSeconds: liveSnapshot.live?.marketRefreshIntervalSeconds || 120,
     quotes: liveSnapshot.quotes || {},
     fx: liveSnapshot.fx || { usdkrw: null },
     status: liveSnapshot.live?.status || {
@@ -3254,7 +4258,7 @@ function decorateFailedLiveSnapshot(liveSnapshot, errorMessage = "") {
         updatedAt: null,
         refreshIntervalSeconds: 10,
         cryptoRefreshIntervalSeconds: 10,
-        marketRefreshIntervalSeconds: 180,
+        marketRefreshIntervalSeconds: 120,
         status: {
           level: "warning",
           message: fallbackMessage,
@@ -3274,7 +4278,7 @@ function decorateFailedLiveSnapshot(liveSnapshot, errorMessage = "") {
   next.live.errors = [...new Set([...(next.live.errors || []), fallbackMessage])];
   next.live.refreshIntervalSeconds = next.live.refreshIntervalSeconds || 10;
   next.live.cryptoRefreshIntervalSeconds = next.live.cryptoRefreshIntervalSeconds || 10;
-  next.live.marketRefreshIntervalSeconds = next.live.marketRefreshIntervalSeconds || 180;
+  next.live.marketRefreshIntervalSeconds = next.live.marketRefreshIntervalSeconds || 120;
   next.quotes = Object.fromEntries(
     Object.entries(next.quotes || {}).map(([key, quote]) => [
       key,
@@ -3295,8 +4299,9 @@ function decorateFailedLiveSnapshot(liveSnapshot, errorMessage = "") {
 
 function buildHeroSummary(live) {
   const cryptoRefresh = live?.cryptoRefreshIntervalSeconds || live?.refreshIntervalSeconds || 10;
-  const marketRefresh = live?.marketRefreshIntervalSeconds || 180;
-  const refreshCopy = `코인 ${cryptoRefresh}초 · 미국주식 ${marketRefresh}초 주기`;
+  const marketRefresh = live?.marketRefreshIntervalSeconds || 120;
+  const marketPhaseCopy = marketRefresh >= 900 ? "현재 장마감 900초 적용" : "현재 장중 120초 적용";
+  const refreshCopy = `코인 ${cryptoRefresh}초 · 미국주식 장중 120초 / 장마감 900초 · ${marketPhaseCopy}`;
 
   if (window.location.protocol === "file:") {
     return `실시간 가격은 서버 모드에서만 동작합니다. \`node scripts/dev-server.js\` 로 실행하면 ${refreshCopy}로 갱신됩니다.`;
@@ -3399,32 +4404,32 @@ function renderTargetListItem(item = {}, tone = "neutral", fx = {}) {
   return `
     <li class="targets-list-item">
       <div class="targets-item-head">
-        <div>
+        <div class="targets-item-copy">
           <span class="targets-item-name">${escapeHtml(getDisplayAssetName(item))}</span>
           <span class="targets-item-note">${escapeHtml(buildTargetMeta(item))}</span>
         </div>
-        <div class="targets-item-actions">
-          <span class="targets-item-badge targets-item-badge--${tone}">${escapeHtml(getTargetBadgeLabel(item))}</span>
-          <button
-            type="button"
-            class="targets-item-remove"
-            data-target-remove
-            data-target-market="${escapeHtml(marketLabel)}"
-            data-target-symbol="${escapeHtml(item.symbol || "")}"
-            data-target-name="${escapeHtml(item.name || "")}"
-          >
-            삭제
-          </button>
-        </div>
+        <span class="targets-item-badge targets-item-badge--${tone}">${escapeHtml(getTargetBadgeLabel(item))}</span>
       </div>
-      <div class="targets-item-price">
-        <strong class="${movementClass}">${escapeHtml(formatTargetPricePrimary(quote, item, fx))}</strong>
-        <span class="${movementClass}">${escapeHtml(
-          formatQuoteSecondary(quote, item, {
-            includeKimchiPremium: item.market === "crypto",
-            includeKrwForUsStock: false,
-          })
-        )}</span>
+      <div class="targets-item-foot">
+        <div class="targets-item-price">
+          <strong class="${movementClass}">${escapeHtml(formatTargetPricePrimary(quote, item, fx))}</strong>
+          <span class="${movementClass}">${escapeHtml(
+            formatQuoteSecondary(quote, item, {
+              includeKimchiPremium: item.market === "crypto",
+              includeKrwForUsStock: false,
+            })
+          )}</span>
+        </div>
+        <button
+          type="button"
+          class="targets-item-remove"
+          data-target-remove
+          data-target-market="${escapeHtml(marketLabel)}"
+          data-target-symbol="${escapeHtml(item.symbol || "")}"
+          data-target-name="${escapeHtml(item.name || "")}"
+        >
+          삭제
+        </button>
       </div>
     </li>
   `;
@@ -3530,10 +4535,7 @@ function collectTrackedQuoteItems(holdings = [], targets = {}) {
 }
 
 function buildInstrumentMeta(instrument, quote) {
-  const scopeCopy =
-    instrument.scope === "holding"
-      ? `보유 ${formatNumber(instrument.quantity || 0)}`
-      : buildMarketLabel(instrument.market);
+  const scopeCopy = buildMarketLabel(instrument.market);
   const statusCopy = quote?.isDelayed ? "업데이트 지연" : null;
 
   return [instrument.symbol || scopeCopy, statusCopy || scopeCopy].filter(Boolean).join(" · ");
@@ -3787,6 +4789,14 @@ function formatCurrency(value) {
 
 function formatUsd(value) {
   return usdFormatter.format(value || 0);
+}
+
+function formatSignedUsd(value) {
+  const amount = Number(value || 0);
+  if (amount > 0) {
+    return `+${formatUsd(amount)}`;
+  }
+  return formatUsd(amount);
 }
 
 function formatSignedCurrency(value, forceNeutral = false) {
@@ -4198,6 +5208,8 @@ function initTradeModal() {
     input: assetInput,
     marketSelect,
     panel: assetSuggestionPanel,
+    asyncSource: fetchRemoteAssetSuggestions,
+    disabledMarkets: ["미국주식"],
     onSelect: () => {
       syncAssetChipState();
     },
@@ -4346,7 +5358,7 @@ function initTradeModal() {
 
     if (priceHelp) {
       priceHelp.textContent = isUsStock
-        ? "미국주식은 원화 환산 체결단가 기준으로 입력합니다."
+        ? "미국주식은 자동완성 없이 영어 회사명 또는 티커로 입력하고, 원화 환산 체결단가 기준으로 적습니다."
         : isCrypto
           ? "업비트 체결 단가 기준으로 입력합니다."
           : "체결 단가 기준으로 입력합니다.";

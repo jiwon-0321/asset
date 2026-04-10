@@ -1,6 +1,6 @@
 const path = require("path");
-const { buildLivePriceSnapshot } = require("../lib/live-price-service");
 const { resolveAccessProfile } = require("../lib/access-control");
+const { buildAssetChartSnapshot } = require("../lib/asset-chart-service");
 const bundledPortfolioData = require("../data/portfolio.json");
 
 module.exports = async (request, response) => {
@@ -22,10 +22,17 @@ module.exports = async (request, response) => {
       return;
     }
 
-    const payload = await buildLivePriceSnapshot({
+    const baseUrl = `http://${request.headers.host || "localhost"}`;
+    const url = new URL(request.url || "/api/asset-chart", baseUrl);
+    const market = url.searchParams.get("market") || "";
+    const symbol = url.searchParams.get("symbol") || "";
+    const name = url.searchParams.get("name") || symbol;
+
+    const payload = await buildAssetChartSnapshot({
       rootDir: path.resolve(__dirname, ".."),
-      portfolioData: profile.seedPortfolio,
-      stateKey: profile.stateKey,
+      market,
+      symbol,
+      name,
     });
 
     response.statusCode = 200;
@@ -36,6 +43,6 @@ module.exports = async (request, response) => {
     response.statusCode = 500;
     response.setHeader("Cache-Control", "no-store");
     response.setHeader("Content-Type", "application/json; charset=utf-8");
-    response.end(JSON.stringify({ error: error.message || "실시간 시세를 불러오지 못했습니다." }));
+    response.end(JSON.stringify({ error: error.message || "차트 데이터를 불러오지 못했습니다." }));
   }
 };

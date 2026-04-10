@@ -99,6 +99,13 @@ window.__PORTFOLIO_DATA__ = {
             "market": "us-stock",
             "currency": "USD",
             "priceSource": "twelve-data"
+          },
+          {
+            "name": "Palantir Technologies Inc.",
+            "symbol": "PLTR",
+            "market": "us-stock",
+            "currency": "USD",
+            "priceSource": "twelve-data"
           }
         ]
       },

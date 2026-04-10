@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#040b0b" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Sniper Capital Board</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -19,9 +21,39 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260410-3" />
   </head>
-  <body>
+  <body class="access-locked">
+    <div class="access-gate" id="access-gate" aria-hidden="false">
+      <div class="access-gate-card">
+        <div class="access-gate-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <rect x="5" y="10" width="14" height="10" rx="3" />
+            <path d="M8 10V7.5A4 4 0 0 1 12 3.5a4 4 0 0 1 4 4V10" />
+            <circle cx="12" cy="15" r="1.2" />
+          </svg>
+        </div>
+        <p class="access-gate-kicker">Private Access</p>
+        <h1 class="access-gate-title">Access Code</h1>
+        <p class="access-gate-copy">코드를 입력하면 포트폴리오 보드가 열립니다.</p>
+        <form class="access-gate-form" id="access-gate-form">
+          <label class="sr-only" for="access-gate-code">접속 코드</label>
+          <input
+            id="access-gate-code"
+            type="password"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            placeholder="접속 코드"
+            maxlength="12"
+            required
+          />
+          <button type="submit" class="btn-primary access-gate-submit">확인</button>
+        </form>
+        <p class="access-gate-status" id="access-gate-status" role="status" aria-live="polite">
+          접속 코드를 입력해주세요.
+        </p>
+      </div>
+    </div>
     <div class="page-shell">
       <header class="hero reveal">
         <div class="hero-copy">
@@ -40,6 +72,10 @@
 
       <main class="dashboard">
         <section class="metric-grid reveal" id="metric-grid"></section>
+
+        <section class="mobile-hub reveal" id="mobile-hub" aria-label="모바일 빠른 메뉴">
+          <div class="mobile-hub-grid" id="mobile-hub-grid"></div>
+        </section>
 
         <section class="section reveal panel-accordion" id="targets-section">
           <div class="section-heading section-heading--accordion">
@@ -460,6 +496,53 @@
       </main>
     </div>
 
+    <div class="mobile-section-overlay" id="mobile-section-overlay" hidden aria-hidden="true">
+      <div class="mobile-section-shell">
+        <div class="mobile-section-topbar">
+          <div class="mobile-section-title-wrap">
+            <p class="eyebrow" id="mobile-section-kicker">Quick Access</p>
+            <h2 class="mobile-section-title" id="mobile-section-title">모바일 패널</h2>
+          </div>
+          <button type="button" class="mobile-section-close" id="mobile-section-close" aria-label="닫기">
+            <svg viewBox="0 0 24 24">
+              <path d="m7 7 10 10" />
+              <path d="m17 7-10 10" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="asset-chart-modal" id="asset-chart-modal" hidden>
+      <div class="asset-chart-backdrop" data-asset-chart-close></div>
+      <div
+        class="asset-chart-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="asset-chart-title"
+        aria-describedby="asset-chart-summary"
+      >
+        <div class="asset-chart-header">
+          <div>
+            <p class="eyebrow">Live Chart</p>
+            <h3 id="asset-chart-title">종목 차트</h3>
+            <p class="asset-chart-summary" id="asset-chart-summary">최근 흐름을 불러오는 중입니다.</p>
+          </div>
+          <button type="button" class="asset-chart-close" data-asset-chart-close aria-label="차트 닫기">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+        <div class="asset-chart-stats" id="asset-chart-stats"></div>
+        <div class="chart-canvas-wrap asset-chart-canvas-wrap" id="asset-chart-canvas-wrap">
+          <canvas id="asset-chart-canvas"></canvas>
+        </div>
+        <p class="asset-chart-footnote" id="asset-chart-footnote"></p>
+      </div>
+    </div>
+
     <div class="calendar-modal" id="calendar-detail-modal" hidden>
       <div class="calendar-modal-backdrop" data-calendar-modal-close></div>
       <div
@@ -565,6 +648,17 @@
           <input type="hidden" id="trade-amount" name="amount" />
           <input type="hidden" id="trade-fee" name="fee" />
 
+          <div class="form-row">
+            <div class="form-group" data-trade-broker-group>
+              <label for="trade-broker">플랫폼</label>
+              <select id="trade-broker" name="broker"></select>
+            </div>
+            <div class="form-group">
+              <label for="trade-note">메모 (선택)</label>
+              <input type="text" id="trade-note" name="note" placeholder="비워도 됩니다" />
+            </div>
+          </div>
+
           <div class="trade-summary-grid">
             <article class="trade-summary-card">
               <span>플랫폼</span>
@@ -579,18 +673,7 @@
               <strong id="trade-summary-fee">선택 필요</strong>
             </article>
           </div>
-
-          <div class="form-row">
-            <div class="form-group" data-trade-broker-group>
-              <label for="trade-broker">플랫폼</label>
-              <select id="trade-broker" name="broker"></select>
-              <p class="form-help" id="trade-broker-help">국내주식과 미국주식 거래만 입력하면 됩니다.</p>
-            </div>
-            <div class="form-group">
-              <label for="trade-note">메모 (선택)</label>
-              <input type="text" id="trade-note" name="note" placeholder="비워도 됩니다" />
-            </div>
-          </div>
+          <p class="form-help trade-summary-help" id="trade-broker-help">국내주식과 미국주식 거래만 입력하면 됩니다.</p>
 
           <p class="trade-form-status" id="trade-form-status" role="status" aria-live="polite"></p>
 
@@ -610,8 +693,7 @@
       </article>
     </template>
 
-    <script src="./data/portfolio-data.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js" defer></script>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260410-3"></script>
   </body>
 </html>

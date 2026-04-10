@@ -6,7 +6,11 @@ const path = require("path");
 const { URL } = require("url");
 
 const { addTarget, addTrade, loadPortfolio, removeTarget, removeTrade, updateTrade } = require("./portfolio-store");
+const { searchAssets } = require("../lib/asset-search-service");
+const { buildAssetChartSnapshot } = require("../lib/asset-chart-service");
 const { buildLivePriceSnapshot } = require("../lib/live-price-service");
+const { loadPersistedNotes, savePersistedNotes } = require("../lib/server-state-store");
+const { resolveAccessProfile } = require("../lib/access-control");
 
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 4173);
@@ -90,9 +94,39 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  const bundledPortfolioData = await loadPortfolio(ROOT);
+  const protectedPathnames = new Set(["/api/access", "/api/portfolio", "/api/live-prices", "/api/asset-chart", "/api/trades", "/api/targets", "/api/notes"]);
+  const profile = url.pathname === "/api/access"
+    ? null
+    : protectedPathnames.has(url.pathname)
+      ? resolveAccessProfile(request.headers["x-access-code"], bundledPortfolioData)
+      : null;
+
+  if (profile && !profile.ok) {
+    sendJson(response, 401, { error: "코드가 맞지 않습니다." }, requestOrigin);
+    return true;
+  }
+
+  if (url.pathname === "/api/access" && request.method === "POST") {
+    try {
+      const body = await readRequestBody(request);
+      const payload = JSON.parse(body || "{}");
+      const accessProfile = resolveAccessProfile(payload.code, bundledPortfolioData);
+      if (!accessProfile.ok) {
+        sendJson(response, 401, { error: "코드가 맞지 않습니다." }, requestOrigin);
+        return true;
+      }
+      sendJson(response, 200, { ok: true, mode: accessProfile.mode }, requestOrigin);
+    } catch (error) {
+      const statusCode = error instanceof SyntaxError ? 400 : 422;
+      sendJson(response, statusCode, { error: error.message }, requestOrigin);
+    }
+    return true;
+  }
+
   if (url.pathname === "/api/portfolio" && request.method === "GET") {
     try {
-      const portfolio = await loadPortfolio(ROOT);
+      const portfolio = profile.mode === "owner" ? bundledPortfolioData : profile.seedPortfolio;
       sendJson(response, 200, portfolio, requestOrigin);
     } catch (error) {
       sendJson(response, 500, { error: error.message }, requestOrigin);
@@ -102,8 +136,37 @@ async function handleApi(request, response, url) {
 
   if (url.pathname === "/api/live-prices" && request.method === "GET") {
     try {
-      const snapshot = await buildLivePriceSnapshot({ rootDir: ROOT });
+      const snapshot = await buildLivePriceSnapshot({ rootDir: ROOT, portfolioData: profile.seedPortfolio, stateKey: profile.stateKey });
       sendJson(response, 200, snapshot, requestOrigin);
+    } catch (error) {
+      sendJson(response, 500, { error: error.message }, requestOrigin);
+    }
+    return true;
+  }
+
+  if (url.pathname === "/api/asset-chart" && request.method === "GET") {
+    try {
+      const snapshot = await buildAssetChartSnapshot({
+        rootDir: ROOT,
+        market: url.searchParams.get("market") || "",
+        symbol: url.searchParams.get("symbol") || "",
+        name: url.searchParams.get("name") || "",
+      });
+      sendJson(response, 200, snapshot, requestOrigin);
+    } catch (error) {
+      sendJson(response, 500, { error: error.message }, requestOrigin);
+    }
+    return true;
+  }
+
+  if (url.pathname === "/api/asset-search" && request.method === "GET") {
+    try {
+      const suggestions = await searchAssets({
+        rootDir: ROOT,
+        market: url.searchParams.get("market") || "",
+        query: url.searchParams.get("query") || "",
+      });
+      sendJson(response, 200, { suggestions }, requestOrigin);
     } catch (error) {
       sendJson(response, 500, { error: error.message }, requestOrigin);
     }
@@ -112,6 +175,10 @@ async function handleApi(request, response, url) {
 
   if (url.pathname === "/api/trades" && request.method === "POST") {
     try {
+      if (profile.mode !== "owner") {
+        sendJson(response, 403, { error: "게스트 코드는 저장 기능을 사용할 수 없습니다." }, requestOrigin);
+        return true;
+      }
       const body = await readRequestBody(request);
       const trade = JSON.parse(body || "{}");
       const updatedPortfolio = await addTrade(ROOT, trade);
@@ -125,6 +192,10 @@ async function handleApi(request, response, url) {
 
   if (url.pathname === "/api/trades" && request.method === "PUT") {
     try {
+      if (profile.mode !== "owner") {
+        sendJson(response, 403, { error: "게스트 코드는 저장 기능을 사용할 수 없습니다." }, requestOrigin);
+        return true;
+      }
       const body = await readRequestBody(request);
       const payload = JSON.parse(body || "{}");
       const updatedPortfolio = await updateTrade(ROOT, payload);
@@ -138,6 +209,10 @@ async function handleApi(request, response, url) {
 
   if (url.pathname === "/api/trades" && request.method === "DELETE") {
     try {
+      if (profile.mode !== "owner") {
+        sendJson(response, 403, { error: "게스트 코드는 저장 기능을 사용할 수 없습니다." }, requestOrigin);
+        return true;
+      }
       const body = await readRequestBody(request);
       const payload = JSON.parse(body || "{}");
       const updatedPortfolio = await removeTrade(ROOT, payload);
@@ -151,6 +226,10 @@ async function handleApi(request, response, url) {
 
   if (url.pathname === "/api/targets" && request.method === "POST") {
     try {
+      if (profile.mode !== "owner") {
+        sendJson(response, 403, { error: "게스트 코드는 저장 기능을 사용할 수 없습니다." }, requestOrigin);
+        return true;
+      }
       const body = await readRequestBody(request);
       const target = JSON.parse(body || "{}");
       const updatedPortfolio = await addTarget(ROOT, target);
@@ -164,10 +243,80 @@ async function handleApi(request, response, url) {
 
   if (url.pathname === "/api/targets" && request.method === "DELETE") {
     try {
+      if (profile.mode !== "owner") {
+        sendJson(response, 403, { error: "게스트 코드는 저장 기능을 사용할 수 없습니다." }, requestOrigin);
+        return true;
+      }
       const body = await readRequestBody(request);
       const target = JSON.parse(body || "{}");
       const updatedPortfolio = await removeTarget(ROOT, target);
       sendJson(response, 200, updatedPortfolio, requestOrigin);
+    } catch (error) {
+      const statusCode = error instanceof SyntaxError ? 400 : 422;
+      sendJson(response, statusCode, { error: error.message }, requestOrigin);
+    }
+    return true;
+  }
+
+  if (url.pathname === "/api/notes" && request.method === "GET") {
+    try {
+      const notes = profile.mode === "owner" ? await loadPersistedNotes(ROOT) : [];
+      sendJson(response, 200, { notes }, requestOrigin);
+    } catch (error) {
+      sendJson(response, 500, { error: error.message }, requestOrigin);
+    }
+    return true;
+  }
+
+  if (url.pathname === "/api/notes" && ["POST", "PUT", "DELETE"].includes(request.method || "")) {
+    try {
+      if (profile.mode !== "owner") {
+        sendJson(response, 403, { error: "게스트 코드는 저장 기능을 사용할 수 없습니다." }, requestOrigin);
+        return true;
+      }
+      const body = await readRequestBody(request);
+      const payload = JSON.parse(body || "{}");
+      const notes = await loadPersistedNotes(ROOT);
+
+      if (request.method === "POST") {
+        const timestamp = new Date().toISOString();
+        const next = [
+          {
+            id: `note-${Date.now()}`,
+            title: String(payload.title || "").trim(),
+            body: String(payload.body || "").trim(),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+          ...notes,
+        ];
+        await savePersistedNotes(ROOT, next);
+        sendJson(response, 200, { notes: next }, requestOrigin);
+        return true;
+      }
+
+      if (request.method === "PUT") {
+        const noteId = String(payload.id || "").trim();
+        const timestamp = new Date().toISOString();
+        const next = notes.map((note) =>
+          note.id === noteId
+            ? {
+                ...note,
+                title: String(payload.title || "").trim(),
+                body: String(payload.body || "").trim(),
+                updatedAt: timestamp,
+              }
+            : note
+        );
+        await savePersistedNotes(ROOT, next);
+        sendJson(response, 200, { notes: next }, requestOrigin);
+        return true;
+      }
+
+      const noteId = String(payload.id || "").trim();
+      const next = notes.filter((note) => note.id !== noteId);
+      await savePersistedNotes(ROOT, next);
+      sendJson(response, 200, { notes: next }, requestOrigin);
     } catch (error) {
       const statusCode = error instanceof SyntaxError ? 400 : 422;
       sendJson(response, statusCode, { error: error.message }, requestOrigin);
