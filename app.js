@@ -23,6 +23,154 @@ const usdFormatter = new Intl.NumberFormat("en-US", {
 const NOTES_STORAGE_KEY = "sniper-capital-notes-v1";
 const US_STOCK_TAX_ALLOWANCE = 2_500_000;
 const US_STOCK_TAX_RATE = 0.22;
+const ASSET_AUTOCOMPLETE_SEEDS = Object.freeze({
+  암호화폐: [
+    {
+      value: "비트코인(BTC)",
+      title: "비트코인(BTC)",
+      meta: "업비트 KRW 마켓",
+      symbol: "KRW-BTC",
+      aliases: ["비트", "비트코인", "btc"],
+    },
+    {
+      value: "이더리움(ETH)",
+      title: "이더리움(ETH)",
+      meta: "업비트 KRW 마켓",
+      symbol: "KRW-ETH",
+      aliases: ["이더", "이더리움", "eth"],
+    },
+    {
+      value: "엑스알피(리플) (XRP)",
+      title: "엑스알피(리플) (XRP)",
+      meta: "업비트 KRW 마켓",
+      symbol: "KRW-XRP",
+      aliases: ["엑스알피", "리플", "xrp"],
+    },
+    {
+      value: "솔라나(SOL)",
+      title: "솔라나(SOL)",
+      meta: "업비트 KRW 마켓",
+      symbol: "KRW-SOL",
+      aliases: ["솔", "솔라", "솔라나", "sol"],
+    },
+    {
+      value: "도지코인(DOGE)",
+      title: "도지코인(DOGE)",
+      meta: "업비트 KRW 마켓",
+      symbol: "KRW-DOGE",
+      aliases: ["도지", "도지코인", "doge"],
+    },
+    {
+      value: "에이다(ADA)",
+      title: "에이다(ADA)",
+      meta: "업비트 KRW 마켓",
+      symbol: "KRW-ADA",
+      aliases: ["에이다", "ada"],
+    },
+    {
+      value: "수이(SUI)",
+      title: "수이(SUI)",
+      meta: "업비트 KRW 마켓",
+      symbol: "KRW-SUI",
+      aliases: ["수이", "sui"],
+    },
+    {
+      value: "아발란체(AVAX)",
+      title: "아발란체(AVAX)",
+      meta: "업비트 KRW 마켓",
+      symbol: "KRW-AVAX",
+      aliases: ["아발란체", "avax"],
+    },
+  ],
+  미국주식: [
+    {
+      value: "Palantir Technologies Inc. (PLTR)",
+      title: "Palantir Technologies Inc. (PLTR)",
+      meta: "미국주식 티커",
+      symbol: "PLTR",
+      aliases: ["팔란티어", "palantir", "pltr"],
+    },
+    {
+      value: "Circle Internet Group, Inc. (CRCL)",
+      title: "Circle Internet Group, Inc. (CRCL)",
+      meta: "미국주식 티커",
+      symbol: "CRCL",
+      aliases: ["써클", "circle", "crcl"],
+    },
+    {
+      value: "Apple Inc. (AAPL)",
+      title: "Apple Inc. (AAPL)",
+      meta: "미국주식 티커",
+      symbol: "AAPL",
+      aliases: ["애플", "apple", "aapl"],
+    },
+    {
+      value: "NVIDIA Corporation (NVDA)",
+      title: "NVIDIA Corporation (NVDA)",
+      meta: "미국주식 티커",
+      symbol: "NVDA",
+      aliases: ["엔비디아", "nvidia", "nvda"],
+    },
+    {
+      value: "Tesla, Inc. (TSLA)",
+      title: "Tesla, Inc. (TSLA)",
+      meta: "미국주식 티커",
+      symbol: "TSLA",
+      aliases: ["테슬라", "tesla", "tsla"],
+    },
+    {
+      value: "Microsoft Corporation (MSFT)",
+      title: "Microsoft Corporation (MSFT)",
+      meta: "미국주식 티커",
+      symbol: "MSFT",
+      aliases: ["마이크로소프트", "microsoft", "msft"],
+    },
+    {
+      value: "Amazon.com, Inc. (AMZN)",
+      title: "Amazon.com, Inc. (AMZN)",
+      meta: "미국주식 티커",
+      symbol: "AMZN",
+      aliases: ["아마존", "amazon", "amzn"],
+    },
+    {
+      value: "Meta Platforms, Inc. (META)",
+      title: "Meta Platforms, Inc. (META)",
+      meta: "미국주식 티커",
+      symbol: "META",
+      aliases: ["메타", "meta", "meta platforms"],
+    },
+  ],
+  국내주식: [
+    {
+      value: "삼성전자(005930)",
+      title: "삼성전자(005930)",
+      meta: "국내주식 종목코드",
+      symbol: "005930",
+      aliases: ["삼성", "삼전", "삼성전자", "005930"],
+    },
+    {
+      value: "SK하이닉스(000660)",
+      title: "SK하이닉스(000660)",
+      meta: "국내주식 종목코드",
+      symbol: "000660",
+      aliases: ["하이닉스", "sk하이닉스", "에스케이하이닉스", "000660"],
+    },
+    {
+      value: "NAVER(035420)",
+      title: "NAVER(035420)",
+      meta: "국내주식 종목코드",
+      symbol: "035420",
+      aliases: ["네이버", "naver", "035420"],
+    },
+    {
+      value: "카카오(035720)",
+      title: "카카오(035720)",
+      meta: "국내주식 종목코드",
+      symbol: "035720",
+      aliases: ["카카오", "035720"],
+    },
+  ],
+});
 const colors = ["#17F9A6", "#5EC8FF", "#FFB84D", "#FF6B87"];
 let chartRegistry = [];
 let calendarDetailStore = new Map();
@@ -32,6 +180,11 @@ let livePortfolioSnapshot = null;
 let liveRefreshTimer = null;
 let currentDateBadgeTimer = null;
 let notesState = [];
+let noteEditorState = {
+  editingId: null,
+};
+let tradeModalController = null;
+let timelineTradeRegistry = new Map();
 let hasLoadedNotes = false;
 let timelineCalendarState = {
   trades: [],
@@ -40,10 +193,275 @@ let timelineCalendarState = {
   realizedHistory: [],
 };
 
+function normalizeAutocompleteToken(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[\s.,/#!$%^&*;:{}=\-_`~()]/g, "");
+}
+
+function getMarketLabelFromMetaMarket(value = "") {
+  if (value === "crypto") {
+    return "암호화폐";
+  }
+  if (value === "us-stock") {
+    return "미국주식";
+  }
+  if (value === "kr-stock") {
+    return "국내주식";
+  }
+  return String(value || "").trim();
+}
+
+function formatAssetInputValue(item = {}, marketLabel = getMarketLabelFromMetaMarket(item.market)) {
+  const symbol = String(item.symbol || "").trim();
+  const rawName = String(item.name || item.asset || "").trim();
+  const normalizedName = rawName || symbol.replace(/^KRW-/, "");
+
+  if (marketLabel === "암호화폐") {
+    const ticker = symbol.replace(/^KRW-/, "").trim().toUpperCase();
+    return ticker ? `${normalizedName}(${ticker})` : normalizedName;
+  }
+
+  if (marketLabel === "미국주식") {
+    return symbol ? `${normalizedName} (${symbol.toUpperCase()})` : normalizedName;
+  }
+
+  if (marketLabel === "국내주식") {
+    return symbol ? `${normalizedName}(${symbol})` : normalizedName;
+  }
+
+  return normalizedName;
+}
+
+function buildDynamicAutocompleteEntry(item = {}) {
+  const market = getMarketLabelFromMetaMarket(item.market);
+  if (!["암호화폐", "미국주식", "국내주식"].includes(market)) {
+    return null;
+  }
+
+  const value = formatAssetInputValue(item, market);
+  if (!value) {
+    return null;
+  }
+
+  return {
+    value,
+    title: value,
+    meta:
+      market === "암호화폐"
+        ? "업비트 KRW 마켓"
+        : market === "미국주식"
+          ? "미국주식 티커"
+          : "국내주식 종목코드",
+    symbol: String(item.symbol || "").trim(),
+    aliases: [
+      String(item.name || "").trim(),
+      String(item.asset || "").trim(),
+      String(item.symbol || "").trim(),
+      getDisplayAssetName(item),
+    ].filter(Boolean),
+  };
+}
+
+function buildAssetAutocompleteCatalog() {
+  const registry = new Map();
+  const addEntry = (market, entry) => {
+    if (!entry || !market) {
+      return;
+    }
+
+    const key = `${market}:${entry.symbol || normalizeAutocompleteToken(entry.value)}`;
+    const nextEntry = {
+      ...entry,
+      market,
+      aliases: [...new Set([entry.value, entry.title, entry.meta, ...(entry.aliases || [])].filter(Boolean))],
+    };
+
+    if (registry.has(key)) {
+      const existing = registry.get(key);
+      registry.set(key, {
+        ...existing,
+        ...nextEntry,
+        aliases: [...new Set([...(existing.aliases || []), ...(nextEntry.aliases || [])])],
+      });
+      return;
+    }
+
+    registry.set(key, nextEntry);
+  };
+
+  Object.entries(ASSET_AUTOCOMPLETE_SEEDS).forEach(([market, items]) => {
+    items.forEach((item) => addEntry(market, item));
+  });
+
+  const source = currentPortfolioData || basePortfolioData;
+  if (source?.holdings) {
+    source.holdings.forEach((item) => addEntry(getMarketLabelFromMetaMarket(item.market), buildDynamicAutocompleteEntry(item)));
+  }
+  if (source?.targets?.groups) {
+    source.targets.groups.forEach((group) => {
+      (group.items || []).forEach((item) =>
+        addEntry(getMarketLabelFromMetaMarket(item.market), buildDynamicAutocompleteEntry(item))
+      );
+    });
+  }
+
+  return [...registry.values()];
+}
+
+function getAssetAutocompleteSuggestions(market, query = "") {
+  const normalizedMarket = String(market || "").trim();
+  const normalizedQuery = normalizeAutocompleteToken(query);
+  const candidates = buildAssetAutocompleteCatalog().filter((item) => item.market === normalizedMarket);
+
+  if (!normalizedQuery) {
+    return candidates.slice(0, 12);
+  }
+
+  return candidates
+    .map((item) => {
+      const aliasTokens = (item.aliases || []).map((alias) => normalizeAutocompleteToken(alias)).filter(Boolean);
+      const exactMatch = aliasTokens.some((token) => token === normalizedQuery);
+      const prefixMatch = aliasTokens.some((token) => token.startsWith(normalizedQuery));
+      const includesMatch = aliasTokens.some((token) => token.includes(normalizedQuery));
+
+      if (!exactMatch && !prefixMatch && !includesMatch) {
+        return null;
+      }
+
+      return {
+        ...item,
+        score: exactMatch ? 0 : prefixMatch ? 1 : 2,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => {
+      if (left.score !== right.score) {
+        return left.score - right.score;
+      }
+      return left.title.localeCompare(right.title, "ko");
+    })
+    .slice(0, 12);
+}
+
+function resolveBestAssetAutocomplete(market, query = "") {
+  const suggestions = getAssetAutocompleteSuggestions(market, query);
+  const normalizedQuery = normalizeAutocompleteToken(query);
+  if (!normalizedQuery || !suggestions.length) {
+    return null;
+  }
+
+  const exact = suggestions.find((item) =>
+    (item.aliases || []).some((alias) => normalizeAutocompleteToken(alias) === normalizedQuery)
+  );
+  if (exact) {
+    return exact;
+  }
+
+  return suggestions.length === 1 ? suggestions[0] : null;
+}
+
+function setupAssetAutocomplete({ input, marketSelect, panel, onSelect }) {
+  if (!input || !marketSelect || !panel || panel.dataset.bound === "true") {
+    return {
+      hide() {},
+      syncValue() {},
+    };
+  }
+
+  let currentSuggestions = [];
+  let blurTimer = null;
+
+  const hidePanel = () => {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    currentSuggestions = [];
+  };
+
+  const applySuggestion = (suggestion) => {
+    if (!suggestion) {
+      return;
+    }
+
+    input.value = suggestion.value;
+    hidePanel();
+    onSelect?.(suggestion);
+  };
+
+  const syncValue = () => {
+    const suggestion = resolveBestAssetAutocomplete(marketSelect.value, input.value);
+    if (suggestion) {
+      applySuggestion(suggestion);
+    }
+  };
+
+  const renderSuggestions = () => {
+    const suggestions = getAssetAutocompleteSuggestions(marketSelect.value, input.value);
+    currentSuggestions = suggestions;
+
+    if (!suggestions.length) {
+      hidePanel();
+      return;
+    }
+
+    panel.hidden = false;
+    panel.innerHTML = suggestions
+      .map(
+        (item, index) => `
+          <button type="button" class="asset-suggestion-button" data-asset-suggestion-index="${index}">
+            <span class="asset-suggestion-name">${escapeHtml(item.title)}</span>
+            <span class="asset-suggestion-meta">${escapeHtml(item.meta)}</span>
+          </button>
+        `
+      )
+      .join("");
+  };
+
+  input.addEventListener("focus", renderSuggestions);
+  input.addEventListener("input", renderSuggestions);
+  input.addEventListener("blur", () => {
+    blurTimer = window.setTimeout(() => {
+      syncValue();
+      hidePanel();
+    }, 120);
+  });
+  marketSelect.addEventListener("change", () => {
+    input.value = "";
+    hidePanel();
+  });
+  panel.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    if (blurTimer) {
+      window.clearTimeout(blurTimer);
+      blurTimer = null;
+    }
+  });
+  panel.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-asset-suggestion-index]");
+    if (!button) {
+      return;
+    }
+
+    const suggestion = currentSuggestions[Number(button.dataset.assetSuggestionIndex)];
+    applySuggestion(suggestion);
+    input.focus();
+  });
+
+  panel.dataset.bound = "true";
+  hidePanel();
+
+  return {
+    hide: hidePanel,
+    syncValue,
+  };
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   scheduleCurrentDateBadgeRefresh();
   ensureNotesLoaded();
   initNotesBoard();
+  initTargetManager();
+  initTargetRemovalActions();
   loadPortfolio()
     .then(async (data) => {
       applyPortfolioData(data, livePortfolioSnapshot, { renderMode: "full" });
@@ -175,13 +593,19 @@ function renderDashboard(data, options = {}) {
   text("#hero-summary", buildHeroSummary(live));
   renderCurrentDateBadge();
 
-  renderPriceStrip(live?.quotes || {}, holdings, targets);
-  renderMetricCards(summary, realized);
+  renderPriceStrip(live?.quotes || {}, holdings, targets, live?.fx || {});
+  renderMetricCards(summary, realized, metadata);
   renderTargets(targets, live);
   renderAllocation(summary, assetStatus, cashPositions);
   renderAssetTable(assetStatus, holdings);
   renderHoldings(holdings);
-  renderDefense(analytics.xrpDefense);
+  renderDefense({
+    metadata,
+    trades,
+    holdings,
+    realized,
+  });
+  renderRealizedChartNote(metadata);
 
   if (isLiveRefresh) {
     return;
@@ -189,7 +613,7 @@ function renderDashboard(data, options = {}) {
 
   renderCharts(charts);
   renderRealized(realized, summary.realizedProfitTotal);
-  renderTimeline(trades, getCurrentBasisYear(), charts.realizedHistory);
+  renderTimeline(trades, getCurrentBasisYear(), charts.realizedHistory, realized);
   renderNotes(notesState);
   renderStrategy(strategy);
   bindAllPanelAccordions();
@@ -203,21 +627,46 @@ function getDisplayAssetName(item = {}) {
   const normalizedName = rawName.toUpperCase();
 
   if (symbol === "KRW-BTC" || normalizedName === "BTC" || rawName === "비트코인" || rawName === "비트코인(BTC)") {
-    return "비트코인(BTC)";
+    return "비트코인 BTC";
   }
 
   if (symbol === "KRW-ETH" || normalizedName === "ETH" || rawName === "이더리움" || rawName === "이더리움(ETH)") {
-    return "이더리움(ETH)";
+    return "이더리움 ETH";
   }
 
-  if (symbol === "KRW-XRP" || normalizedName === "XRP" || rawName === "엑스알피" || rawName === "엑스알피(XRP)") {
-    return "엑스알피(XRP)";
+  if (
+    symbol === "KRW-XRP" ||
+    normalizedName === "XRP" ||
+    rawName === "엑스알피" ||
+    rawName === "엑스알피(XRP)" ||
+    rawName === "엑스알피(리플)"
+  ) {
+    return "엑스알피(리플) XRP";
+  }
+
+  if (symbol === "PLTR" || normalizedName === "PLTR" || rawName === "팔란티어" || rawName === "Palantir Technologies") {
+    return "Palantir Technologies (PLTR)";
+  }
+
+  if (symbol === "CRCL" || normalizedName === "CRCL" || rawName === "써클" || rawName === "Circle Internet Group") {
+    return "Circle Internet Group (CRCL)";
+  }
+
+  if (item.market === "us-stock" && rawName && symbol && normalizedName !== symbol) {
+    return `${rawName}(${symbol})`;
+  }
+
+  if (item.market === "crypto" && rawName && symbol.startsWith("KRW-")) {
+    const ticker = symbol.replace(/^KRW-/, "");
+    if (ticker && normalizedName !== ticker) {
+      return `${rawName}(${ticker})`;
+    }
   }
 
   return rawName;
 }
 
-function renderPriceStrip(quotes = {}, holdings = [], targets = {}) {
+function renderPriceStrip(quotes = {}, holdings = [], targets = {}, fx = {}) {
   const container = document.querySelector("#price-strip");
   if (!container) {
     return;
@@ -243,7 +692,6 @@ function renderPriceStrip(quotes = {}, holdings = [], targets = {}) {
       const quoteStateClass = quote?.available ? "" : " price-pill--inactive";
       const staleClass = quote?.isDelayed ? " price-pill--stale" : "";
       const movementClass = getQuoteToneClass(quote);
-
       return `
         <div class="price-pill price-pill--${tone}${quoteStateClass}${staleClass}">
           <div class="price-copy">
@@ -251,10 +699,11 @@ function renderPriceStrip(quotes = {}, holdings = [], targets = {}) {
             <span class="price-meta">${escapeHtml(buildInstrumentMeta(instrument, quote))}</span>
           </div>
           <div class="price-value-wrap">
-            <strong class="price-value ${movementClass}">${escapeHtml(formatQuotePrimary(quote, instrument))}</strong>
-            <span class="price-secondary ${movementClass}">${escapeHtml(
-              formatQuoteSecondary(quote, instrument, { includeKimchiPremium: true })
-            )}</span>
+            <strong class="price-value ${movementClass}">${escapeHtml(formatLivePricePrimary(quote, instrument, fx))}</strong>
+            <span class="price-secondary">${renderQuoteSecondaryMarkup(quote, instrument, {
+              includeKimchiPremium: true,
+              includeKrwForUsStock: false,
+            })}</span>
           </div>
         </div>
       `;
@@ -262,10 +711,13 @@ function renderPriceStrip(quotes = {}, holdings = [], targets = {}) {
     .join("");
 }
 
-function renderMetricCards(summary, realized = []) {
+function renderMetricCards(summary, realized = [], metadata = {}) {
   const initialInvestment = summary.initialInvestment || 0;
   const initialInvestmentPnl = (summary.totalAssets || 0) - initialInvestment;
   const usStockTaxEstimate = estimateUsStockTax(realized);
+  const realizedBasisDetail = formatPerformanceStartLabel(metadata?.realizedPerformanceStartDate)
+    ? `${formatPerformanceStartLabel(metadata.realizedPerformanceStartDate)} 이후 매도 기준`
+    : `유동성 비중 ${formatPercent(summary.liquidityRatio)}`;
 
   const metrics = [
     {
@@ -295,7 +747,7 @@ function renderMetricCards(summary, realized = []) {
     {
       label: "실현 손익",
       value: formatSignedCurrency(summary.realizedProfitTotal),
-      detail: `유동성 비중 ${formatPercent(summary.liquidityRatio)}`,
+      detail: realizedBasisDetail,
       tone: toneClass(summary.realizedProfitTotal),
     },
     {
@@ -909,7 +1361,9 @@ function renderHoldings(holdings) {
               <p class="mini-label">${item.platform}</p>
               <strong class="holding-title">${escapeHtml(getDisplayAssetName(item))}</strong>
             </div>
-            <span class="status-tag ${quote?.isDelayed ? "status-tag--warning" : ""}">${statusCopy}</span>
+            <div class="holding-actions">
+              <span class="status-tag ${quote?.isDelayed ? "status-tag--warning" : ""}">${statusCopy}</span>
+            </div>
           </div>
           <div class="mini-stack">
             <div class="mini-row">
@@ -978,28 +1432,147 @@ function renderRealized(realized, totalProfit) {
   bindPanelAccordion(document.querySelector("#realized-section"));
 }
 
-function renderDefense(defense) {
-  const items = [
-    ["최종 평단가", defense.finalAveragePrice, "currency", "neutral"],
-    ["평단가 인하액", defense.averageCutAmount, "currency", "gain"],
-    ["평단가 인하율", defense.averageCutRate, "percent", "gain"],
-    ["방어 이익", defense.defenseGain, "currency", toneClass(defense.defenseGain)],
-    ["회계상 실현손익", defense.realizedPnl, "currency", toneClass(defense.realizedPnl)],
-    ["손익분기 목표 매수단가", defense.breakevenTargetBuyPrice, "currency", "neutral"],
-  ];
+function renderDefense(context = {}) {
+  const container = document.querySelector("#defense-grid");
+  const note = document.querySelector("#defense-note");
+  if (!container) {
+    return;
+  }
 
-  document.querySelector("#defense-grid").innerHTML = items
-    .map(([label, value, type, tone]) => {
+  const snapshot = buildXrpDefenseSnapshot(context);
+  if (note) {
+    note.textContent = snapshot.note;
+  }
+
+  container.innerHTML = snapshot.items
+    .map((item) => {
       const formatted =
-        type === "percent" ? formatPercent(value) : formatSignedCurrency(value, tone === "neutral");
+        item.type === "percent"
+          ? formatPercent(item.value)
+          : item.type === "quantity"
+            ? `${formatNumber(item.value)} XRP`
+            : item.signed
+              ? formatSignedCurrency(item.value, item.tone === "neutral")
+              : formatCurrency(item.value);
       return `
         <div class="defense-card">
-          <p class="mini-label">${label}</p>
-          <strong class="defense-value ${tone}">${formatted}</strong>
+          <p class="mini-label">${escapeHtml(item.label)}</p>
+          <strong class="defense-value ${item.tone}">${formatted}</strong>
         </div>
       `;
     })
     .join("");
+}
+
+function buildXrpDefenseSnapshot({ metadata = {}, trades = {}, holdings = [], realized = [] } = {}) {
+  const startLabel = formatPerformanceStartLabel(metadata?.realizedPerformanceStartDate) || "기준일";
+  const startDate = parsePerformanceStartDateValue(metadata?.realizedPerformanceStartDate);
+  const xrpTrades = (Array.isArray(trades?.crypto) ? trades.crypto : []).filter(
+    (trade) => String(trade.asset || "").toUpperCase() === "XRP"
+  );
+  const earlySellTrades = xrpTrades.filter((trade) => {
+    if (trade.side !== "매도" || !startDate) {
+      return trade.side === "매도" && !startDate;
+    }
+
+    const tradeDate = parseMonthDayToDate(trade.date, startDate.getFullYear());
+    return tradeDate ? tradeDate.getTime() < startDate.getTime() : false;
+  });
+  const rebuyTrades = xrpTrades.filter((trade) => {
+    if (trade.side !== "매수") {
+      return false;
+    }
+
+    if (!startDate) {
+      return true;
+    }
+
+    const tradeDate = parseMonthDayToDate(trade.date, startDate.getFullYear());
+    return tradeDate ? tradeDate.getTime() >= startDate.getTime() : true;
+  });
+  const xrpRealized = (Array.isArray(realized) ? realized : []).filter((item) => {
+    if (String(item.assetName || item.asset || "").toUpperCase() !== "XRP") {
+      return false;
+    }
+
+    if (!startDate) {
+      return true;
+    }
+
+    const tradeDate = parseMonthDayToDate(item.date, startDate.getFullYear());
+    return tradeDate ? tradeDate.getTime() >= startDate.getTime() : true;
+  });
+
+  const earlySellTotals = earlySellTrades.reduce(
+    (accumulator, trade) => {
+      const quantity = Number(trade.quantity || 0);
+      const amount = Number(trade.amount || 0);
+      const fee = Number(trade.fee || 0);
+
+      accumulator.sellQuantity += quantity;
+      accumulator.sellNet += amount - fee;
+
+      return accumulator;
+    },
+    {
+      sellQuantity: 0,
+      sellNet: 0,
+    }
+  );
+  const rebuyTotals = rebuyTrades.reduce(
+    (accumulator, trade) => {
+      const quantity = Number(trade.quantity || 0);
+      const amount = Number(trade.amount || 0);
+      const fee = Number(trade.fee || 0);
+
+      accumulator.buyQuantity += quantity;
+      accumulator.buyGross += amount + fee;
+      return accumulator;
+    },
+    {
+      buyQuantity: 0,
+      buyGross: 0,
+    }
+  );
+
+  const realizedPnl = xrpRealized.reduce((total, item) => total + Number(item.pnl || 0), 0);
+  const earlySellAverage = earlySellTotals.sellQuantity > 0 ? earlySellTotals.sellNet / earlySellTotals.sellQuantity : 0;
+  const rebuyAverage = rebuyTotals.buyQuantity > 0 ? rebuyTotals.buyGross / rebuyTotals.buyQuantity : 0;
+  const favorableBuyPrice = earlySellAverage || rebuyAverage || 0;
+  const note = earlySellAverage
+    ? `주식 매수 자금 확보용 초반 XRP 매도 평균은 ${formatCurrency(earlySellAverage)}입니다. 이 가격 아래에서 다시 사면 재매수 기준이 유리합니다.`
+    : `${startLabel} 이후 XRP 재매수 기준입니다.`;
+
+  return {
+    note,
+    items: [
+      {
+        label: "초반 XRP 평균 매도단가",
+        value: earlySellAverage,
+        type: "currency",
+        tone: "neutral",
+      },
+      {
+        label: "이 가격 아래 재매수 시 유리",
+        value: favorableBuyPrice,
+        type: "currency",
+        tone: "neutral",
+      },
+      {
+        label: `${startLabel} 평균 재매수 단가`,
+        value: rebuyAverage,
+        type: "currency",
+        tone: "neutral",
+      },
+      {
+        label: `${startLabel} XRP 실현손익`,
+        value: realizedPnl,
+        type: "currency",
+        tone: toneClass(realizedPnl),
+        signed: true,
+      },
+    ],
+  };
 }
 
 function ensureNotesLoaded() {
@@ -1030,9 +1603,10 @@ function loadNotesFromStorage() {
         title: String(note.title || "").trim(),
         body: String(note.body || "").trim(),
         createdAt: note.createdAt || new Date().toISOString(),
+        updatedAt: note.updatedAt || note.createdAt || new Date().toISOString(),
       }))
       .filter((note) => note.title || note.body)
-      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+      .sort((left, right) => new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime());
   } catch (error) {
     console.error(error);
     return [];
@@ -1079,11 +1653,14 @@ function renderNoteCard(note) {
           <p class="mini-label">Saved Memo</p>
           <strong class="memo-card-title">${escapeHtml(getNoteTitle(note))}</strong>
         </div>
-        <button type="button" class="memo-card-delete" data-note-delete="${escapeHtml(note.id)}">삭제</button>
+        <div class="memo-card-actions">
+          <button type="button" class="memo-card-edit" data-note-edit="${escapeHtml(note.id)}">수정</button>
+          <button type="button" class="memo-card-delete" data-note-delete="${escapeHtml(note.id)}">삭제</button>
+        </div>
       </div>
       <p class="memo-card-body">${escapeHtml(note.body || note.title).replaceAll("\n", "<br />")}</p>
       <div class="memo-card-meta">
-        <span>${escapeHtml(formatNoteTimestamp(note.createdAt))}</span>
+        <span>${escapeHtml(formatNoteTimestamp(note.updatedAt || note.createdAt))}</span>
         <span>${escapeHtml(getNoteMeta(note))}</span>
       </div>
     </article>
@@ -1133,6 +1710,219 @@ function initNotesBoard() {
   bindNotesSection(section);
 }
 
+function setTargetFormStatus(message = "", tone = "neutral") {
+  const status = document.querySelector("#target-form-status");
+  if (!status) {
+    return;
+  }
+
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+async function requestTargetMutation(method, targetData) {
+  if (window.location.protocol === "file:") {
+    throw new Error("관심종목 저장/삭제는 로컬 서버에서만 가능합니다. `node scripts/dev-server.js` 실행 후 접속하세요.");
+  }
+
+  const response = await fetch("./api/targets", {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(targetData),
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error || "관심종목 처리에 실패했습니다.");
+  }
+
+  return payload;
+}
+
+async function applyTargetMutation(method, targetData, successMessage) {
+  const updatedPortfolio = await requestTargetMutation(method, targetData);
+  livePortfolioSnapshot = null;
+  applyPortfolioData(updatedPortfolio, null, { renderMode: "full" });
+  setTargetFormStatus(successMessage, "success");
+  await refreshLivePortfolio();
+  return updatedPortfolio;
+}
+
+async function requestTradeMutation(method, payload) {
+  if (window.location.protocol === "file:") {
+    throw new Error("거래 저장/수정/삭제는 로컬 서버에서만 가능합니다. `node scripts/dev-server.js` 실행 후 접속하세요.");
+  }
+
+  const response = await fetch("./api/trades", {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(result?.error || "거래 처리에 실패했습니다.");
+  }
+
+  return result;
+}
+
+async function applyTradeMutation(method, payload) {
+  const updatedPortfolio = await requestTradeMutation(method, payload);
+  livePortfolioSnapshot = null;
+  applyPortfolioData(updatedPortfolio, null, { renderMode: "full" });
+  await refreshLivePortfolio();
+  return updatedPortfolio;
+}
+
+function initTargetManager() {
+  const form = document.querySelector("#target-form");
+  const marketSelect = document.querySelector("#target-market");
+  const assetInput = document.querySelector("#target-asset");
+  const help = document.querySelector("#target-help");
+  const status = document.querySelector("#target-form-status");
+  const resetButton = document.querySelector("#target-reset");
+  const submitButton = document.querySelector("#target-submit");
+  const suggestionPanel = document.querySelector("#target-asset-suggestions");
+
+  if (!form || !marketSelect || !assetInput || !help || !status || !submitButton || form.dataset.bound === "true") {
+    return;
+  }
+
+  const setStatus = (message = "", tone = "neutral") => {
+    status.textContent = message;
+    status.dataset.tone = tone;
+  };
+
+  const setSubmitting = (isSubmitting) => {
+    submitButton.disabled = isSubmitting;
+    submitButton.textContent = isSubmitting ? "저장 중..." : "관심종목 추가";
+    if (resetButton) {
+      resetButton.disabled = isSubmitting;
+    }
+  };
+
+  const syncTargetFormMode = () => {
+    const market = marketSelect.value;
+    if (market === "암호화폐") {
+      assetInput.placeholder = "솔라나(SOL)";
+      help.textContent = "예시: 솔라나(SOL), 도지코인(DOGE), 에이다(ADA)";
+      return;
+    }
+
+    if (market === "미국주식") {
+      assetInput.placeholder = "애플(AAPL)";
+      help.textContent = "예시: 애플(AAPL), 테슬라(TSLA), 엔비디아(NVDA)";
+      return;
+    }
+
+    assetInput.placeholder = "삼성전자(005930)";
+    help.textContent = "예시: 삼성전자(005930), SK하이닉스(000660) · 국내주식 실시간은 다음 단계에서 연결";
+  };
+
+  const resetTargetForm = () => {
+    form.reset();
+    marketSelect.value = "암호화폐";
+    syncTargetFormMode();
+  };
+  const autocomplete = setupAssetAutocomplete({
+    input: assetInput,
+    marketSelect,
+    panel: suggestionPanel,
+  });
+
+  marketSelect.addEventListener("change", syncTargetFormMode);
+  resetButton?.addEventListener("click", () => {
+    resetTargetForm();
+    setStatus("입력을 비웠습니다.");
+    assetInput.focus();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setStatus("");
+    autocomplete.syncValue();
+
+    const targetData = {
+      market: marketSelect.value,
+      asset: String(assetInput.value || "").trim(),
+    };
+
+    try {
+      setSubmitting(true);
+      await applyTargetMutation("POST", targetData, "관심종목을 저장했습니다. 실시간 추적도 같이 시작합니다.");
+      resetTargetForm();
+    } catch (error) {
+      console.error(error);
+      setStatus(error.message || "관심종목 저장에 실패했습니다.", "error");
+    } finally {
+      setSubmitting(false);
+      assetInput.focus();
+    }
+  });
+
+  syncTargetFormMode();
+  form.dataset.bound = "true";
+}
+
+function initTargetRemovalActions() {
+  const targetsGrid = document.querySelector("#targets-grid");
+
+  const handleRemoval = async (button) => {
+    const market = String(button.dataset.targetMarket || "").trim();
+    const symbol = String(button.dataset.targetSymbol || "").trim();
+    const name = String(button.dataset.targetName || "").trim();
+
+    if (!market || (!symbol && !name)) {
+      return;
+    }
+
+    const confirmed = window.confirm(`정말 삭제하실건가요?\n\n관심종목에서 제거합니다.\n대상: ${name || symbol}`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      button.disabled = true;
+      await applyTargetMutation(
+        "DELETE",
+        {
+          market,
+          symbol,
+          name,
+        },
+        "관심종목에서 삭제했습니다. 보유 중이 아니면 Live price에서도 같이 빠집니다."
+      );
+    } catch (error) {
+      console.error(error);
+      setTargetFormStatus(error.message || "관심종목 삭제에 실패했습니다.", "error");
+      button.disabled = false;
+    }
+  };
+
+  const bindContainer = (container) => {
+    if (!container || container.dataset.targetRemovalBound === "true") {
+      return;
+    }
+
+    container.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-target-remove]");
+      if (!button) {
+        return;
+      }
+
+      handleRemoval(button);
+    });
+    container.dataset.targetRemovalBound = "true";
+  };
+
+  bindContainer(targetsGrid);
+}
+
 function bindNotesSection(section) {
   if (!section || section.dataset.notesBound === "true") {
     return;
@@ -1143,6 +1933,9 @@ function bindNotesSection(section) {
   const bodyInput = section.querySelector("#note-body");
   const status = section.querySelector("#notes-status");
   const resetButton = section.querySelector("[data-note-reset]");
+  const submitButton = form?.querySelector(".btn-primary");
+  const formEyebrow = section.querySelector("#notes-form-eyebrow");
+  const formTitle = section.querySelector("#notes-form-title");
 
   const setStatus = (message, tone = "neutral") => {
     if (!status) {
@@ -1151,6 +1944,30 @@ function bindNotesSection(section) {
 
     status.textContent = message || "";
     status.dataset.tone = tone;
+  };
+
+  const setComposerMode = (note = null) => {
+    noteEditorState.editingId = note?.id || null;
+
+    if (formEyebrow) {
+      formEyebrow.textContent = note ? "Edit Memo" : "Quick Memo";
+    }
+    if (formTitle) {
+      formTitle.textContent = note ? "투자 메모 수정" : "투자 메모 저장";
+    }
+
+    if (submitButton) {
+      submitButton.textContent = note ? "수정 저장" : "메모 저장";
+    }
+    if (resetButton) {
+      resetButton.textContent = note ? "수정 취소" : "입력 비우기";
+    }
+    if (titleInput) {
+      titleInput.value = note?.title || "";
+    }
+    if (bodyInput) {
+      bodyInput.value = note?.body || "";
+    }
   };
 
   form?.addEventListener("submit", (event) => {
@@ -1165,14 +1982,32 @@ function bindNotesSection(section) {
       return;
     }
 
-    const nextNote = {
-      id: `note-${Date.now()}`,
-      title,
-      body,
-      createdAt: new Date().toISOString(),
-    };
-
-    const nextNotes = [nextNote, ...notesState];
+    const timestamp = new Date().toISOString();
+    const isEditing = Boolean(noteEditorState.editingId);
+    const nextNotes = noteEditorState.editingId
+      ? notesState.map((note) =>
+          note.id === noteEditorState.editingId
+            ? {
+                ...note,
+                title,
+                body,
+                updatedAt: timestamp,
+              }
+            : note
+        )
+      : [
+          {
+            id: `note-${Date.now()}`,
+            title,
+            body,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+          ...notesState,
+        ];
+    nextNotes.sort(
+      (left, right) => new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime()
+    );
     if (!persistNotesToStorage(nextNotes)) {
       setStatus("메모 저장에 실패했습니다. 브라우저 저장 공간을 확인해주세요.", "error");
       return;
@@ -1180,18 +2015,35 @@ function bindNotesSection(section) {
 
     notesState = nextNotes;
     renderNotes(notesState);
-    form.reset();
-    setStatus("메모를 저장했습니다.", "success");
+    setComposerMode();
+    setStatus(isEditing ? "메모를 수정했습니다." : "메모를 저장했습니다.", "success");
     titleInput?.focus();
   });
 
   resetButton?.addEventListener("click", () => {
+    const wasEditing = Boolean(noteEditorState.editingId);
+    setComposerMode();
     form?.reset();
-    setStatus("입력을 비웠습니다.");
+    setStatus(wasEditing ? "메모 수정을 취소했습니다." : "입력을 비웠습니다.");
     titleInput?.focus();
   });
 
   section.addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-note-edit]");
+    if (editButton && section.contains(editButton)) {
+      ensureNotesLoaded();
+      const note = notesState.find((item) => item.id === editButton.dataset.noteEdit);
+      if (!note) {
+        setStatus("수정할 메모를 찾지 못했습니다.", "error");
+        return;
+      }
+
+      setComposerMode(note);
+      setStatus("메모를 수정 중입니다.", "success");
+      titleInput?.focus();
+      return;
+    }
+
     const deleteButton = event.target.closest("[data-note-delete]");
     if (!deleteButton || !section.contains(deleteButton)) {
       return;
@@ -1199,6 +2051,10 @@ function bindNotesSection(section) {
 
     ensureNotesLoaded();
     const noteId = deleteButton.dataset.noteDelete;
+    const confirmed = window.confirm("정말 삭제하실건가요?\n\n선택한 메모를 삭제합니다.");
+    if (!confirmed) {
+      return;
+    }
     const nextNotes = notesState.filter((note) => note.id !== noteId);
     if (!persistNotesToStorage(nextNotes)) {
       setStatus("메모 삭제에 실패했습니다.", "error");
@@ -1207,9 +2063,14 @@ function bindNotesSection(section) {
 
     notesState = nextNotes;
     renderNotes(notesState);
+    if (noteEditorState.editingId === noteId) {
+      setComposerMode();
+      form?.reset();
+    }
     setStatus("메모를 삭제했습니다.", "success");
   });
 
+  setComposerMode();
   section.dataset.notesBound = "true";
 }
 
@@ -1263,13 +2124,136 @@ function bindAllPanelAccordions() {
   });
 }
 
-function normalizeTimelineTrades(trades, basisYear) {
+function formatTradeQuantity(value) {
+  return formatNumber(value);
+}
+
+function parseMonthDayToDate(value, year) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const [month, day] = value.split("/").map((segment) => Number(segment));
+  if (!month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+function normalizeTradeQuantityKey(value) {
+  return Number(value || 0).toFixed(8);
+}
+
+function parseTradeOutcomeNote(note = "") {
+  const matched = String(note || "")
+    .replace(/\s+/g, " ")
+    .match(/([+-])\s*([\d,]+(?:\.\d+)?)원(?:\s*\(([+-]?\d+(?:\.\d+)?)%\))?/);
+
+  if (!matched) {
+    return null;
+  }
+
+  return {
+    pnl: (matched[1] === "-" ? -1 : 1) * Number(matched[2].replace(/,/g, "")),
+    returnRate: matched[3] == null ? null : Number(matched[3]) / 100,
+  };
+}
+
+function formatRealizedTradeDisplay(pnl, returnRate = null) {
+  if (!Number.isFinite(Number(pnl))) {
+    return "";
+  }
+
+  return Number.isFinite(Number(returnRate))
+    ? `${formatSignedCurrency(pnl)} (${formatPercent(returnRate)})`
+    : formatSignedCurrency(pnl);
+}
+
+function buildRealizedTradeKey({ date = "", platform = "", asset = "", symbol = "", quantity = 0 }) {
+  return [
+    String(date || "").trim(),
+    String(platform || "").trim(),
+    String(asset || "").trim(),
+    String(symbol || "").trim().toUpperCase(),
+    normalizeTradeQuantityKey(quantity),
+  ].join("|");
+}
+
+function buildRealizedTradeLookup(realized = []) {
+  return (Array.isArray(realized) ? realized : []).reduce((lookup, entry) => {
+    const key = buildRealizedTradeKey({
+      date: entry.date,
+      platform: entry.platform,
+      asset: entry.assetName || entry.asset,
+      symbol: entry.symbol,
+      quantity: entry.quantity,
+    });
+
+    if (!lookup.has(key)) {
+      lookup.set(key, []);
+    }
+    lookup.get(key).push(entry);
+    return lookup;
+  }, new Map());
+}
+
+function enrichTimelineTradeWithRealized(trade, realizedLookup) {
+  const parsedNote = parseTradeOutcomeNote(trade.note);
+  if (parsedNote) {
+    return {
+      ...trade,
+      realizedPnl: parsedNote.pnl,
+      realizedReturnRate: parsedNote.returnRate,
+      realizedDisplay: formatRealizedTradeDisplay(parsedNote.pnl, parsedNote.returnRate),
+    };
+  }
+
+  if (trade.side !== "매도") {
+    return {
+      ...trade,
+      realizedPnl: null,
+      realizedReturnRate: null,
+      realizedDisplay: "",
+    };
+  }
+
+  const key = buildRealizedTradeKey({
+    date: trade.date,
+    platform: trade.market === "암호화폐" ? "업비트" : trade.broker,
+    asset: trade.asset,
+    symbol: trade.symbol,
+    quantity: trade.quantity,
+  });
+  const matched = realizedLookup.get(key)?.shift() || null;
+
+  return {
+    ...trade,
+    realizedPnl: matched ? Number(matched.pnl || 0) : null,
+    realizedReturnRate: matched ? Number(matched.returnRate || 0) : null,
+    realizedDisplay: matched ? formatRealizedTradeDisplay(matched.pnl, matched.returnRate) : "",
+  };
+}
+
+function normalizeTimelineTrades(trades, basisYear, realized = []) {
   const stockTrades = Array.isArray(trades.stocks) ? trades.stocks : [];
   const cryptoTrades = Array.isArray(trades.crypto) ? trades.crypto : [];
+  const realizedLookup = buildRealizedTradeLookup(realized);
 
   return [
-    ...stockTrades.map((trade) => ({ ...trade, market: trade.market || "국내주식" })),
-    ...cryptoTrades.map((trade) => ({ ...trade, market: "암호화폐", broker: trade.broker || "업비트" })),
+    ...stockTrades.map((trade, sourceIndex) => ({
+      ...trade,
+      market: trade.market || "국내주식",
+      sourceCollection: "stocks",
+      sourceIndex,
+    })),
+    ...cryptoTrades.map((trade, sourceIndex) => ({
+      ...trade,
+      market: "암호화폐",
+      broker: trade.broker || "업비트",
+      sourceCollection: "crypto",
+      sourceIndex,
+    })),
   ]
     .map((trade, index) => {
       const [month, day] = String(trade.date || "")
@@ -1285,7 +2269,12 @@ function normalizeTimelineTrades(trades, basisYear) {
         order: index,
       };
     })
+    .map((trade) => enrichTimelineTradeWithRealized(trade, realizedLookup))
     .sort((left, right) => right.sortValue - left.sortValue || left.order - right.order);
+}
+
+function getTimelineTradeKey(trade) {
+  return `${trade.sourceCollection || "unknown"}:${trade.sourceIndex ?? -1}`;
 }
 
 function groupTimelineTradesByDate(trades) {
@@ -1394,12 +2383,38 @@ function renderTimelineList(trades, basisYear, realizedHistory = []) {
                           <p class="mini-label timeline-market">${trade.market}${trade.broker ? ` · ${trade.broker}` : ""}</p>
                           <strong class="timeline-title">${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</strong>
                         </div>
-                        <span class="trade-side ${trade.side === "매수" ? "trade-side-buy" : "trade-side-sell"}">${trade.side}</span>
+                        <div class="timeline-item-actions">
+                          <span class="trade-side ${trade.side === "매수" ? "trade-side-buy" : "trade-side-sell"}">${trade.side}</span>
+                          <button
+                            type="button"
+                            class="timeline-action timeline-action--edit"
+                            data-trade-edit
+                            data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
+                            data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
+                          >
+                            수정
+                          </button>
+                          <button
+                            type="button"
+                            class="timeline-action timeline-action--delete"
+                            data-trade-delete
+                            data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
+                            data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
+                          >
+                            삭제
+                          </button>
+                        </div>
                       </div>
                       <p class="timeline-meta">
-                        수량 ${formatNumber(trade.quantity)} / 단가 ${formatCurrency(trade.price)} / 수수료 ${formatCurrency(trade.fee)}
+                        수량 ${formatTradeQuantity(trade.quantity)} / 단가 ${formatCurrency(trade.price)} / 수수료 ${formatCurrency(trade.fee)} / 거래금액 ${formatCurrency(trade.amount)}
                       </p>
-                      <strong class="timeline-amount ${trade.side === "매수" ? "loss" : "gain"}">${formatCurrency(trade.amount)}</strong>
+                      <strong class="timeline-realized ${trade.side === "매도" && Number.isFinite(Number(trade.realizedPnl)) ? getSignedPriceToneClass(trade.realizedPnl) : "price-move-neutral"}">
+                        ${
+                          trade.side === "매도" && trade.realizedDisplay
+                            ? `실현손익 ${trade.realizedDisplay}`
+                            : "실현손익 집계 없음"
+                        }
+                      </strong>
                     </article>
                   `
                 )
@@ -1568,11 +2583,15 @@ function renderTimelineCalendar(trades, basisYear, realizedHistory = []) {
   `;
 }
 
-function renderTimeline(trades, basisDateLabel, realizedHistory = []) {
+function renderTimeline(trades, basisDateLabel, realizedHistory = [], realizedEntries = []) {
   const basisYear = Number(basisDateLabel) || getCurrentBasisYear();
   const listContainer = document.querySelector("#timeline");
   const calendarContainer = document.querySelector("#timeline-calendar");
-  const normalizedTrades = normalizeTimelineTrades(trades, basisYear);
+  const normalizedTrades = normalizeTimelineTrades(trades, basisYear, realizedEntries);
+  timelineTradeRegistry = normalizedTrades.reduce((registry, trade) => {
+    registry.set(getTimelineTradeKey(trade), trade);
+    return registry;
+  }, new Map());
   timelineCalendarState = {
     ...timelineCalendarState,
     trades: normalizedTrades,
@@ -1811,7 +2830,27 @@ function openCalendarDetailModal(detailKey) {
               <p class="mini-label">${trade.market}${trade.broker ? ` · ${trade.broker}` : ""}</p>
               <strong>${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</strong>
             </div>
-            <span class="trade-side ${trade.side === "매수" ? "trade-side-buy" : "trade-side-sell"}">${trade.side}</span>
+            <div class="timeline-item-actions">
+              <span class="trade-side ${trade.side === "매수" ? "trade-side-buy" : "trade-side-sell"}">${trade.side}</span>
+              <button
+                type="button"
+                class="timeline-action timeline-action--edit"
+                data-trade-edit
+                data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
+                data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
+              >
+                수정
+              </button>
+              <button
+                type="button"
+                class="timeline-action timeline-action--delete"
+                data-trade-delete
+                data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
+                data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
+              >
+                삭제
+              </button>
+            </div>
           </div>
           <div class="calendar-modal-metrics">
             <div class="calendar-modal-metric">
@@ -1830,10 +2869,10 @@ function openCalendarDetailModal(detailKey) {
               <span>수수료</span>
               <strong>${formatCurrency(trade.fee)}</strong>
             </div>
-            ${trade.note && trade.side === "매도" ? `
+            ${trade.realizedDisplay && trade.side === "매도" ? `
             <div class="calendar-modal-metric calendar-modal-pnl">
               <span>실현손익</span>
-              <strong class="calendar-pnl-value ${trade.note.includes("+") ? "price-move-up" : trade.note.includes("-") ? "price-move-down" : "price-move-neutral"}">${trade.note}</strong>
+              <strong class="calendar-pnl-value ${Number.isFinite(Number(trade.realizedPnl)) ? getSignedPriceToneClass(trade.realizedPnl) : "price-move-neutral"}">${trade.realizedDisplay}</strong>
             </div>
             ` : ""}
           </div>
@@ -1865,6 +2904,47 @@ function bindCalendarDetailModal(modal) {
   }
 
   modal.addEventListener("click", (event) => {
+    const editButton = event.target.closest("[data-trade-edit]");
+    if (editButton && modal.contains(editButton)) {
+      const trade = timelineTradeRegistry.get(`${editButton.dataset.tradeCollection}:${editButton.dataset.tradeIndex}`);
+      if (trade) {
+        closeCalendarDetailModal();
+        tradeModalController?.openEdit?.(trade);
+      }
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-trade-delete]");
+    if (deleteButton && modal.contains(deleteButton)) {
+      const trade = timelineTradeRegistry.get(`${deleteButton.dataset.tradeCollection}:${deleteButton.dataset.tradeIndex}`);
+      if (!trade) {
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `정말 삭제하실건가요?\n\n거래내역에서 제거합니다.\n대상: ${getDisplayAssetName({
+          asset: trade.asset,
+          symbol: trade.symbol,
+          market: getMarketLabelFromMetaMarket(trade.market),
+        })}`
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      deleteButton.disabled = true;
+      deleteTimelineTrade(trade)
+        .then(() => {
+          closeCalendarDetailModal();
+        })
+        .catch((error) => {
+          console.error(error);
+          deleteButton.disabled = false;
+          window.alert(error.message || "거래 삭제에 실패했습니다.");
+        });
+      return;
+    }
+
     if (event.target.closest("[data-calendar-modal-close]")) {
       closeCalendarDetailModal();
     }
@@ -1911,6 +2991,17 @@ function activateTimelineView(section, viewName) {
   });
 }
 
+async function deleteTimelineTrade(trade) {
+  if (!trade?.sourceCollection || !Number.isInteger(trade?.sourceIndex)) {
+    throw new Error("삭제할 거래 정보를 찾지 못했습니다.");
+  }
+
+  await applyTradeMutation("DELETE", {
+    collection: trade.sourceCollection,
+    index: trade.sourceIndex,
+  });
+}
+
 function bindTimelineSection(section) {
   if (!section || section.dataset.timelineBound === "true") {
     return;
@@ -1930,6 +3021,45 @@ function bindTimelineSection(section) {
     const tab = event.target.closest(".view-tab");
     if (tab && section.contains(tab)) {
       activateTimelineView(section, tab.dataset.viewTarget || "list");
+      return;
+    }
+
+    const editButton = event.target.closest("[data-trade-edit]");
+    if (editButton && section.contains(editButton)) {
+      const key = `${editButton.dataset.tradeCollection}:${editButton.dataset.tradeIndex}`;
+      const trade = timelineTradeRegistry.get(key);
+      if (trade) {
+        closeCalendarDetailModal();
+        tradeModalController?.openEdit?.(trade);
+      }
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-trade-delete]");
+    if (deleteButton && section.contains(deleteButton)) {
+      const key = `${deleteButton.dataset.tradeCollection}:${deleteButton.dataset.tradeIndex}`;
+      const trade = timelineTradeRegistry.get(key);
+      if (!trade) {
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `정말 삭제하실건가요?\n\n거래내역에서 제거합니다.\n대상: ${getDisplayAssetName({
+          asset: trade.asset,
+          symbol: trade.symbol,
+          market: getMarketLabelFromMetaMarket(trade.market),
+        })}`
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      deleteButton.disabled = true;
+      deleteTimelineTrade(trade).catch((error) => {
+        console.error(error);
+        deleteButton.disabled = false;
+        window.alert(error.message || "거래 삭제에 실패했습니다.");
+      });
       return;
     }
 
@@ -1966,7 +3096,7 @@ function renderChartStats(charts) {
     : null;
   setChartStat(
     "#realized-chart-stat",
-    "누적 실현손익",
+    "매도 체결 누적",
     latestHistory ? formatSignedCurrency(latestHistory.cumulativePnl) : formatCurrency(0)
   );
 }
@@ -2265,6 +3395,7 @@ function normalizeTargetsForDisplay(targets = {}) {
 function renderTargetListItem(item = {}, tone = "neutral") {
   const quote = item.liveQuote || null;
   const movementClass = getQuoteToneClass(quote);
+  const marketLabel = getMarketLabelFromMetaMarket(item.market);
   return `
     <li class="targets-list-item">
       <div class="targets-item-head">
@@ -2272,7 +3403,19 @@ function renderTargetListItem(item = {}, tone = "neutral") {
           <span class="targets-item-name">${escapeHtml(getDisplayAssetName(item))}</span>
           <span class="targets-item-note">${escapeHtml(buildTargetMeta(item))}</span>
         </div>
-        <span class="targets-item-badge targets-item-badge--${tone}">${escapeHtml(getTargetBadgeLabel(item))}</span>
+        <div class="targets-item-actions">
+          <span class="targets-item-badge targets-item-badge--${tone}">${escapeHtml(getTargetBadgeLabel(item))}</span>
+          <button
+            type="button"
+            class="targets-item-remove"
+            data-target-remove
+            data-target-market="${escapeHtml(marketLabel)}"
+            data-target-symbol="${escapeHtml(item.symbol || "")}"
+            data-target-name="${escapeHtml(item.name || "")}"
+          >
+            삭제
+          </button>
+        </div>
       </div>
       <div class="targets-item-price">
         <strong class="${movementClass}">${escapeHtml(formatQuotePrimary(quote, item))}</strong>
@@ -2303,31 +3446,58 @@ function collectTrackedQuoteItems(holdings = [], targets = {}) {
     "kr-stock": 2,
   };
 
-  holdings.forEach((item) => {
-    const key = item.symbol || item.name || item.asset;
-    registry.set(key, {
-      scope: "holding",
-      name: item.name || item.asset,
-      symbol: item.symbol || "",
-      market: item.market || "",
-      quantity: Number(item.quantity || 0),
-      liveQuote: item.liveQuote || null,
+  holdings
+    .filter((item) => Number(item.quantity || 0) > 0)
+    .forEach((item) => {
+      const key = item.symbol || item.name || item.asset;
+      if (!key) {
+        return;
+      }
+
+      registry.set(key, {
+        scope: "holding",
+        trackedByHolding: true,
+        trackedByTarget: false,
+        name: item.name || item.asset,
+        symbol: item.symbol || "",
+        market: item.market || "",
+        quantity: Number(item.quantity || 0),
+        liveQuote: item.liveQuote || null,
+      });
     });
-  });
 
   (targets.groups || []).forEach((group) => {
     (group.items || []).forEach((item) => {
       const key = item.symbol || item.name;
-      if (!registry.has(key)) {
-        registry.set(key, {
-          scope: "target",
-          name: item.name,
-          symbol: item.symbol || "",
-          market: item.market || "",
-          quantity: 0,
-          liveQuote: item.liveQuote || null,
-        });
+      if (!key) {
+        return;
       }
+
+      const hasDisplayName = String(item.name || "").trim().length > 0;
+      const hasSymbol = String(item.symbol || "").trim().length > 0;
+      if (!hasDisplayName && !hasSymbol) {
+        return;
+      }
+
+      if (registry.has(key)) {
+        const existing = registry.get(key);
+        registry.set(key, {
+          ...existing,
+          trackedByTarget: true,
+        });
+        return;
+      }
+
+      registry.set(key, {
+        scope: "target",
+        trackedByHolding: false,
+        trackedByTarget: true,
+        name: item.name,
+        symbol: item.symbol || "",
+        market: item.market || "",
+        quantity: 0,
+        liveQuote: item.liveQuote || null,
+      });
     });
   });
 
@@ -2362,6 +3532,47 @@ function buildInstrumentMeta(instrument, quote) {
   const statusCopy = quote?.isDelayed ? "업데이트 지연" : null;
 
   return [instrument.symbol || scopeCopy, statusCopy || scopeCopy].filter(Boolean).join(" · ");
+}
+
+function toFiniteNumber(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const numeric = Number(trimmed);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  return null;
+}
+
+function formatLivePricePrimary(quote, instrument = {}, fx = {}) {
+  if (!quote?.available) {
+    return "연결 대기";
+  }
+
+  const krwValue = toFiniteNumber(quote.priceKrw);
+  const globalUsdValue = toFiniteNumber(quote.globalPriceUsd);
+  const fxRate = toFiniteNumber(fx.usdkrw);
+  const usdValue =
+    instrument.market === "us-stock"
+      ? toFiniteNumber(quote.priceUsd)
+      : globalUsdValue != null
+        ? globalUsdValue
+        : krwValue != null && fxRate != null && fxRate > 0
+          ? krwValue / fxRate
+          : null;
+
+  if (krwValue != null && usdValue != null) {
+    return `${formatCurrency(krwValue)} / ${formatUsd(usdValue)}`;
+  }
+
+  return formatQuotePrimary(quote, instrument);
 }
 
 function buildTargetMeta(item) {
@@ -2458,35 +3669,65 @@ function formatQuotePrimary(quote, instrument = {}) {
   return "가격 없음";
 }
 
-function formatQuoteSecondary(quote, instrument = {}, options = {}) {
+function formatQuoteSecondaryParts(quote, instrument = {}, options = {}) {
   if (!quote?.available) {
-    return quote?.error || "실시간 연결 준비 중";
+    return [{ text: quote?.error || "실시간 연결 준비 중", tone: "price-move-neutral" }];
   }
 
   const parts = [];
   const includeKimchiPremium = Boolean(options.includeKimchiPremium && instrument.market === "crypto");
+  const includeKrwForUsStock = options.includeKrwForUsStock !== false;
 
-  if (instrument.market === "us-stock" && Number.isFinite(Number(quote.priceKrw))) {
-    parts.push(`원화 ${formatCurrency(Number(quote.priceKrw))}`);
+  if (instrument.market === "us-stock" && includeKrwForUsStock) {
+    const priceKrw = toFiniteNumber(quote.priceKrw);
+    if (priceKrw != null) {
+      parts.push({ text: `원화 ${formatCurrency(priceKrw)}`, tone: "price-move-neutral" });
+    }
   }
 
-  if (Number.isFinite(Number(quote.changePercent))) {
-    parts.push(formatSignedPercent(Number(quote.changePercent)));
+  const kimchiPremium = toFiniteNumber(quote.kimchiPremiumPercent);
+  if (includeKimchiPremium && kimchiPremium != null) {
+    parts.push({
+      text: `김프 ${formatSignedPercent(kimchiPremium)}`,
+      tone: getSignedPriceToneClass(kimchiPremium),
+    });
   }
 
-  if (includeKimchiPremium && Number.isFinite(Number(quote.kimchiPremiumPercent))) {
-    parts.push(`김프 ${formatSignedPercent(Number(quote.kimchiPremiumPercent))}`);
+  const changePercent = toFiniteNumber(quote.changePercent);
+  if (changePercent != null) {
+    parts.push({
+      text: formatSignedPercent(changePercent),
+      tone: getSignedPriceToneClass(changePercent),
+    });
   }
 
   if (!parts.length && instrument.scope === "holding") {
-    parts.push(`보유 ${formatNumber(instrument.quantity || 0)}`);
+    parts.push({ text: `보유 ${formatNumber(instrument.quantity || 0)}`, tone: "price-move-neutral" });
   }
 
   if (!parts.length) {
-    parts.push(quote.isDelayed ? "업데이트 지연" : buildMarketLabel(instrument.market));
+    parts.push({
+      text: quote.isDelayed ? "업데이트 지연" : buildMarketLabel(instrument.market),
+      tone: "price-move-neutral",
+    });
   }
 
-  return parts.join(" · ");
+  return parts;
+}
+
+function renderQuoteSecondaryMarkup(quote, instrument = {}, options = {}) {
+  return formatQuoteSecondaryParts(quote, instrument, options)
+    .map((part, index) => {
+      const separator = index === 0 ? "" : '<span class="price-secondary-separator"> · </span>';
+      return `${separator}<span class="price-secondary-fragment ${part.tone}">${escapeHtml(part.text)}</span>`;
+    })
+    .join("");
+}
+
+function formatQuoteSecondary(quote, instrument = {}, options = {}) {
+  return formatQuoteSecondaryParts(quote, instrument, options)
+    .map((part) => part.text)
+    .join(" · ");
 }
 
 function text(selector, value) {
@@ -2573,6 +3814,18 @@ function renderCurrentDateBadge(now = new Date()) {
   text("#basis-date", formatCurrentDateLabel(now));
 }
 
+function renderRealizedChartNote(metadata = {}) {
+  const note = document.querySelector("#realized-chart-note");
+  if (!note) {
+    return;
+  }
+
+  const performanceLabel = formatPerformanceStartLabel(metadata?.realizedPerformanceStartDate);
+  note.textContent = performanceLabel
+    ? `${performanceLabel} 이후 매도 체결만 누적 실현손익에 반영합니다.`
+    : "실시간 가격이 아니라 실제 매도 체결이 생길 때만 바뀝니다.";
+}
+
 function scheduleCurrentDateBadgeRefresh() {
   renderCurrentDateBadge();
 
@@ -2594,7 +3847,33 @@ function formatCurrentDateLabel(value = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  return `${year}.${month}.${day}`;
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  const weekday = weekdays[date.getDay()] || "";
+  return `${year}.${month}.${day} (${weekday})`;
+}
+
+function formatPerformanceStartLabel(value) {
+  const match = String(value || "")
+    .trim()
+    .match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+
+  if (!match) {
+    return "";
+  }
+
+  return `${Number(match[2])}/${String(Number(match[3])).padStart(2, "0")}`;
+}
+
+function parsePerformanceStartDateValue(value) {
+  const match = String(value || "")
+    .trim()
+    .match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
 function formatCurrentMonthDay(value = new Date()) {
@@ -2673,9 +3952,13 @@ function initTradeModal() {
   const modal = document.querySelector("#trade-modal");
   const openBtn = document.querySelector("#btn-add-trade");
   const form = document.querySelector("#trade-form");
+  const modalEyebrow = document.querySelector("#trade-modal-eyebrow");
+  const modalTitle = document.querySelector("#trade-modal-title");
+  const modalHelper = document.querySelector("#trade-modal-helper");
   const tradeDateInput = document.querySelector("#trade-date");
   const marketSelect = document.querySelector("#trade-market");
   const assetInput = document.querySelector("#trade-asset");
+  const assetSuggestionPanel = document.querySelector("#trade-asset-suggestions");
   const brokerInput = document.querySelector("#trade-broker");
   const brokerGroup = document.querySelector("[data-trade-broker-group]");
   const brokerHelp = document.querySelector("#trade-broker-help");
@@ -2693,6 +3976,7 @@ function initTradeModal() {
   const status = document.querySelector("#trade-form-status");
   const submitButton = form?.querySelector(".btn-primary");
   const cancelButton = form?.querySelector(".btn-secondary");
+  let editingTradeRef = null;
 
   if (!modal || !openBtn || !form) {
     console.error("거래 추가 모달 요소를 찾을 수 없습니다");
@@ -2711,11 +3995,53 @@ function initTradeModal() {
   const setSubmitting = (isSubmitting) => {
     if (submitButton) {
       submitButton.disabled = isSubmitting;
-      submitButton.textContent = isSubmitting ? "저장 중..." : "저장";
+      if (isSubmitting) {
+        submitButton.textContent = editingTradeRef ? "수정 중..." : "저장 중...";
+      } else {
+        submitButton.textContent = editingTradeRef ? "수정 저장" : "저장";
+      }
     }
     if (cancelButton) {
       cancelButton.disabled = isSubmitting;
     }
+  };
+
+  const setModalMode = (mode = "create") => {
+    const isEditing = mode === "edit";
+    editingTradeRef = isEditing ? editingTradeRef : null;
+
+    if (modalEyebrow) {
+      modalEyebrow.textContent = isEditing ? "Edit Trade" : "Quick Entry";
+    }
+    if (modalTitle) {
+      modalTitle.textContent = isEditing ? "거래 수정" : "거래 추가";
+    }
+    if (modalHelper) {
+      modalHelper.textContent = isEditing
+        ? "기존 거래를 수정하면 보유수량과 손익도 함께 다시 계산됩니다."
+        : "필수값만 입력하면 거래금액과 수수료는 자동 계산됩니다.";
+    }
+    if (submitButton) {
+      submitButton.textContent = isEditing ? "수정 저장" : "저장";
+    }
+    marketSelect.disabled = isEditing;
+  };
+
+  const formatTradeAssetInputValue = (trade) => {
+    const suggestion =
+      resolveBestAssetAutocomplete(trade.market, trade.symbol || trade.asset) || resolveBestAssetAutocomplete(trade.market, trade.asset);
+    if (suggestion) {
+      return suggestion.value;
+    }
+
+    const marketValue =
+      trade.market === "암호화폐" ? "crypto" : trade.market === "미국주식" ? "us-stock" : trade.market === "국내주식" ? "kr-stock" : "";
+    return formatAssetInputValue({
+      name: trade.asset,
+      asset: trade.asset,
+      symbol: trade.symbol || "",
+      market: marketValue,
+    }, trade.market);
   };
 
   const parseBasisMonthDay = () => {
@@ -2741,16 +4067,22 @@ function initTradeModal() {
       if (["ETH", "이더리움", "이더리움(ETH)"].includes(raw) || upper === "ETH") {
         return "ETH";
       }
-      if (["XRP", "엑스알피", "엑스알피(XRP)"].includes(raw) || upper === "XRP") {
+      if (["XRP", "엑스알피", "엑스알피(XRP)", "엑스알피(리플)", "리플"].includes(raw) || upper === "XRP") {
         return "XRP";
       }
     }
 
     if (market === "미국주식") {
-      if (["PLTR", "팔란티어"].includes(raw) || upper === "PLTR") {
+      if (
+        ["PLTR", "팔란티어", "Palantir Technologies", "Palantir Technologies (PLTR)"].includes(raw) ||
+        upper === "PLTR"
+      ) {
         return "팔란티어";
       }
-      if (["CRCL", "써클"].includes(raw) || upper === "CRCL") {
+      if (
+        ["CRCL", "써클", "Circle Internet Group", "Circle Internet Group (CRCL)"].includes(raw) ||
+        upper === "CRCL"
+      ) {
         return "써클";
       }
     }
@@ -2790,6 +4122,14 @@ function initTradeModal() {
 
     input.value = formatGroupedInputValue(input.value);
   };
+  const autocomplete = setupAssetAutocomplete({
+    input: assetInput,
+    marketSelect,
+    panel: assetSuggestionPanel,
+    onSelect: () => {
+      syncAssetChipState();
+    },
+  });
 
   const renderBrokerOptions = (market, preferredValue = "") => {
     if (!brokerInput) {
@@ -2896,10 +4236,10 @@ function initTradeModal() {
     if (assetInput) {
       assetInput.placeholder =
         market === "국내주식"
-          ? "삼성전자 / SK하이닉스"
+          ? "삼성전자(005930)"
           : market === "미국주식"
-            ? "팔란티어 / 써클 / 애플"
-            : "비트코인 / 이더리움 / 엑스알피";
+            ? "Apple Inc. (AAPL)"
+            : "솔라나(SOL)";
     }
 
     if (priceLabel) {
@@ -2929,20 +4269,49 @@ function initTradeModal() {
   };
 
   const resetFormState = () => {
+    editingTradeRef = null;
     form.reset();
     amountInput.value = "";
     feeInput.value = "";
     marketSelect.value = "암호화폐";
     sideSelect.value = "매수";
     tradeDateInput.value = parseBasisMonthDay();
+    setModalMode("create");
     syncTradeFormMode();
   };
 
+  const openEditModal = (trade) => {
+    editingTradeRef = {
+      collection: trade.sourceCollection,
+      index: trade.sourceIndex,
+    };
+    setModalMode("edit");
+    form.reset();
+    tradeDateInput.value = trade.date || parseBasisMonthDay();
+    marketSelect.value = trade.market || "암호화폐";
+    sideSelect.value = trade.side || "매수";
+    assetInput.value = formatTradeAssetInputValue(trade);
+    quantityInput.value = formatGroupedInputValue(trade.quantity);
+    priceInput.value = formatGroupedInputValue(trade.price);
+    if (brokerInput) {
+      brokerInput.value = trade.broker || "";
+    }
+    if (form.elements.note) {
+      form.elements.note.value = trade.note || "";
+    }
+    syncTradeFormMode();
+    calculateAmount();
+  };
+
   // 모달 열기
-  const openModal = () => {
+  const openModal = (trade = null) => {
     setStatus("");
     setSubmitting(false);
-    resetFormState();
+    if (trade) {
+      openEditModal(trade);
+    } else {
+      resetFormState();
+    }
     modal.hidden = false;
     modal.setAttribute("aria-hidden", "false");
     modal.classList.add("is-open");
@@ -2978,27 +4347,6 @@ function initTradeModal() {
     }
   });
 
-  const persistTrade = async (tradeData) => {
-    if (window.location.protocol === "file:") {
-      throw new Error("거래 저장은 로컬 서버에서만 가능합니다. `node scripts/dev-server.js` 실행 후 접속하세요.");
-    }
-
-    const response = await fetch("./api/trades", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(tradeData),
-    });
-
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new Error(payload?.error || "거래 저장에 실패했습니다.");
-    }
-
-    return payload;
-  };
-
   quantityInput.addEventListener("input", () => {
     syncFormattedNumericField(quantityInput);
     calculateAmount();
@@ -3017,6 +4365,7 @@ function initTradeModal() {
     chip.addEventListener("click", () => {
       marketSelect.value = chip.dataset.market || "암호화폐";
       assetInput.value = chip.dataset.displayAsset || chip.dataset.asset || "";
+      autocomplete.hide();
       syncTradeFormMode();
       calculateAmount();
     });
@@ -3027,6 +4376,7 @@ function initTradeModal() {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     setStatus("");
+    autocomplete.syncValue();
 
     const formData = new FormData(form);
     const tradeData = {
@@ -3044,15 +4394,25 @@ function initTradeModal() {
 
     try {
       setSubmitting(true);
-      const updatedPortfolio = await persistTrade(tradeData);
-      livePortfolioSnapshot = null;
-      applyPortfolioData(updatedPortfolio, null, { renderMode: "full" });
+      if (editingTradeRef) {
+        await applyTradeMutation("PUT", {
+          collection: editingTradeRef.collection,
+          index: editingTradeRef.index,
+          trade: tradeData,
+        });
+      } else {
+        await applyTradeMutation("POST", tradeData);
+      }
       closeModal();
-      await refreshLivePortfolio();
     } catch (error) {
       console.error(error);
-      setStatus(error.message || "거래 저장에 실패했습니다.", "error");
+      setStatus(error.message || (editingTradeRef ? "거래 수정에 실패했습니다." : "거래 저장에 실패했습니다."), "error");
       setSubmitting(false);
     }
   });
+
+  tradeModalController = {
+    openCreate: () => openModal(),
+    openEdit: (trade) => openModal(trade),
+  };
 }

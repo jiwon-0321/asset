@@ -1,6 +1,6 @@
 const fs = require("fs/promises");
 const path = require("path");
-const { normalizeHoldingMetadata, resolveAssetCategory } = require("../lib/asset-metadata");
+const { normalizeHoldingMetadata, normalizeTargetItem, resolveAssetCategory } = require("../lib/asset-metadata");
 const BACKUP_LIMIT = 10;
 
 const quantityFormatter = new Intl.NumberFormat("ko-KR", {
@@ -50,6 +50,66 @@ const PRICE_KEY_BY_ASSET = {
   ETH: "eth",
 };
 
+function parseTradeAssetDescriptor(assetInput, market) {
+  const raw = String(assetInput || "").trim();
+  if (!raw) {
+    return {
+      asset: "",
+      symbol: "",
+    };
+  }
+
+  const matched = raw.match(/^(.+?)\s*\(([^()]+)\)\s*$/);
+  const namePart = matched ? matched[1].trim() : raw;
+  const codePart = matched ? matched[2].trim().toUpperCase() : "";
+  const upperRaw = raw.toUpperCase();
+
+  if (market === "암호화폐") {
+    let ticker = codePart;
+    if (!ticker && /^[A-Z0-9]{2,15}$/.test(upperRaw)) {
+      ticker = upperRaw;
+    }
+    if (!ticker) {
+      if (namePart === "비트코인" || upperRaw === "BTC") {
+        ticker = "BTC";
+      } else if (namePart === "ETH" || namePart === "이더리움" || upperRaw === "ETH") {
+        ticker = "ETH";
+      } else if (namePart === "XRP" || namePart === "엑스알피" || upperRaw === "XRP") {
+        ticker = "XRP";
+      }
+    }
+
+    return {
+      asset: matched ? namePart : ticker || namePart,
+      symbol: ticker ? `KRW-${ticker}` : "",
+    };
+  }
+
+  if (market === "미국주식") {
+    let ticker = codePart;
+    if (!ticker && /^[A-Z.\-]{1,15}$/.test(upperRaw)) {
+      ticker = upperRaw;
+    }
+
+    return {
+      asset: matched ? namePart : raw,
+      symbol: ticker,
+    };
+  }
+
+  if (market === "국내주식") {
+    return {
+      asset: matched ? namePart : raw,
+      symbol: codePart && /^[0-9]{6}$/.test(codePart) ? codePart : "",
+    };
+  }
+
+  return {
+    asset: raw,
+    symbol: "",
+  };
+}
+
 function normalizeNumber(value, decimals = 8) {
   if (!Number.isFinite(value)) {
     return 0;
@@ -93,6 +153,18 @@ function parseBasisDateLabel(label) {
   };
 }
 
+function parsePerformanceStartDate(value) {
+  const match = String(value || "")
+    .trim()
+    .match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
 function parseMonthDay(value) {
   const match = String(value || "")
     .trim()
@@ -122,6 +194,22 @@ function formatBasisDateLabel(year, month, day) {
 
 function compareDateOnly(left, right) {
   return left.getTime() - right.getTime();
+}
+
+function filterRealizedForPerformance(realized = [], basisDateLabel, performanceStartDate) {
+  const startDate = parsePerformanceStartDate(performanceStartDate);
+  if (!startDate) {
+    return Array.isArray(realized) ? [...realized] : [];
+  }
+
+  const year = parseBasisYear(basisDateLabel);
+  return (Array.isArray(realized) ? realized : []).filter((item) => {
+    try {
+      return compareDateOnly(toTradeDate(item.date, year), startDate) >= 0;
+    } catch (error) {
+      return true;
+    }
+  });
 }
 
 function calculateTradeFee({ broker, side, amount, market }) {
@@ -203,7 +291,8 @@ function updateAssetPrice(analytics, asset, price) {
   analytics.assetPrices[asset] = normalizeMoney(price);
 }
 
-function normalizeTradeInput(input, basisLabel) {
+function normalizeTradeInput(input, basisLabel, options = {}) {
+  const allowPastDate = options.allowPastDate === true;
   const market = String(input.market || "").trim();
   if (!["국내주식", "미국주식", "암호화폐"].includes(market)) {
     throw new Error("시장 값을 확인하세요.");
@@ -229,11 +318,12 @@ function normalizeTradeInput(input, basisLabel) {
   const tradeDate = toTradeDate(date, basisYear);
   const basisDate = basis ? new Date(basis.year, basis.month - 1, basis.day) : tradeDate;
 
-  if (compareDateOnly(tradeDate, basisDate) < 0) {
+  if (!allowPastDate && compareDateOnly(tradeDate, basisDate) < 0) {
     throw new Error("기준일 이전의 과거 거래는 추가할 수 없습니다.");
   }
 
-  const asset = String(input.asset || "").trim();
+  const parsedAsset = parseTradeAssetDescriptor(input.asset, market);
+  const asset = parsedAsset.asset;
   if (!asset) {
     throw new Error("자산명을 입력하세요.");
   }
@@ -273,6 +363,7 @@ function normalizeTradeInput(input, basisLabel) {
     market,
     broker,
     asset,
+    symbol: parsedAsset.symbol,
     side,
     quantity: normalizeQuantity(quantity),
     price: normalizeMoney(price),
@@ -284,6 +375,196 @@ function normalizeTradeInput(input, basisLabel) {
 
 function getTradeCollectionKey(trade) {
   return trade.market === "암호화폐" ? "crypto" : "stocks";
+}
+
+function getTargetGroupMetaByMarket(market) {
+  if (market === "암호화폐") {
+    return {
+      title: "암호화폐",
+      label: "Crypto",
+      tone: "crypto",
+      summary: "가격이 열리면 가장 먼저 체크할 메인 코인",
+    };
+  }
+
+  if (market === "미국주식") {
+    return {
+      title: "해외주식",
+      label: "Global Equity",
+      tone: "global",
+      summary: "중장기 관점에서 우선순위가 높은 미국 주식",
+    };
+  }
+
+  return {
+    title: "국내주식",
+    label: "Korea Equity",
+    tone: "domestic",
+    summary: "국내주식은 아직 후보를 비워두고 시장 강도부터 확인",
+    emptyTitle: "아직 없음",
+    emptyDescription: "국내주식은 다시 보고 싶은 섹터가 잡히는 순간 바로 추가합니다.",
+  };
+}
+
+function getTargetItemMetadataFromInput(input) {
+  const parsedAsset = parseTradeAssetDescriptor(input.asset, input.market);
+
+  if (input.market === "암호화폐") {
+    return normalizeTargetItem({
+      name: parsedAsset.asset || String(input.asset || "").trim(),
+      symbol: parsedAsset.symbol,
+      market: "crypto",
+      currency: "KRW",
+      priceSource: "upbit",
+    });
+  }
+
+  if (input.market === "미국주식") {
+    return normalizeTargetItem({
+      name: parsedAsset.asset || String(input.asset || "").trim(),
+      symbol: parsedAsset.symbol,
+      market: "us-stock",
+      currency: "USD",
+      priceSource: "twelve-data",
+    });
+  }
+
+  return normalizeTargetItem({
+    name: parsedAsset.asset || String(input.asset || "").trim(),
+    symbol: parsedAsset.symbol,
+    market: "kr-stock",
+    currency: "KRW",
+    priceSource: "",
+  });
+}
+
+function normalizeTargetInput(input = {}) {
+  const market = String(input.market || "").trim();
+  if (!["국내주식", "미국주식", "암호화폐"].includes(market)) {
+    throw new Error("관심종목 시장 값을 확인하세요.");
+  }
+
+  const asset = String(input.asset || "").trim();
+  if (!asset) {
+    throw new Error("관심종목 자산명을 입력하세요.");
+  }
+
+  const item = getTargetItemMetadataFromInput({ market, asset });
+  if (!item.name) {
+    throw new Error("관심종목 이름을 확인하세요.");
+  }
+
+  return {
+    market,
+    item,
+  };
+}
+
+function appendTarget(portfolio, input) {
+  const next = structuredClone(portfolio);
+  const normalized = normalizeTargetInput(input);
+  const groupMeta = getTargetGroupMetaByMarket(normalized.market);
+  const groups = Array.isArray(next.targets?.groups) ? [...next.targets.groups] : [];
+  const targetMarket =
+    normalized.market === "암호화폐" ? "crypto" : normalized.market === "미국주식" ? "us-stock" : "kr-stock";
+  const groupIndex = groups.findIndex((group) => {
+    const firstItem = Array.isArray(group.items) ? group.items[0] : [];
+    return group.title === groupMeta.title || group.tone === groupMeta.tone || firstItem?.market === targetMarket;
+  });
+
+  const targetGroup =
+    groupIndex === -1
+      ? {
+          ...groupMeta,
+          items: [],
+        }
+      : {
+          ...groups[groupIndex],
+          items: Array.isArray(groups[groupIndex].items) ? [...groups[groupIndex].items] : [],
+        };
+
+  const duplicateExists = targetGroup.items.some((item) => {
+    const normalizedItem = normalizeTargetItem(item);
+    if (normalized.item.symbol && normalizedItem.symbol) {
+      return normalized.item.symbol === normalizedItem.symbol;
+    }
+    return normalized.item.name === normalizedItem.name;
+  });
+
+  if (duplicateExists) {
+    throw new Error("이미 관심종목에 있는 자산입니다.");
+  }
+
+  targetGroup.items.push(normalized.item);
+
+  if (groupIndex === -1) {
+    groups.push(targetGroup);
+  } else {
+    groups[groupIndex] = targetGroup;
+  }
+
+  next.targets = {
+    ...(next.targets || {}),
+    groups,
+  };
+
+  return next;
+}
+
+function normalizeTargetDeletionInput(input = {}) {
+  const market = String(input.market || "").trim();
+  if (!["국내주식", "미국주식", "암호화폐"].includes(market)) {
+    throw new Error("관심종목 시장 값을 확인하세요.");
+  }
+
+  const symbol = String(input.symbol || "").trim().toUpperCase();
+  const name = String(input.name || input.asset || "").trim();
+  const parsedAsset = parseTradeAssetDescriptor(symbol || name, market);
+
+  if (!symbol && !name && !parsedAsset.symbol && !parsedAsset.asset) {
+    throw new Error("삭제할 관심종목 정보를 확인하세요.");
+  }
+
+  return {
+    market,
+    symbol: symbol || parsedAsset.symbol,
+    name: name || parsedAsset.asset,
+  };
+}
+
+function deleteTarget(portfolio, input) {
+  const next = structuredClone(portfolio);
+  const normalized = normalizeTargetDeletionInput(input);
+  let removed = false;
+
+  const groups = Array.isArray(next.targets?.groups) ? next.targets.groups : [];
+  next.targets = {
+    ...(next.targets || {}),
+    groups: groups.map((group) => {
+      const items = Array.isArray(group.items) ? group.items : [];
+      const filteredItems = items.filter((item) => {
+        const normalizedItem = normalizeTargetItem(item);
+        const matchesSymbol = normalized.symbol && normalizedItem.symbol && normalized.symbol === normalizedItem.symbol;
+        const matchesName = normalized.name && normalized.name === normalizedItem.name;
+        if (matchesSymbol || matchesName) {
+          removed = true;
+          return false;
+        }
+        return true;
+      });
+
+      return {
+        ...group,
+        items: filteredItems,
+      };
+    }),
+  };
+
+  if (!removed) {
+    throw new Error("삭제할 관심종목을 찾지 못했습니다.");
+  }
+
+  return next;
 }
 
 function getCashPlatformName(broker) {
@@ -355,8 +636,11 @@ function revalueHoldings(holdings, analytics) {
 
 function buildRealizedEntry(trade, basis) {
   const parsed = parseProfitNote(trade.note);
-  const pnl = parsed ? parsed.pnl : normalizeMoney(trade.amount - trade.fee - basis);
-  const returnRate = parsed && parsed.returnRate != null ? parsed.returnRate : basis ? normalizeRate(pnl / basis) : 0;
+  const overridePnl = Number.isFinite(Number(trade.realizedPnlOverride)) ? normalizeMoney(Number(trade.realizedPnlOverride)) : null;
+  const overrideReturnRate =
+    Number.isFinite(Number(trade.realizedReturnRateOverride)) ? normalizeRate(Number(trade.realizedReturnRateOverride)) : null;
+  const pnl = overridePnl ?? (parsed ? parsed.pnl : normalizeMoney(trade.amount - trade.fee - basis));
+  const returnRate = overrideReturnRate ?? (parsed && parsed.returnRate != null ? parsed.returnRate : basis ? normalizeRate(pnl / basis) : 0);
   const unit = trade.market === "암호화폐" ? "개" : "주";
 
   return {
@@ -364,6 +648,7 @@ function buildRealizedEntry(trade, basis) {
     platform: trade.broker,
     asset: `${trade.asset} ${formatQuantityForLabel(trade.quantity)}${unit} 매도`,
     assetName: trade.asset,
+    symbol: trade.symbol || "",
     quantity: normalizeQuantity(trade.quantity),
     pnl,
     returnRate,
@@ -378,22 +663,23 @@ function getHoldingMetadataFromTrade(trade) {
       currency: "KRW",
       priceSource: "upbit",
       symbol:
-        trade.asset === "비트코인" || trade.asset === "BTC"
+        trade.symbol ||
+        (trade.asset === "비트코인" || trade.asset === "BTC"
           ? "KRW-BTC"
           : trade.asset === "ETH"
             ? "KRW-ETH"
             : trade.asset === "XRP"
               ? "KRW-XRP"
-              : "",
+              : ""),
     };
   }
 
   if (trade.market === "미국주식") {
     return {
       market: "us-stock",
-      currency: "KRW",
+      currency: "USD",
       priceSource: "twelve-data",
-      symbol: /^[A-Z.\-]+$/.test(String(trade.asset || "").trim()) ? String(trade.asset).trim() : "",
+      symbol: trade.symbol || (/^[A-Z.\-]+$/.test(String(trade.asset || "").trim()) ? String(trade.asset).trim() : ""),
     };
   }
 
@@ -401,20 +687,25 @@ function getHoldingMetadataFromTrade(trade) {
     market: "kr-stock",
     currency: "KRW",
     priceSource: "",
-    symbol: "",
+    symbol: trade.symbol || "",
   };
 }
 
 function applyTradeToHoldings(holdings, trade, analytics) {
   const next = holdings.map((item) => ({ ...item }));
   const platform = trade.market === "암호화폐" ? "업비트" : trade.broker;
-  const index = next.findIndex((item) => item.platform === platform && item.asset === trade.asset);
+  const tradeMetadata = getHoldingMetadataFromTrade(trade);
+  const index = next.findIndex(
+    (item) =>
+      item.platform === platform &&
+      ((tradeMetadata.symbol && item.symbol === tradeMetadata.symbol) || item.asset === trade.asset)
+  );
   const currentHolding =
     index === -1
       ? normalizeHoldingMetadata({
           platform,
           asset: trade.asset,
-          ...getHoldingMetadataFromTrade(trade),
+          ...tradeMetadata,
           quantity: 0,
           averagePrice: 0,
           valuation: 0,
@@ -422,7 +713,7 @@ function applyTradeToHoldings(holdings, trade, analytics) {
         })
       : {
           ...next[index],
-          ...(!next[index].market ? getHoldingMetadataFromTrade(trade) : {}),
+          ...((!next[index].market || !next[index].symbol || !next[index].priceSource) ? tradeMetadata : {}),
         };
 
   const currentPrincipal = normalizeMoney(currentHolding.quantity * currentHolding.averagePrice);
@@ -507,13 +798,18 @@ function rebuildAssetStatus(holdings) {
     });
 }
 
-function rebuildSummary(previousSummary, assetStatus, cashPositions, realized) {
+function rebuildSummary(previousSummary, assetStatus, cashPositions, realized, metadata = {}) {
   const assetValuationTotal = normalizeMoney(assetStatus.reduce((total, item) => total + item.valuation, 0));
   const investedPrincipal = normalizeMoney(assetStatus.reduce((total, item) => total + item.principal, 0));
   const portfolioPnl = normalizeMoney(assetStatus.reduce((total, item) => total + item.pnl, 0));
   const cashTotal = normalizeMoney(cashPositions.reduce((total, item) => total + Number(item.amount || 0), 0));
   const totalAssets = normalizeMoney(assetValuationTotal + cashTotal);
-  const realizedProfitTotal = normalizeMoney(realized.reduce((total, item) => total + Number(item.pnl || 0), 0));
+  const realizedForPerformance = filterRealizedForPerformance(
+    realized,
+    metadata?.basisDateLabel,
+    metadata?.realizedPerformanceStartDate
+  );
+  const realizedProfitTotal = normalizeMoney(realizedForPerformance.reduce((total, item) => total + Number(item.pnl || 0), 0));
 
   return {
     initialInvestment: previousSummary.initialInvestment,
@@ -537,8 +833,9 @@ function sortRealized(realized, basisLabel) {
   return [...realized].sort((left, right) => realizedSortValue(right, year) - realizedSortValue(left, year));
 }
 
-function buildChartData({ basisDateLabel, holdings, realized }) {
+function buildChartData({ basisDateLabel, performanceStartDate, holdings, realized }) {
   const year = parseBasisYear(basisDateLabel);
+  const performanceRealized = filterRealizedForPerformance(realized, basisDateLabel, performanceStartDate);
   const returnsByAsset = new Map();
 
   holdings.forEach((item) => {
@@ -574,7 +871,7 @@ function buildChartData({ basisDateLabel, holdings, realized }) {
     })
     .sort((left, right) => right.returnRate - left.returnRate);
 
-  const realizedPoints = realized
+  const realizedPoints = performanceRealized
     .map((item, index) => {
       const quantity = item.quantity || 0;
       const unit = item.platform === "업비트" ? "개" : "주";
@@ -697,18 +994,7 @@ function updateXrpDefense(xrpDefense, holdings, trade, realizedEntry) {
 function appendTrade(portfolio, trade) {
   const next = structuredClone(portfolio);
   const collectionKey = getTradeCollectionKey(trade);
-  const tradePayload = {
-    date: trade.date,
-    market: trade.market,
-    ...(trade.broker ? { broker: trade.broker } : {}),
-    asset: trade.asset,
-    side: trade.side,
-    quantity: trade.quantity,
-    price: trade.price,
-    amount: trade.amount,
-    fee: trade.fee,
-    ...(trade.note ? { note: trade.note } : {}),
-  };
+  const tradePayload = buildTradePayload(trade);
 
   next.trades[collectionKey] = [...next.trades[collectionKey], tradePayload];
 
@@ -726,13 +1012,277 @@ function appendTrade(portfolio, trade) {
   }
 
   next.assetStatus = rebuildAssetStatus(next.holdings);
-  next.summary = rebuildSummary(next.summary, next.assetStatus, next.cashPositions, next.realized);
+  next.summary = rebuildSummary(next.summary, next.assetStatus, next.cashPositions, next.realized, next.metadata);
   next.charts = buildChartData({
     basisDateLabel: next.metadata.basisDateLabel,
+    performanceStartDate: next.metadata.realizedPerformanceStartDate,
     holdings: next.holdings,
     realized: next.realized,
   });
   next.analytics.xrpDefense = updateXrpDefense(next.analytics.xrpDefense, next.holdings, trade, holdingUpdate.realizedEntry);
+
+  return next;
+}
+
+function buildTradePayload(trade) {
+  return {
+    date: trade.date,
+    market: trade.market,
+    ...(trade.broker ? { broker: trade.broker } : {}),
+    asset: trade.asset,
+    ...(trade.symbol ? { symbol: trade.symbol } : {}),
+    side: trade.side,
+    quantity: trade.quantity,
+    price: trade.price,
+    amount: trade.amount,
+    fee: trade.fee,
+    ...(trade.note ? { note: trade.note } : {}),
+  };
+}
+
+function hydrateStoredTradeRecord(record, fallbackMarket, basisLabel) {
+  return normalizeTradeInput(
+    {
+      ...record,
+      market: record.market || fallbackMarket,
+      broker: record.broker || (fallbackMarket === "암호화폐" ? "업비트" : ""),
+    },
+    basisLabel,
+    { allowPastDate: true }
+  );
+}
+
+function buildTradeBook(portfolio) {
+  const basisLabel = portfolio.metadata?.basisDateLabel || `${new Date().getFullYear()}.01.01 기준`;
+  const realizedPool = [...(portfolio.realized || [])];
+  const hydrateWithOverrides = (trade, fallbackMarket) => {
+    const hydrated = hydrateStoredTradeRecord(trade, fallbackMarket, basisLabel);
+    if (hydrated.side !== "매도") {
+      return hydrated;
+    }
+
+    const realizedIndex = findMatchingRealizedEntryIndex(realizedPool, hydrated);
+    if (realizedIndex === -1) {
+      return hydrated;
+    }
+
+    const realizedEntry = realizedPool.splice(realizedIndex, 1)[0];
+    return {
+      ...hydrated,
+      realizedPnlOverride: Number.isFinite(Number(realizedEntry.pnl)) ? normalizeMoney(Number(realizedEntry.pnl)) : null,
+      realizedReturnRateOverride:
+        Number.isFinite(Number(realizedEntry.returnRate)) ? normalizeRate(Number(realizedEntry.returnRate)) : null,
+    };
+  };
+
+  return {
+    stocks: (Array.isArray(portfolio.trades?.stocks) ? portfolio.trades.stocks : []).map((trade) =>
+      hydrateWithOverrides(trade, trade.market || "국내주식")
+    ),
+    crypto: (Array.isArray(portfolio.trades?.crypto) ? portfolio.trades.crypto : []).map((trade) =>
+      hydrateWithOverrides(trade, "암호화폐")
+    ),
+  };
+}
+
+function reverseTradeOnCashPositions(cashPositions, trade) {
+  const next = cashPositions.map((item) => ({ ...item }));
+  const platform = getCashPlatformName(trade.broker);
+  const index = next.findIndex((item) => item.platform === platform);
+  const currentAmount = index === -1 ? 0 : Number(next[index].amount || 0);
+  const delta = trade.side === "매수" ? trade.amount + trade.fee : -(trade.amount - trade.fee);
+  const nextAmount = normalizeMoney(currentAmount + delta);
+
+  if (index === -1) {
+    next.push({
+      platform,
+      amount: nextAmount,
+    });
+  } else {
+    next[index] = {
+      ...next[index],
+      amount: nextAmount,
+    };
+  }
+
+  return sortCashPositions(next);
+}
+
+function findMatchingRealizedEntryIndex(realized, trade) {
+  return realized.findIndex((item) => {
+    const platformMatches = String(item.platform || "").trim() === String(trade.broker || "").trim();
+    const marketMatches =
+      !item.market || !trade.market ? true : String(item.market || "").trim() === String(trade.market || "").trim();
+    const dateMatches = String(item.date || "").trim() === String(trade.date || "").trim();
+    const assetMatches = String(item.assetName || "").trim() === String(trade.asset || "").trim();
+    const symbolMatches =
+      !trade.symbol || !item.symbol ? true : String(item.symbol || "").trim().toUpperCase() === String(trade.symbol || "").trim().toUpperCase();
+    const quantityMatches = Math.abs(Number(item.quantity || 0) - Number(trade.quantity || 0)) < 1e-8;
+    return platformMatches && marketMatches && dateMatches && assetMatches && symbolMatches && quantityMatches;
+  });
+}
+
+function reverseTradeOnHoldings(holdings, trade, analytics, realizedPool = []) {
+  const next = holdings.map((item) => ({ ...item }));
+  const nextRealized = [...realizedPool];
+  const platform = trade.market === "암호화폐" ? "업비트" : trade.broker;
+  const tradeMetadata = getHoldingMetadataFromTrade(trade);
+  const index = next.findIndex(
+    (item) =>
+      item.platform === platform &&
+      ((tradeMetadata.symbol && item.symbol === tradeMetadata.symbol) || item.asset === trade.asset)
+  );
+  const currentHolding =
+    index === -1
+      ? normalizeHoldingMetadata({
+          platform,
+          asset: trade.asset,
+          ...tradeMetadata,
+          quantity: 0,
+          averagePrice: 0,
+          valuation: 0,
+          returnRate: 0,
+        })
+      : {
+          ...next[index],
+          ...((!next[index].market || !next[index].symbol || !next[index].priceSource) ? tradeMetadata : {}),
+        };
+
+  if (trade.side === "매수") {
+    if (trade.quantity > currentHolding.quantity + 1e-8) {
+      throw new Error(`${trade.asset} 매수 거래를 되돌릴 보유수량이 부족합니다.`);
+    }
+
+    const currentPrincipal = normalizeMoney(currentHolding.quantity * currentHolding.averagePrice);
+    const previousQuantity = normalizeQuantity(currentHolding.quantity - trade.quantity);
+    const previousPrincipal = normalizeMoney(currentPrincipal - trade.amount - trade.fee);
+
+    currentHolding.quantity = previousQuantity;
+    currentHolding.averagePrice = previousQuantity ? normalizeMoney(previousPrincipal / previousQuantity) : 0;
+  } else {
+    let averagePrice = normalizeMoney(currentHolding.averagePrice || 0);
+
+    if (!(averagePrice > 0)) {
+      const realizedIndex = findMatchingRealizedEntryIndex(nextRealized, trade);
+      const realizedEntry = realizedIndex === -1 ? null : nextRealized[realizedIndex];
+      if (realizedIndex !== -1) {
+        nextRealized.splice(realizedIndex, 1);
+      }
+
+      if (realizedEntry) {
+        const basis = normalizeMoney(trade.amount - trade.fee - Number(realizedEntry.pnl || 0));
+        averagePrice = trade.quantity ? normalizeMoney(basis / trade.quantity) : 0;
+      }
+    } else {
+      const realizedIndex = findMatchingRealizedEntryIndex(nextRealized, trade);
+      if (realizedIndex !== -1) {
+        nextRealized.splice(realizedIndex, 1);
+      }
+    }
+
+    if (!(averagePrice > 0)) {
+      throw new Error(`${trade.asset} 매도 거래를 되돌릴 평균단가를 찾지 못했습니다.`);
+    }
+
+    currentHolding.quantity = normalizeQuantity(currentHolding.quantity + trade.quantity);
+    currentHolding.averagePrice = averagePrice;
+  }
+
+  if (currentHolding.quantity > 0) {
+    if (index === -1) {
+      next.push(currentHolding);
+    } else {
+      next[index] = currentHolding;
+    }
+  } else if (index !== -1) {
+    next.splice(index, 1);
+  }
+
+  return {
+    holdings: revalueHoldings(next, analytics),
+    realized: nextRealized,
+  };
+}
+
+function createRebuildSeedPortfolio(portfolio) {
+  const year = parseBasisYear(portfolio.metadata?.basisDateLabel);
+  const xrpDefense = portfolio.analytics?.xrpDefense || {};
+  const tradeBook = buildTradeBook(portfolio);
+  let holdings = (portfolio.holdings || []).map((item) => normalizeHoldingMetadata(item));
+  let cashPositions = sortCashPositions((portfolio.cashPositions || []).map((item) => ({ ...item })));
+  let realizedPool = sortRealized([...(portfolio.realized || [])], portfolio.metadata?.basisDateLabel || `${year}.01.01 기준`);
+
+  [...tradeBook.stocks].reverse().forEach((trade) => {
+    cashPositions = reverseTradeOnCashPositions(cashPositions, trade);
+    const reversed = reverseTradeOnHoldings(holdings, trade, portfolio.analytics || {}, realizedPool);
+    holdings = reversed.holdings;
+    realizedPool = reversed.realized;
+  });
+
+  [...tradeBook.crypto].reverse().forEach((trade) => {
+    cashPositions = reverseTradeOnCashPositions(cashPositions, trade);
+    const reversed = reverseTradeOnHoldings(holdings, trade, portfolio.analytics || {}, realizedPool);
+    holdings = reversed.holdings;
+    realizedPool = reversed.realized;
+  });
+
+  const basisDateLabel = `${year}.01.01 기준`;
+  const assetStatus = rebuildAssetStatus(holdings);
+  const summary = rebuildSummary(portfolio.summary, assetStatus, cashPositions, [], portfolio.metadata);
+  return {
+    ...structuredClone(portfolio),
+    metadata: {
+      ...structuredClone(portfolio.metadata || {}),
+      basisDateLabel,
+    },
+    trades: {
+      stocks: [],
+      crypto: [],
+    },
+    realized: [],
+    holdings,
+    cashPositions,
+    assetStatus,
+    summary,
+    charts: buildChartData({
+      basisDateLabel,
+      performanceStartDate: portfolio.metadata?.realizedPerformanceStartDate,
+      holdings,
+      realized: [],
+    }),
+    analytics: {
+      ...structuredClone(portfolio.analytics || {}),
+      xrpDefense: xrpDefense
+        ? {
+            ...structuredClone(xrpDefense),
+            soldQuantity: 0,
+            averageSellNet: 0,
+            rebuyQuantity: 0,
+            averageRebuyGross: 0,
+            defenseGain: 0,
+            realizedPnl: 0,
+            remainingQuantity: normalizeQuantity(Number(xrpDefense.initialQuantity || 0)),
+            finalAveragePrice: normalizeMoney(Number(xrpDefense.initialAveragePrice || 0)),
+            averageCutAmount: 0,
+            averageCutRate: 0,
+            breakevenTargetBuyPrice: 0,
+          }
+        : xrpDefense,
+    },
+  };
+}
+
+function rebuildPortfolioFromTradeBook(portfolio, tradeBook) {
+  const seed = createRebuildSeedPortfolio(portfolio);
+  let next = seed;
+
+  tradeBook.stocks.forEach((trade) => {
+    next = appendTrade(next, trade);
+  });
+
+  tradeBook.crypto.forEach((trade) => {
+    next = appendTrade(next, trade);
+  });
 
   return next;
 }
@@ -790,18 +1340,115 @@ async function addTrade(rootDir, input) {
   return updated;
 }
 
+function normalizeTradeMutationSelector(input = {}) {
+  const collection = String(input.collection || "").trim();
+  const index = Number(input.index);
+
+  if (!["stocks", "crypto"].includes(collection)) {
+    throw new Error("거래 수정 대상 컬렉션을 확인하세요.");
+  }
+
+  if (!Number.isInteger(index) || index < 0) {
+    throw new Error("거래 수정 대상 순서를 확인하세요.");
+  }
+
+  return {
+    collection,
+    index,
+  };
+}
+
+async function updateTrade(rootDir, input = {}) {
+  const portfolio = await loadPortfolio(rootDir);
+  const selector = normalizeTradeMutationSelector(input);
+  const tradeCollections = {
+    stocks: [...(Array.isArray(portfolio.trades?.stocks) ? portfolio.trades.stocks : [])],
+    crypto: [...(Array.isArray(portfolio.trades?.crypto) ? portfolio.trades.crypto : [])],
+  };
+  const originalTrade = tradeCollections[selector.collection][selector.index];
+
+  if (!originalTrade) {
+    throw new Error("수정할 거래를 찾지 못했습니다.");
+  }
+
+  const market = originalTrade.market || (selector.collection === "crypto" ? "암호화폐" : "국내주식");
+  const tradePatch = input.trade || {};
+  const updatedTrade = normalizeTradeInput(
+    {
+      ...originalTrade,
+      ...tradePatch,
+      market,
+      amount: tradePatch.amount,
+      fee: tradePatch.fee,
+    },
+    portfolio.metadata.basisDateLabel,
+    { allowPastDate: true }
+  );
+
+  tradeCollections[selector.collection][selector.index] = buildTradePayload(updatedTrade);
+  const rebuilt = rebuildPortfolioFromTradeBook(portfolio, buildTradeBook({ ...portfolio, trades: tradeCollections }));
+  await savePortfolio(rootDir, rebuilt);
+  return rebuilt;
+}
+
+async function removeTrade(rootDir, input = {}) {
+  const portfolio = await loadPortfolio(rootDir);
+  const selector = normalizeTradeMutationSelector(input);
+  const tradeCollections = {
+    stocks: [...(Array.isArray(portfolio.trades?.stocks) ? portfolio.trades.stocks : [])],
+    crypto: [...(Array.isArray(portfolio.trades?.crypto) ? portfolio.trades.crypto : [])],
+  };
+
+  if (!tradeCollections[selector.collection][selector.index]) {
+    throw new Error("삭제할 거래를 찾지 못했습니다.");
+  }
+
+  tradeCollections[selector.collection].splice(selector.index, 1);
+  const rebuilt = rebuildPortfolioFromTradeBook(portfolio, buildTradeBook({ ...portfolio, trades: tradeCollections }));
+  await savePortfolio(rootDir, rebuilt);
+  return rebuilt;
+}
+
+async function addTarget(rootDir, input) {
+  const portfolio = await loadPortfolio(rootDir);
+  const updated = appendTarget(portfolio, input);
+  await savePortfolio(rootDir, updated);
+  return updated;
+}
+
+async function removeTarget(rootDir, input) {
+  const portfolio = await loadPortfolio(rootDir);
+  const updated = deleteTarget(portfolio, input);
+  await savePortfolio(rootDir, updated);
+  return updated;
+}
+
 module.exports = {
+  addTarget,
   addTrade,
+  appendTarget,
   appendTrade,
   buildChartData,
+  buildTradeBook,
+  deleteTarget,
   getAssetPrice,
+  hydrateStoredTradeRecord,
   loadPortfolio,
   normalizeMoney,
+  normalizeTargetDeletionInput,
+  normalizeTargetInput,
   normalizeRate,
   normalizeTradeInput,
+  normalizeTradeMutationSelector,
+  removeTarget,
+  removeTrade,
   rebuildAssetStatus,
+  rebuildPortfolioFromTradeBook,
   rebuildSummary,
   revalueHoldings,
+  reverseTradeOnCashPositions,
+  reverseTradeOnHoldings,
   savePortfolio,
+  updateTrade,
   updateAssetPrice,
 };

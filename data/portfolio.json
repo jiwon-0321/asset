@@ -3,6 +3,7 @@
     "title": "📊 투자 총괄 현황",
     "mantra": "겸손하게, 욕심부리지말자",
     "basisDateLabel": "2026.04.10 기준",
+    "realizedPerformanceStartDate": "2026-04-01",
     "workbook": "투자현황_4월9일.xlsx"
   },
   "summary": {
@@ -13,7 +14,7 @@
     "cashTotal": 26543520.253,
     "portfolioPnl": -1628705.16831187,
     "portfolioReturnRate": -0.071102557596,
-    "realizedProfitTotal": 3545841,
+    "realizedProfitTotal": 3549741,
     "liquidityRatio": 0.555057167843
   },
   "assetStatus": [
@@ -93,13 +94,6 @@
         "summary": "중장기 관점에서 우선순위가 높은 미국 주식",
         "items": [
           {
-            "name": "팔란티어",
-            "symbol": "PLTR",
-            "market": "us-stock",
-            "currency": "USD",
-            "priceSource": "twelve-data"
-          },
-          {
             "name": "써클",
             "symbol": "CRCL",
             "market": "us-stock",
@@ -121,113 +115,224 @@
   },
   "realized": [
     {
+      "market": "국내주식",
       "platform": "카카오증권",
       "asset": "SK하이닉스 7주 매도",
       "assetName": "SK하이닉스",
+      "symbol": "",
       "quantity": 7,
       "pnl": 930510,
       "returnRate": 0.1535,
       "date": "4/08"
     },
     {
+      "market": "국내주식",
       "platform": "미래에셋",
       "asset": "SK하이닉스 1주 매도",
       "assetName": "SK하이닉스",
+      "symbol": "",
       "quantity": 1,
       "pnl": 93912,
       "returnRate": 0.104,
       "date": "4/08"
     },
     {
+      "market": "암호화폐",
       "platform": "업비트",
-      "asset": "ETH 전체 매도",
+      "asset": "ETH 0.6396개 매도",
       "assetName": "ETH",
+      "symbol": "KRW-ETH",
       "quantity": 0.6396,
       "pnl": 91461,
       "returnRate": 0.0457,
       "date": "4/08"
     },
     {
+      "market": "암호화폐",
       "platform": "업비트",
-      "asset": "XRP 2,017개 매도 (최근매수평단)",
+      "asset": "XRP 2,017개 매도",
       "assetName": "XRP",
+      "symbol": "KRW-XRP",
       "quantity": 2017,
       "pnl": 150205,
       "returnRate": 0.0372,
-      "date": "4/08",
-      "note": "최근 매수 평균가 2,000.49원 기준"
+      "date": "4/08"
     },
     {
+      "market": "국내주식",
       "platform": "카카오증권",
       "asset": "SK하이닉스 7주 매도",
       "assetName": "SK하이닉스",
+      "symbol": "",
       "quantity": 7,
       "pnl": 308778,
-      "returnRate": 0.05094088983973593,
+      "returnRate": 0.05094088984,
       "date": "4/07"
     },
     {
+      "market": "국내주식",
       "platform": "카카오증권",
       "asset": "삼성전자 17주 매도",
       "assetName": "삼성전자",
+      "symbol": "",
       "quantity": 17,
       "pnl": 253723,
-      "returnRate": 0.0841972140117746,
+      "returnRate": 0.084197214012,
       "date": "4/07"
     },
     {
+      "market": "국내주식",
       "platform": "카카오증권",
       "asset": "삼성전자 16주 매도",
       "assetName": "삼성전자",
+      "symbol": "",
       "quantity": 16,
       "pnl": 238796,
-      "returnRate": 0.08414899555144592,
+      "returnRate": 0.084148995551,
       "date": "4/06"
     },
     {
+      "market": "국내주식",
       "platform": "카카오증권",
-      "asset": "삼성전자 46주 매도",
+      "asset": "삼성전자 7주 매도",
       "assetName": "삼성전자",
-      "quantity": 46,
-      "pnl": 372647,
-      "returnRate": 0.04567532737823102,
+      "symbol": "",
+      "quantity": 7,
+      "pnl": 41865,
+      "returnRate": 0.0337,
       "date": "4/03"
     },
     {
+      "market": "국내주식",
+      "platform": "카카오증권",
+      "asset": "삼성전자 39주 매도",
+      "assetName": "삼성전자",
+      "symbol": "",
+      "quantity": 39,
+      "pnl": 334682,
+      "returnRate": 0.048412170436,
+      "date": "4/03"
+    },
+    {
+      "market": "국내주식",
       "platform": "카카오증권",
       "asset": "SK하이닉스 4주 매도",
       "assetName": "SK하이닉스",
+      "symbol": "",
       "quantity": 4,
       "pnl": 52846,
-      "returnRate": 0.0152570421559298,
+      "returnRate": 0.015257042156,
       "date": "4/03"
     },
     {
+      "market": "국내주식",
       "platform": "카카오증권",
       "asset": "삼성전자 57주 매도",
       "assetName": "삼성전자",
+      "symbol": "",
       "quantity": 57,
       "pnl": 896964,
       "returnRate": 0.0918,
       "date": "4/01"
     },
     {
+      "market": "국내주식",
       "platform": "카카오증권",
       "asset": "SK하이닉스 6주 매도",
       "assetName": "SK하이닉스",
+      "symbol": "",
       "quantity": 6,
       "pnl": 118453,
       "returnRate": 0.0226,
       "date": "4/01"
     },
     {
+      "market": "국내주식",
       "platform": "미래에셋",
       "asset": "삼성전자 4주 매도",
       "assetName": "삼성전자",
+      "symbol": "",
       "quantity": 4,
       "pnl": 37546,
       "returnRate": 0.0538,
       "date": "4/01"
+    },
+    {
+      "market": "암호화폐",
+      "platform": "업비트",
+      "asset": "XRP 5,999.5개 매도",
+      "assetName": "XRP",
+      "symbol": "KRW-XRP",
+      "quantity": 5999.5,
+      "pnl": -3110225.68929562,
+      "returnRate": -0.204712047193,
+      "date": "3/31"
+    },
+    {
+      "market": "암호화폐",
+      "platform": "업비트",
+      "asset": "XRP 2,200개 매도",
+      "assetName": "XRP",
+      "symbol": "KRW-XRP",
+      "quantity": 2200,
+      "pnl": -1136113.327294,
+      "returnRate": -0.203922679251,
+      "date": "3/30"
+    },
+    {
+      "market": "암호화폐",
+      "platform": "업비트",
+      "asset": "XRP 3,000개 매도",
+      "assetName": "XRP",
+      "symbol": "KRW-XRP",
+      "quantity": 3000,
+      "pnl": -1546246.94631,
+      "returnRate": -0.203527995403,
+      "date": "3/30"
+    },
+    {
+      "market": "암호화폐",
+      "platform": "업비트",
+      "asset": "XRP 2,600개 매도",
+      "assetName": "XRP",
+      "symbol": "KRW-XRP",
+      "quantity": 2600,
+      "pnl": -1246030.19021,
+      "returnRate": -0.1887366645,
+      "date": "3/27"
+    },
+    {
+      "market": "암호화폐",
+      "platform": "업비트",
+      "asset": "XRP 5,000개 매도",
+      "assetName": "XRP",
+      "symbol": "KRW-XRP",
+      "quantity": 5000,
+      "pnl": -2401209.40425,
+      "returnRate": -0.189130290572,
+      "date": "3/27"
+    },
+    {
+      "market": "암호화폐",
+      "platform": "업비트",
+      "asset": "XRP 100개 매도",
+      "assetName": "XRP",
+      "symbol": "KRW-XRP",
+      "quantity": 100,
+      "pnl": -46325.038085,
+      "returnRate": -0.182438647339,
+      "date": "3/26"
+    },
+    {
+      "market": "암호화폐",
+      "platform": "업비트",
+      "asset": "XRP 100개 매도",
+      "assetName": "XRP",
+      "symbol": "KRW-XRP",
+      "quantity": 100,
+      "pnl": -43226.588085,
+      "returnRate": -0.170236239091,
+      "date": "3/25"
     }
   ],
   "charts": {
@@ -269,17 +374,22 @@
       {
         "date": "4/03",
         "displayDate": "2026-04-03",
-        "dailyPnl": 425493,
-        "cumulativePnl": 1478456,
-        "tradeCount": 2,
+        "dailyPnl": 429393,
+        "cumulativePnl": 1482356,
+        "tradeCount": 3,
         "items": [
-          "삼성전자 46주 · 카카오증권",
+          "삼성전자 7주 · 카카오증권",
+          "삼성전자 39주 · 카카오증권",
           "SK하이닉스 4주 · 카카오증권"
         ],
         "profitDetails": [
           {
-            "item": "삼성전자 46주 · 카카오증권",
-            "pnl": 372647
+            "item": "삼성전자 7주 · 카카오증권",
+            "pnl": 41865
+          },
+          {
+            "item": "삼성전자 39주 · 카카오증권",
+            "pnl": 334682
           },
           {
             "item": "SK하이닉스 4주 · 카카오증권",
@@ -291,7 +401,7 @@
         "date": "4/06",
         "displayDate": "2026-04-06",
         "dailyPnl": 238796,
-        "cumulativePnl": 1717252,
+        "cumulativePnl": 1721152,
         "tradeCount": 1,
         "items": [
           "삼성전자 16주 · 카카오증권"
@@ -307,7 +417,7 @@
         "date": "4/07",
         "displayDate": "2026-04-07",
         "dailyPnl": 562501,
-        "cumulativePnl": 2279753,
+        "cumulativePnl": 2283653,
         "tradeCount": 2,
         "items": [
           "SK하이닉스 7주 · 카카오증권",
@@ -328,7 +438,7 @@
         "date": "4/08",
         "displayDate": "2026-04-08",
         "dailyPnl": 1266088,
-        "cumulativePnl": 3545841,
+        "cumulativePnl": 3549741,
         "tradeCount": 4,
         "items": [
           "SK하이닉스 7주 · 카카오증권",
@@ -351,8 +461,7 @@
           },
           {
             "item": "XRP 2,017개 · 업비트",
-            "pnl": 150205,
-            "note": "최근 매수 평균가 2,000.49원 기준"
+            "pnl": 150205
           }
         ]
       }
@@ -525,50 +634,51 @@
     "stocks": [
       {
         "date": "3/30",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "SK하이닉스",
         "side": "매수",
         "quantity": 10,
         "price": 868000,
         "amount": 8680000,
-        "fee": 1214,
-        "note": null
+        "fee": 1214
       },
       {
         "date": "3/30",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매수",
         "quantity": 15,
         "price": 171700,
         "amount": 2575500,
-        "fee": 360,
-        "note": null
+        "fee": 360
       },
       {
         "date": "3/31",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매수",
         "quantity": 42,
         "price": 169466,
         "amount": 7117600,
-        "fee": 997,
-        "note": null
+        "fee": 997
       },
       {
         "date": "3/31",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "SK하이닉스",
         "side": "매수",
         "quantity": 3,
         "price": 813333,
         "amount": 2440000,
-        "fee": 357,
-        "note": null
+        "fee": 357
       },
       {
         "date": "4/01",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매도",
@@ -580,6 +690,7 @@
       },
       {
         "date": "4/01",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "SK하이닉스",
         "side": "매도",
@@ -591,50 +702,51 @@
       },
       {
         "date": "4/02",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매수",
         "quantity": 20,
         "price": 182900,
         "amount": 3658000,
-        "fee": 549,
-        "note": null
+        "fee": 549
       },
       {
         "date": "4/02",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매수",
         "quantity": 10,
         "price": 182340,
         "amount": 1823400,
-        "fee": 274,
-        "note": null
+        "fee": 274
       },
       {
         "date": "4/02",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매수",
         "quantity": 12,
         "price": 178900,
         "amount": 2146800,
-        "fee": 322,
-        "note": null
+        "fee": 322
       },
       {
         "date": "4/02",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "SK하이닉스",
         "side": "매수",
         "quantity": 3,
         "price": 837000,
         "amount": 2511000,
-        "fee": 377,
-        "note": null
+        "fee": 377
       },
       {
         "date": "4/03",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매도",
@@ -646,17 +758,18 @@
       },
       {
         "date": "4/03",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매도",
         "quantity": 39,
         "price": 186243,
         "amount": 7263477,
-        "fee": 15616,
-        "note": null
+        "fee": 15616
       },
       {
         "date": "4/03",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "SK하이닉스",
         "side": "매도",
@@ -668,6 +781,7 @@
       },
       {
         "date": "4/06",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매도",
@@ -679,6 +793,7 @@
       },
       {
         "date": "4/07",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "SK하이닉스",
         "side": "매도",
@@ -690,6 +805,7 @@
       },
       {
         "date": "4/07",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "삼성전자",
         "side": "매도",
@@ -701,17 +817,18 @@
       },
       {
         "date": "4/01",
+        "market": "국내주식",
         "broker": "미래에셋",
         "asset": "SK하이닉스",
         "side": "매수",
         "quantity": 1,
         "price": 903000,
         "amount": 903000,
-        "fee": 1654,
-        "note": null
+        "fee": 1654
       },
       {
         "date": "4/01",
+        "market": "국내주식",
         "broker": "미래에셋",
         "asset": "삼성전자",
         "side": "매도",
@@ -723,6 +840,7 @@
       },
       {
         "date": "4/08",
+        "market": "국내주식",
         "broker": "카카오증권",
         "asset": "SK하이닉스",
         "side": "매도",
@@ -734,6 +852,7 @@
       },
       {
         "date": "4/08",
+        "market": "국내주식",
         "broker": "미래에셋",
         "asset": "SK하이닉스",
         "side": "매도",
@@ -747,7 +866,10 @@
     "crypto": [
       {
         "date": "3/25",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매도",
         "quantity": 100,
         "price": 2108,
@@ -756,7 +878,10 @@
       },
       {
         "date": "3/26",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매도",
         "quantity": 100,
         "price": 2077,
@@ -765,7 +890,10 @@
       },
       {
         "date": "3/27",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매도",
         "quantity": 2600,
         "price": 2061,
@@ -774,7 +902,10 @@
       },
       {
         "date": "3/27",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매도",
         "quantity": 5000,
         "price": 2060,
@@ -783,7 +914,10 @@
       },
       {
         "date": "3/28",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 200,
         "price": 2021,
@@ -792,7 +926,10 @@
       },
       {
         "date": "3/30",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매도",
         "quantity": 2200,
         "price": 2017,
@@ -801,7 +938,10 @@
       },
       {
         "date": "3/30",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매도",
         "quantity": 3000,
         "price": 2018,
@@ -810,7 +950,10 @@
       },
       {
         "date": "3/31",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매도",
         "quantity": 5999.5,
         "price": 2015,
@@ -819,7 +962,10 @@
       },
       {
         "date": "3/31",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 246.31,
         "price": 2030,
@@ -828,7 +974,10 @@
       },
       {
         "date": "3/31",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 249,
         "price": 2006,
@@ -837,7 +986,10 @@
       },
       {
         "date": "4/01",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 246.79,
         "price": 2026,
@@ -846,7 +998,10 @@
       },
       {
         "date": "4/01",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 246.18,
         "price": 2029,
@@ -855,7 +1010,10 @@
       },
       {
         "date": "4/02",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 244.64,
         "price": 2043,
@@ -864,7 +1022,10 @@
       },
       {
         "date": "4/02",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 65.17,
         "price": 1996,
@@ -873,7 +1034,10 @@
       },
       {
         "date": "4/03",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 249.38,
         "price": 2005,
@@ -882,7 +1046,10 @@
       },
       {
         "date": "4/03",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "ETH",
+        "symbol": "KRW-ETH",
         "side": "매수",
         "quantity": 0.6396,
         "price": 3127000,
@@ -891,7 +1058,10 @@
       },
       {
         "date": "4/03",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 115.1,
         "price": 1998,
@@ -900,7 +1070,10 @@
       },
       {
         "date": "4/05",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 505.30570995,
         "price": 1979,
@@ -909,7 +1082,10 @@
       },
       {
         "date": "4/05",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 143,
         "price": 1980,
@@ -918,7 +1094,10 @@
       },
       {
         "date": "4/05",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 50.50505051,
         "price": 1980,
@@ -927,7 +1106,10 @@
       },
       {
         "date": "4/05",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 9.39059222,
         "price": 1980,
@@ -936,7 +1118,10 @@
       },
       {
         "date": "4/05",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 191.94330143,
         "price": 1980,
@@ -945,7 +1130,10 @@
       },
       {
         "date": "4/06",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 248.01587302,
         "price": 2016,
@@ -954,7 +1142,10 @@
       },
       {
         "date": "4/07",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 500.2,
         "price": 1998,
@@ -963,7 +1154,10 @@
       },
       {
         "date": "4/07",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 505.8,
         "price": 1976,
@@ -972,7 +1166,10 @@
       },
       {
         "date": "4/07",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 252,
         "price": 1984,
@@ -981,7 +1178,10 @@
       },
       {
         "date": "4/08",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "ETH",
+        "symbol": "KRW-ETH",
         "side": "매도",
         "quantity": 0.6396,
         "price": 3270000,
@@ -991,7 +1191,10 @@
       },
       {
         "date": "4/08",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매도",
         "quantity": 2017,
         "price": 2076,
@@ -1001,7 +1204,10 @@
       },
       {
         "date": "4/08",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 244,
         "price": 2045,
@@ -1010,7 +1216,10 @@
       },
       {
         "date": "4/09",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 248,
         "price": 2015,
@@ -1019,7 +1228,10 @@
       },
       {
         "date": "4/09",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 1000,
         "price": 2000,
@@ -1028,7 +1240,10 @@
       },
       {
         "date": "4/09",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 502,
         "price": 1992,
@@ -1037,7 +1252,10 @@
       },
       {
         "date": "4/09",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 252.2,
         "price": 1982,
@@ -1046,7 +1264,10 @@
       },
       {
         "date": "4/09",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 252.3,
         "price": 1982,
@@ -1055,7 +1276,10 @@
       },
       {
         "date": "4/09",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 352,
         "price": 1987,
@@ -1064,7 +1288,10 @@
       },
       {
         "date": "4/10",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 250,
         "price": 1990,
@@ -1073,7 +1300,10 @@
       },
       {
         "date": "4/10",
+        "market": "암호화폐",
+        "broker": "업비트",
         "asset": "XRP",
+        "symbol": "KRW-XRP",
         "side": "매수",
         "quantity": 1502,
         "price": 1997,
@@ -1084,26 +1314,31 @@
   },
   "analytics": {
     "prices": {
-      "samsungElectronics": 199000,
-      "skHynix": 907000,
+      "samsungElectronics": 192600,
+      "skHynix": 1001000,
       "xrp": 1997,
-      "eth": 3216000
+      "eth": 3270000
     },
     "xrpDefense": {
       "initialQuantity": 22800.11,
       "initialAveragePrice": 2544.5,
       "soldQuantity": 21016.5,
-      "averageSellNet": 2037.6067256679275,
+      "averageSellNet": 2037.60672567,
       "rebuyQuantity": 8871.23052713,
-      "averageRebuyGross": 2000.54840901,
-      "defenseGain": 257359.63366051234,
+      "averageRebuyGross": 2000.57644909,
+      "defenseGain": -9379172.18352962,
       "finalAveragePrice": 2149.86058615,
       "averageCutAmount": 394.63941385,
       "averageCutRate": 0.155095073236,
-      "realizedPnl": -10653122.5,
+      "realizedPnl": -9379172.18352962,
       "remainingQuantity": 10654.84052713,
-      "breakevenTargetBuyPrice": 2056.1254450583033
+      "breakevenTargetBuyPrice": 0
     },
-    "assetPrices": {}
+    "assetPrices": {
+      "솔라나": 135000,
+      "에이다": 23232,
+      "도지코인": 8000,
+      "수이": 78787
+    }
   }
 }

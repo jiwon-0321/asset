@@ -5,7 +5,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const { URL } = require("url");
 
-const { addTrade, loadPortfolio } = require("./portfolio-store");
+const { addTarget, addTrade, loadPortfolio, removeTarget, removeTrade, updateTrade } = require("./portfolio-store");
 const { buildLivePriceSnapshot } = require("../lib/live-price-service");
 
 const HOST = process.env.HOST || "127.0.0.1";
@@ -36,7 +36,7 @@ function setCommonHeaders(response, requestOrigin = "") {
     response.setHeader("Access-Control-Allow-Origin", requestOrigin);
     response.setHeader("Vary", "Origin");
   }
-  response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  response.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
   response.setHeader("Access-Control-Allow-Headers", "Content-Type");
   response.setHeader("Cache-Control", "no-store");
 }
@@ -115,6 +115,58 @@ async function handleApi(request, response, url) {
       const body = await readRequestBody(request);
       const trade = JSON.parse(body || "{}");
       const updatedPortfolio = await addTrade(ROOT, trade);
+      sendJson(response, 200, updatedPortfolio, requestOrigin);
+    } catch (error) {
+      const statusCode = error instanceof SyntaxError ? 400 : 422;
+      sendJson(response, statusCode, { error: error.message }, requestOrigin);
+    }
+    return true;
+  }
+
+  if (url.pathname === "/api/trades" && request.method === "PUT") {
+    try {
+      const body = await readRequestBody(request);
+      const payload = JSON.parse(body || "{}");
+      const updatedPortfolio = await updateTrade(ROOT, payload);
+      sendJson(response, 200, updatedPortfolio, requestOrigin);
+    } catch (error) {
+      const statusCode = error instanceof SyntaxError ? 400 : 422;
+      sendJson(response, statusCode, { error: error.message }, requestOrigin);
+    }
+    return true;
+  }
+
+  if (url.pathname === "/api/trades" && request.method === "DELETE") {
+    try {
+      const body = await readRequestBody(request);
+      const payload = JSON.parse(body || "{}");
+      const updatedPortfolio = await removeTrade(ROOT, payload);
+      sendJson(response, 200, updatedPortfolio, requestOrigin);
+    } catch (error) {
+      const statusCode = error instanceof SyntaxError ? 400 : 422;
+      sendJson(response, statusCode, { error: error.message }, requestOrigin);
+    }
+    return true;
+  }
+
+  if (url.pathname === "/api/targets" && request.method === "POST") {
+    try {
+      const body = await readRequestBody(request);
+      const target = JSON.parse(body || "{}");
+      const updatedPortfolio = await addTarget(ROOT, target);
+      sendJson(response, 200, updatedPortfolio, requestOrigin);
+    } catch (error) {
+      const statusCode = error instanceof SyntaxError ? 400 : 422;
+      sendJson(response, statusCode, { error: error.message }, requestOrigin);
+    }
+    return true;
+  }
+
+  if (url.pathname === "/api/targets" && request.method === "DELETE") {
+    try {
+      const body = await readRequestBody(request);
+      const target = JSON.parse(body || "{}");
+      const updatedPortfolio = await removeTarget(ROOT, target);
       sendJson(response, 200, updatedPortfolio, requestOrigin);
     } catch (error) {
       const statusCode = error instanceof SyntaxError ? 400 : 422;

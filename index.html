@@ -76,6 +76,45 @@
           <div class="panel-collapse" id="targets-panel" aria-hidden="true">
             <div class="targets-layout">
               <article class="panel targets-hero-card" id="targets-hero"></article>
+              <article class="panel targets-entry-card" id="target-entry-card">
+                <div class="targets-entry-head">
+                  <div>
+                    <p class="eyebrow">Watchlist Entry</p>
+                    <h3>관심종목 추가</h3>
+                  </div>
+                  <span class="targets-entry-badge">저장형</span>
+                </div>
+                <p class="targets-entry-summary">
+                  테스트용으로 바로 넣을 수 있게 만들었습니다. 미국주식과 코인은 티커까지 같이 적으면 실시간 추적이 더 정확해집니다.
+                </p>
+                <form class="trade-form targets-entry-form" id="target-form">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="target-market">시장</label>
+                      <select id="target-market" name="market" required>
+                        <option value="암호화폐">암호화폐</option>
+                        <option value="미국주식">미국주식</option>
+                        <option value="국내주식">국내주식</option>
+                      </select>
+                    </div>
+                    <div class="form-group form-group--autocomplete">
+                      <label for="target-asset">자산</label>
+                      <input id="target-asset" name="asset" type="text" placeholder="솔라나(SOL)" required />
+                      <div class="asset-suggestion-panel" id="target-asset-suggestions" hidden></div>
+                    </div>
+                  </div>
+                  <p class="targets-entry-help" id="target-help">
+                    예시: 솔라나(SOL), 애플(AAPL), 삼성전자(005930)
+                  </p>
+                  <p class="target-form-status" id="target-form-status" role="status" aria-live="polite">
+                    저장하면 관심종목과 Live price 추적 대상에 바로 반영됩니다.
+                  </p>
+                  <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="target-reset">초기화</button>
+                    <button type="submit" class="btn-primary" id="target-submit">관심종목 추가</button>
+                  </div>
+                </form>
+              </article>
               <div class="targets-grid" id="targets-grid"></div>
             </div>
           </div>
@@ -241,8 +280,8 @@
               <form class="notes-composer" id="notes-form">
                 <div class="notes-composer-head">
                   <div>
-                    <p class="eyebrow">Quick Memo</p>
-                    <h3>투자 메모 저장</h3>
+                    <p class="eyebrow" id="notes-form-eyebrow">Quick Memo</p>
+                    <h3 id="notes-form-title">투자 메모 저장</h3>
                   </div>
                   <span class="status-tag" id="notes-count">0개</span>
                 </div>
@@ -337,6 +376,7 @@
                   <div>
                     <p class="chart-kicker">Cumulative PnL</p>
                     <h3>누적 실현손익 추이</h3>
+                    <p class="chart-note" id="realized-chart-note">실시간 가격이 아니라 실제 매도 체결이 생길 때만 바뀝니다.</p>
                   </div>
                   <div class="chart-stat" id="realized-chart-stat"></div>
                 </div>
@@ -379,6 +419,7 @@
             </div>
             <div class="panel-collapse" id="defense-panel" aria-hidden="true">
               <div class="defense-grid" id="defense-grid"></div>
+              <p class="defense-note" id="defense-note"></p>
             </div>
           </div>
         </section>
@@ -450,9 +491,9 @@
       <div class="trade-modal-dialog">
         <div class="trade-modal-header">
           <div>
-            <p class="eyebrow">Quick Entry</p>
-            <h3>거래 추가</h3>
-            <p class="trade-modal-helper">필수값만 입력하면 거래금액과 수수료는 자동 계산됩니다.</p>
+            <p class="eyebrow" id="trade-modal-eyebrow">Quick Entry</p>
+            <h3 id="trade-modal-title">거래 추가</h3>
+            <p class="trade-modal-helper" id="trade-modal-helper">필수값만 입력하면 거래금액과 수수료는 자동 계산됩니다.</p>
           </div>
           <button type="button" class="trade-modal-close" data-trade-modal-close aria-label="닫기">
             <svg viewBox="0 0 24 24">
@@ -478,9 +519,10 @@
           </div>
 
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group form-group--autocomplete">
               <label for="trade-asset">자산</label>
               <input type="text" id="trade-asset" name="asset" placeholder="SK하이닉스" required />
+              <div class="asset-suggestion-panel" id="trade-asset-suggestions" hidden></div>
             </div>
             <div class="form-group">
               <label for="trade-side">매수/매도</label>
