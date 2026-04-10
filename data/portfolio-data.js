@@ -2,28 +2,28 @@ window.__PORTFOLIO_DATA__ = {
   "metadata": {
     "title": "📊 투자 총괄 현황",
     "mantra": "항상 돈에대한 자세는 겸손하게, 욕심부리지말자",
-    "basisDateLabel": "2026.04.09 기준",
+    "basisDateLabel": "2026.04.10 기준",
     "workbook": "투자현황_4월9일.xlsx"
   },
   "summary": {
     "initialInvestment": 59034182,
-    "totalAssets": 47803180.85162435,
-    "investedPrincipal": 19407927.95394945,
-    "assetValuationTotal": 17761166.85162435,
-    "cashTotal": 30042014,
-    "portfolioPnl": -1646761.1023251005,
-    "portfolioReturnRate": -0.08484991835462734,
+    "totalAssets": 47804430.851624355,
+    "investedPrincipal": 19905427.953949448,
+    "assetValuationTotal": 18259916.85162435,
+    "cashTotal": 29544514,
+    "portfolioPnl": -1645511.1023250967,
+    "portfolioReturnRate": -0.08266645189100841,
     "realizedProfitTotal": 3545841,
-    "liquidityRatio": 0.6284521963767851
+    "liquidityRatio": 0.6180287783720387
   },
   "assetStatus": [
     {
       "category": "암호화폐",
       "platform": "업비트",
-      "valuation": 17761166.85162435,
-      "principal": 19407927.95394945,
-      "pnl": -1646761.1023251005,
-      "returnRate": -0.08484991835462734
+      "valuation": 18259916.85162435,
+      "principal": 19905427.953949448,
+      "pnl": -1645511.1023250967,
+      "returnRate": -0.08266645189100841
     }
   ],
   "cashPositions": [
@@ -37,7 +37,7 @@ window.__PORTFOLIO_DATA__ = {
     },
     {
       "platform": "업비트 KRW잔액",
-      "amount": 22053167
+      "amount": 21555667
     },
     {
       "platform": "미래에셋 예수금",
@@ -48,10 +48,10 @@ window.__PORTFOLIO_DATA__ = {
     {
       "platform": "업비트",
       "asset": "XRP",
-      "quantity": 8902.84052713,
-      "averagePrice": 2179.9703021532123,
-      "valuation": 17761166.85162435,
-      "returnRate": -0.08484991835462734
+      "quantity": 9152.84052713,
+      "averagePrice": 2174.7814675616414,
+      "valuation": 18259916.85162435,
+      "returnRate": -0.08266645189100841
     }
   ],
   "realized": [
@@ -898,6 +898,15 @@ window.__PORTFOLIO_DATA__ = {
         "price": 1987,
         "amount": 699424,
         "fee": 349.71
+      },
+      {
+        "date": "4/10",
+        "asset": "XRP",
+        "side": "매수",
+        "quantity": 250,
+        "price": 1990,
+        "amount": 497500,
+        "fee": 248.75
       }
     ]
   },
@@ -913,8 +922,8 @@ window.__PORTFOLIO_DATA__ = {
       "initialAveragePrice": 2544.5,
       "soldQuantity": 21016.5,
       "averageSellNet": 2037.6067256679275,
-      "rebuyQuantity": 7119.23052713,
-      "averageRebuyGross": 2001.4568029087523,
+      "rebuyQuantity": 7369.23052713,
+      "averageRebuyGross": 2001.0681326511665,
       "defenseGain": 257359.63366051234,
       "finalAveragePrice": 2179.9703021532123,
       "averageCutAmount": 364.5296978467877,
