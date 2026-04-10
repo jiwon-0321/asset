@@ -207,6 +207,64 @@
           </div>
         </section>
 
+        <section class="section reveal panel-accordion" id="notes-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="notes-toggle"
+              aria-expanded="false"
+              aria-controls="notes-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M6 4.5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 3v-16a2 2 0 0 1 2-2Z" />
+                    <path d="M8 9h8" />
+                    <path d="M8 13h6" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Memo Board</p>
+                  <h2>메모</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="notes-panel" aria-hidden="true">
+            <div class="notes-layout">
+              <form class="notes-composer" id="notes-form">
+                <div class="notes-composer-head">
+                  <div>
+                    <p class="eyebrow">Quick Memo</p>
+                    <h3>투자 메모 저장</h3>
+                  </div>
+                  <span class="status-tag" id="notes-count">0개</span>
+                </div>
+                <div class="form-group">
+                  <label for="note-title">제목</label>
+                  <input type="text" id="note-title" name="title" placeholder="예: 다음 매수 체크포인트" />
+                </div>
+                <div class="form-group form-group--full">
+                  <label for="note-body">메모</label>
+                  <textarea id="note-body" name="body" rows="5" placeholder="손익비, 매수 조건, 주의할 점을 적어두세요."></textarea>
+                </div>
+                <p class="notes-status" id="notes-status" role="status" aria-live="polite">브라우저에 자동 저장됩니다.</p>
+                <div class="form-actions">
+                  <button type="button" class="btn-secondary" data-note-reset>입력 비우기</button>
+                  <button type="submit" class="btn-primary">메모 저장</button>
+                </div>
+              </form>
+              <div class="notes-list" id="notes-list"></div>
+            </div>
+          </div>
+        </section>
+
         <section class="section reveal panel-accordion" id="holdings-section">
           <div class="section-heading section-heading--accordion">
             <button
@@ -436,11 +494,11 @@
           <div class="form-group form-group--full">
             <label>빠른 선택</label>
             <div class="form-chip-row" id="trade-asset-quick">
-              <button type="button" class="form-chip" data-asset-chip data-market="암호화폐" data-asset="비트코인">비트코인</button>
-              <button type="button" class="form-chip" data-asset-chip data-market="암호화폐" data-asset="ETH">ETH</button>
-              <button type="button" class="form-chip" data-asset-chip data-market="암호화폐" data-asset="XRP">XRP</button>
-              <button type="button" class="form-chip" data-asset-chip data-market="미국주식" data-asset="PLTR">PLTR</button>
-              <button type="button" class="form-chip" data-asset-chip data-market="미국주식" data-asset="CRCL">CRCL</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="암호화폐" data-asset="비트코인" data-display-asset="비트코인">비트코인</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="암호화폐" data-asset="ETH" data-display-asset="이더리움">이더리움</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="암호화폐" data-asset="XRP" data-display-asset="엑스알피">엑스알피</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="미국주식" data-asset="PLTR" data-display-asset="팔란티어">팔란티어</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="미국주식" data-asset="CRCL" data-display-asset="써클">써클</button>
               <button type="button" class="form-chip" data-asset-chip data-market="국내주식" data-asset="삼성전자">삼성전자</button>
               <button type="button" class="form-chip" data-asset-chip data-market="국내주식" data-asset="SK하이닉스">SK하이닉스</button>
             </div>
@@ -449,11 +507,11 @@
           <div class="form-row">
             <div class="form-group">
               <label for="trade-quantity">수량</label>
-              <input type="number" id="trade-quantity" name="quantity" placeholder="7" step="any" required />
+              <input type="text" id="trade-quantity" name="quantity" placeholder="7" inputmode="decimal" autocomplete="off" required />
             </div>
             <div class="form-group">
               <label for="trade-price" id="trade-price-label">단가 (원)</label>
-              <input type="number" id="trade-price" name="price" placeholder="1001000" step="any" required />
+              <input type="text" id="trade-price" name="price" placeholder="1,001,000" inputmode="decimal" autocomplete="off" required />
               <p class="form-help" id="trade-price-help">체결 단가 기준으로 입력합니다.</p>
             </div>
           </div>
@@ -479,22 +537,7 @@
           <div class="form-row">
             <div class="form-group" data-trade-broker-group>
               <label for="trade-broker">플랫폼</label>
-              <input
-                type="text"
-                id="trade-broker"
-                name="broker"
-                list="trade-broker-suggestions"
-                placeholder="미래에셋"
-                autocomplete="off"
-              />
-              <datalist id="trade-broker-suggestions">
-                <option value="카카오증권"></option>
-                <option value="미래에셋"></option>
-                <option value="토스증권"></option>
-                <option value="키움증권"></option>
-                <option value="한국투자증권"></option>
-                <option value="NH투자증권"></option>
-              </datalist>
+              <select id="trade-broker" name="broker"></select>
               <p class="form-help" id="trade-broker-help">국내주식과 미국주식 거래만 입력하면 됩니다.</p>
             </div>
             <div class="form-group">

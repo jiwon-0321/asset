@@ -1587,6 +1587,22 @@ th.align-right {
   font-variant-numeric: tabular-nums;
 }
 
+.calendar-toolbar-meta strong.price-move-up,
+.calendar-month-summary strong.price-move-up,
+.calendar-day-total.price-move-up,
+.timeline-stat strong.price-move-up,
+.calendar-pnl-value.price-move-up {
+  color: var(--price-up);
+}
+
+.calendar-toolbar-meta strong.price-move-down,
+.calendar-month-summary strong.price-move-down,
+.calendar-day-total.price-move-down,
+.timeline-stat strong.price-move-down,
+.calendar-pnl-value.price-move-down {
+  color: var(--price-down);
+}
+
 .calendar-month {
   display: grid;
   gap: 18px;
@@ -1626,6 +1642,15 @@ th.align-right {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.calendar-month-summary strong {
+  color: var(--text-strong);
+  font-family: var(--font-mono);
+  font-size: 1.06rem;
+  font-weight: 800;
+  line-height: 1.28;
+  font-variant-numeric: tabular-nums;
 }
 
 .calendar-grid-shell {
@@ -3465,6 +3490,136 @@ th.align-right {
   margin-bottom: 24px;
 }
 
+.notes-layout {
+  display: grid;
+  gap: 18px;
+}
+
+.notes-composer {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(94, 200, 255, 0.16);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(12, 22, 22, 0.92), rgba(8, 16, 16, 0.9)),
+    var(--panel);
+}
+
+.notes-composer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.notes-composer-head > div {
+  display: grid;
+  gap: 6px;
+}
+
+.notes-composer-head h3 {
+  font-size: 1.16rem;
+  line-height: 1.2;
+}
+
+.notes-status {
+  min-height: 1.4rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.notes-status[data-tone="success"] {
+  color: var(--accent);
+}
+
+.notes-status[data-tone="error"] {
+  color: var(--loss);
+}
+
+.notes-list {
+  display: grid;
+  gap: 14px;
+}
+
+.memo-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(94, 200, 255, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.memo-card-head,
+.memo-card-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.memo-card-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.memo-card-title {
+  color: var(--text-strong);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.memo-card-body {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.94rem;
+  line-height: 1.72;
+  white-space: pre-wrap;
+}
+
+.memo-card-meta {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.memo-card-delete {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 107, 107, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 107, 107, 0.08);
+  color: var(--price-up);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.memo-card-delete:hover {
+  border-color: rgba(255, 107, 107, 0.42);
+  background: rgba(255, 107, 107, 0.14);
+  transform: translateY(-1px);
+}
+
+.notes-empty {
+  display: grid;
+  gap: 8px;
+  border: 1px dashed rgba(94, 200, 255, 0.2);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.notes-empty p {
+  margin: 0;
+  color: var(--muted-strong);
+  line-height: 1.65;
+}
+
 /* 거래 추가 버튼 */
 .btn-add-trade {
   display: inline-flex;
@@ -3568,6 +3723,10 @@ th.align-right {
 }
 
 .trade-modal-close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  align-self: flex-start;
   width: 40px;
   height: 40px;
   padding: 0;
@@ -3586,11 +3745,13 @@ th.align-right {
 }
 
 .trade-modal-close svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   stroke: currentColor;
   stroke-width: 2;
   fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* 폼 스타일 */
@@ -3626,7 +3787,8 @@ th.align-right {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   padding: 12px 14px;
   border: 1px solid rgba(94, 200, 255, 0.15);
   border-radius: 12px;
@@ -3637,11 +3799,31 @@ th.align-right {
   transition: all 0.2s ease;
 }
 
+.form-group select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(176, 202, 197, 0.92) 50%),
+    linear-gradient(135deg, rgba(176, 202, 197, 0.92) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 1px),
+    calc(100% - 12px) calc(50% - 1px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 42px;
+}
+
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: rgba(94, 200, 255, 0.4);
   background: rgba(255, 255, 255, 0.06);
+}
+
+.form-group textarea {
+  min-height: 132px;
+  resize: vertical;
+  line-height: 1.7;
 }
 
 .form-group input[readonly] {

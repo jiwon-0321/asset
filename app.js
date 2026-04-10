@@ -20,6 +20,9 @@ const usdFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
+const NOTES_STORAGE_KEY = "sniper-capital-notes-v1";
+const US_STOCK_TAX_ALLOWANCE = 2_500_000;
+const US_STOCK_TAX_RATE = 0.22;
 const colors = ["#17F9A6", "#5EC8FF", "#FFB84D", "#FF6B87"];
 let chartRegistry = [];
 let calendarDetailStore = new Map();
@@ -27,6 +30,9 @@ let currentPortfolioData = null;
 let basePortfolioData = null;
 let livePortfolioSnapshot = null;
 let liveRefreshTimer = null;
+let currentDateBadgeTimer = null;
+let notesState = [];
+let hasLoadedNotes = false;
 let timelineCalendarState = {
   trades: [],
   basisYear: new Date().getFullYear(),
@@ -35,9 +41,12 @@ let timelineCalendarState = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  scheduleCurrentDateBadgeRefresh();
+  ensureNotesLoaded();
+  initNotesBoard();
   loadPortfolio()
     .then(async (data) => {
-      applyPortfolioData(data);
+      applyPortfolioData(data, livePortfolioSnapshot, { renderMode: "full" });
       initTradeModal();
       await refreshLivePortfolio();
       scheduleLivePortfolioRefresh();
@@ -66,13 +75,13 @@ async function loadPortfolio() {
   return response.json();
 }
 
-function applyPortfolioData(data, liveSnapshot = livePortfolioSnapshot) {
+function applyPortfolioData(data, liveSnapshot = livePortfolioSnapshot, options = {}) {
   basePortfolioData = data;
   window.__PORTFOLIO_DATA__ = data;
 
   const renderable = buildRenderablePortfolio(data, liveSnapshot);
   currentPortfolioData = renderable;
-  renderDashboard(renderable);
+  renderDashboard(renderable, options);
 }
 
 function buildRenderablePortfolio(data, liveSnapshot = null) {
@@ -114,14 +123,14 @@ async function refreshLivePortfolio() {
 
     livePortfolioSnapshot = payload;
     if (basePortfolioData) {
-      applyPortfolioData(basePortfolioData, livePortfolioSnapshot);
+      applyPortfolioData(basePortfolioData, livePortfolioSnapshot, { renderMode: "live" });
     }
     return payload;
   } catch (error) {
     console.error(error);
     livePortfolioSnapshot = decorateFailedLiveSnapshot(livePortfolioSnapshot, error.message);
     if (basePortfolioData) {
-      applyPortfolioData(basePortfolioData, livePortfolioSnapshot);
+      applyPortfolioData(basePortfolioData, livePortfolioSnapshot, { renderMode: "live" });
     }
     return null;
   }
@@ -145,7 +154,8 @@ function scheduleLivePortfolioRefresh() {
   }, refreshIntervalMs);
 }
 
-function renderDashboard(data) {
+function renderDashboard(data, options = {}) {
+  const isLiveRefresh = options.renderMode === "live";
   const {
     metadata,
     summary,
@@ -163,20 +173,27 @@ function renderDashboard(data) {
 
   text("#page-title", metadata.mantra);
   text("#hero-summary", buildHeroSummary(live));
-  text("#basis-date", `기준일 · ${metadata.basisDateLabel}`);
+  renderCurrentDateBadge();
 
   renderPriceStrip(live?.quotes || {}, holdings, targets);
-  renderMetricCards(summary);
+  renderMetricCards(summary, realized);
   renderTargets(targets, live);
-  renderCharts(charts);
   renderAllocation(summary, assetStatus, cashPositions);
   renderAssetTable(assetStatus, holdings);
   renderHoldings(holdings);
-  renderRealized(realized, summary.realizedProfitTotal);
   renderDefense(analytics.xrpDefense);
-  renderTimeline(trades, metadata.basisDateLabel, charts.realizedHistory);
+
+  if (isLiveRefresh) {
+    return;
+  }
+
+  renderCharts(charts);
+  renderRealized(realized, summary.realizedProfitTotal);
+  renderTimeline(trades, getCurrentBasisYear(), charts.realizedHistory);
+  renderNotes(notesState);
   renderStrategy(strategy);
   bindAllPanelAccordions();
+  bindNotesSection(document.querySelector("#notes-section"));
   initializeMotion();
 }
 
@@ -235,7 +252,9 @@ function renderPriceStrip(quotes = {}, holdings = [], targets = {}) {
           </div>
           <div class="price-value-wrap">
             <strong class="price-value ${movementClass}">${escapeHtml(formatQuotePrimary(quote, instrument))}</strong>
-            <span class="price-secondary ${movementClass}">${escapeHtml(formatQuoteSecondary(quote, instrument))}</span>
+            <span class="price-secondary ${movementClass}">${escapeHtml(
+              formatQuoteSecondary(quote, instrument, { includeKimchiPremium: true })
+            )}</span>
           </div>
         </div>
       `;
@@ -243,9 +262,10 @@ function renderPriceStrip(quotes = {}, holdings = [], targets = {}) {
     .join("");
 }
 
-function renderMetricCards(summary) {
+function renderMetricCards(summary, realized = []) {
   const initialInvestment = summary.initialInvestment || 0;
   const initialInvestmentPnl = (summary.totalAssets || 0) - initialInvestment;
+  const usStockTaxEstimate = estimateUsStockTax(realized);
 
   const metrics = [
     {
@@ -278,6 +298,12 @@ function renderMetricCards(summary) {
       detail: `유동성 비중 ${formatPercent(summary.liquidityRatio)}`,
       tone: toneClass(summary.realizedProfitTotal),
     },
+    {
+      label: "해외주식 세금 추정",
+      value: formatCurrency(usStockTaxEstimate.taxEstimate),
+      detail: usStockTaxEstimate.detail,
+      tone: usStockTaxEstimate.taxEstimate > 0 ? "loss" : "neutral",
+    },
   ];
 
   const template = document.querySelector("#metric-card-template");
@@ -293,6 +319,72 @@ function renderMetricCards(summary) {
     node.querySelector(".metric-detail").textContent = metric.detail;
     grid.appendChild(node);
   });
+}
+
+function resolveRealizedMarket(item = {}) {
+  const rawMarket = String(item.market || "").trim();
+  if (rawMarket === "us-stock" || rawMarket === "미국주식") {
+    return "us-stock";
+  }
+  if (rawMarket === "kr-stock" || rawMarket === "국내주식") {
+    return "kr-stock";
+  }
+  if (rawMarket === "crypto" || rawMarket === "암호화폐") {
+    return "crypto";
+  }
+
+  const haystack = [item.assetName, item.asset, item.symbol]
+    .filter(Boolean)
+    .join(" ")
+    .toUpperCase();
+
+  if (["PLTR", "팔란티어", "CRCL", "써클"].some((keyword) => haystack.includes(String(keyword).toUpperCase()))) {
+    return "us-stock";
+  }
+  if (["삼성전자", "SK하이닉스", "에스케이하이닉스"].some((keyword) => haystack.includes(keyword.toUpperCase()))) {
+    return "kr-stock";
+  }
+  if (["BTC", "비트코인", "ETH", "이더리움", "XRP", "엑스알피"].some((keyword) => haystack.includes(keyword.toUpperCase()))) {
+    return "crypto";
+  }
+
+  return "";
+}
+
+function estimateUsStockTax(realized = [], referenceDate = new Date()) {
+  const currentYear = getCurrentBasisYear(referenceDate);
+  const usStockRealized = realized.filter((item) => resolveRealizedMarket(item) === "us-stock");
+
+  if (!usStockRealized.length) {
+    return {
+      taxEstimate: 0,
+      detail: `${currentYear}년 미국주식 매도 발생 시 자동 계산`,
+    };
+  }
+
+  const realizedPnl = usStockRealized.reduce((total, item) => total + Number(item.pnl || 0), 0);
+  if (realizedPnl <= 0) {
+    return {
+      taxEstimate: 0,
+      detail: `실현손익 ${formatSignedCurrency(realizedPnl)} · 참고용`,
+    };
+  }
+
+  const remainingDeduction = Math.max(US_STOCK_TAX_ALLOWANCE - realizedPnl, 0);
+  const taxableGain = Math.max(realizedPnl - US_STOCK_TAX_ALLOWANCE, 0);
+  const taxEstimate = taxableGain > 0 ? taxableGain * US_STOCK_TAX_RATE : 0;
+
+  if (taxEstimate > 0) {
+    return {
+      taxEstimate,
+      detail: `과세대상 ${formatCurrency(taxableGain)} · 22% 기준`,
+    };
+  }
+
+  return {
+    taxEstimate: 0,
+    detail: `실현손익 ${formatSignedCurrency(realizedPnl)} · 공제 잔여 ${formatCurrency(remainingDeduction)}`,
+  };
 }
 
 function renderTargets(targets, live) {
@@ -910,6 +1002,217 @@ function renderDefense(defense) {
     .join("");
 }
 
+function ensureNotesLoaded() {
+  if (hasLoadedNotes) {
+    return;
+  }
+
+  notesState = loadNotesFromStorage();
+  hasLoadedNotes = true;
+}
+
+function loadNotesFromStorage() {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(NOTES_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter((note) => note && typeof note.id === "string")
+      .map((note) => ({
+        id: note.id,
+        title: String(note.title || "").trim(),
+        body: String(note.body || "").trim(),
+        createdAt: note.createdAt || new Date().toISOString(),
+      }))
+      .filter((note) => note.title || note.body)
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+function persistNotesToStorage(notes) {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return false;
+  }
+
+  try {
+    window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+function renderNotes(notes = notesState) {
+  const count = document.querySelector("#notes-count");
+  const list = document.querySelector("#notes-list");
+  if (!count || !list) {
+    return;
+  }
+
+  count.textContent = `${formatNumber(notes.length)}개`;
+  list.innerHTML = notes.length
+    ? notes.map((note) => renderNoteCard(note)).join("")
+    : `
+        <article class="note-card notes-empty">
+          <strong>아직 저장된 메모가 없습니다.</strong>
+          <p>매매 아이디어, 손절 기준, 체크 포인트를 짧게 쌓아두세요.</p>
+        </article>
+      `;
+}
+
+function renderNoteCard(note) {
+  return `
+    <article class="note-card memo-card" data-note-id="${escapeHtml(note.id)}">
+      <div class="memo-card-head">
+        <div>
+          <p class="mini-label">Saved Memo</p>
+          <strong class="memo-card-title">${escapeHtml(getNoteTitle(note))}</strong>
+        </div>
+        <button type="button" class="memo-card-delete" data-note-delete="${escapeHtml(note.id)}">삭제</button>
+      </div>
+      <p class="memo-card-body">${escapeHtml(note.body || note.title).replaceAll("\n", "<br />")}</p>
+      <div class="memo-card-meta">
+        <span>${escapeHtml(formatNoteTimestamp(note.createdAt))}</span>
+        <span>${escapeHtml(getNoteMeta(note))}</span>
+      </div>
+    </article>
+  `;
+}
+
+function getNoteTitle(note) {
+  const title = String(note.title || "").trim();
+  if (title) {
+    return title;
+  }
+
+  const body = String(note.body || "").trim();
+  if (!body) {
+    return "메모";
+  }
+
+  return body.length > 28 ? `${body.slice(0, 28)}...` : body;
+}
+
+function getNoteMeta(note) {
+  const length = String(note.body || note.title || "").trim().length;
+  return `${formatNumber(length)}자`;
+}
+
+function formatNoteTimestamp(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "방금 저장";
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function initNotesBoard() {
+  const section = document.querySelector("#notes-section");
+  if (!section) {
+    return;
+  }
+
+  bindNotesSection(section);
+}
+
+function bindNotesSection(section) {
+  if (!section || section.dataset.notesBound === "true") {
+    return;
+  }
+
+  const form = section.querySelector("#notes-form");
+  const titleInput = section.querySelector("#note-title");
+  const bodyInput = section.querySelector("#note-body");
+  const status = section.querySelector("#notes-status");
+  const resetButton = section.querySelector("[data-note-reset]");
+
+  const setStatus = (message, tone = "neutral") => {
+    if (!status) {
+      return;
+    }
+
+    status.textContent = message || "";
+    status.dataset.tone = tone;
+  };
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    ensureNotesLoaded();
+
+    const title = String(titleInput?.value || "").trim();
+    const body = String(bodyInput?.value || "").trim();
+    if (!title && !body) {
+      setStatus("제목이나 내용을 하나는 적어주세요.", "error");
+      bodyInput?.focus();
+      return;
+    }
+
+    const nextNote = {
+      id: `note-${Date.now()}`,
+      title,
+      body,
+      createdAt: new Date().toISOString(),
+    };
+
+    const nextNotes = [nextNote, ...notesState];
+    if (!persistNotesToStorage(nextNotes)) {
+      setStatus("메모 저장에 실패했습니다. 브라우저 저장 공간을 확인해주세요.", "error");
+      return;
+    }
+
+    notesState = nextNotes;
+    renderNotes(notesState);
+    form.reset();
+    setStatus("메모를 저장했습니다.", "success");
+    titleInput?.focus();
+  });
+
+  resetButton?.addEventListener("click", () => {
+    form?.reset();
+    setStatus("입력을 비웠습니다.");
+    titleInput?.focus();
+  });
+
+  section.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-note-delete]");
+    if (!deleteButton || !section.contains(deleteButton)) {
+      return;
+    }
+
+    ensureNotesLoaded();
+    const noteId = deleteButton.dataset.noteDelete;
+    const nextNotes = notesState.filter((note) => note.id !== noteId);
+    if (!persistNotesToStorage(nextNotes)) {
+      setStatus("메모 삭제에 실패했습니다.", "error");
+      return;
+    }
+
+    notesState = nextNotes;
+    renderNotes(notesState);
+    setStatus("메모를 삭제했습니다.", "success");
+  });
+
+  section.dataset.notesBound = "true";
+}
+
 function toggleDisclosure(root, trigger, panel, willOpen) {
   if (!root || !trigger || !panel) {
     return;
@@ -1067,7 +1370,7 @@ function renderTimelineList(trades, basisYear, realizedHistory = []) {
               </div>
               <div class="timeline-stat">
                 <span>실현 손익</span>
-                <strong class="${toneClass(dayPnl)}">${formatSignedCurrency(dayPnl)}</strong>
+                <strong class="${getSignedPriceToneClass(dayPnl)}">${formatSignedCurrency(dayPnl)}</strong>
               </div>
               <div class="timeline-stat">
                 <span>총 거래금액</span>
@@ -1089,7 +1392,7 @@ function renderTimelineList(trades, basisYear, realizedHistory = []) {
                       <div class="timeline-top">
                         <div>
                           <p class="mini-label timeline-market">${trade.market}${trade.broker ? ` · ${trade.broker}` : ""}</p>
-                          <strong class="timeline-title">${trade.asset}</strong>
+                          <strong class="timeline-title">${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</strong>
                         </div>
                         <span class="trade-side ${trade.side === "매수" ? "trade-side-buy" : "trade-side-sell"}">${trade.side}</span>
                       </div>
@@ -1137,6 +1440,11 @@ function renderTimelineCalendar(trades, basisYear, realizedHistory = []) {
   const firstDayOffset = new Date(selectedMonth.year, selectedMonth.month - 1, 1).getDay();
   const totalAmount = monthTrades.reduce((sum, trade) => sum + trade.amount, 0);
   const activeDays = tradesByDay.size;
+  const monthPnl = Array.from({ length: daysInMonth }, (_, dayIndex) => {
+    const dateKey = buildMonthDayKey(selectedMonth.month, dayIndex + 1);
+    return realizedLookup.get(dateKey)?.dailyPnl ?? 0;
+  }).reduce((sum, value) => sum + value, 0);
+  const monthPnlTone = getSignedPriceToneClass(monthPnl);
 
   return `
     <div class="calendar-toolbar">
@@ -1163,7 +1471,7 @@ function renderTimelineCalendar(trades, basisYear, realizedHistory = []) {
       </label>
       <div class="calendar-toolbar-meta">
         <span>거래일 ${activeDays}일</span>
-        <strong>총 ${monthTrades.length}건 · ${formatCurrency(totalAmount)}</strong>
+        <strong class="${monthPnlTone}">총 ${monthTrades.length}건 · 월 누적 실현손익 ${formatSignedCurrency(monthPnl)}</strong>
       </div>
     </div>
     <article class="calendar-month">
@@ -1173,8 +1481,8 @@ function renderTimelineCalendar(trades, basisYear, realizedHistory = []) {
           <strong>${formatCalendarMonthLabel(selectedMonth.year, selectedMonth.month)}</strong>
         </div>
         <div class="calendar-month-summary">
-          <span>선택 월 합계</span>
-          <strong>${formatCurrency(totalAmount)}</strong>
+          <span>선택 월 누적 실현손익</span>
+          <strong class="${monthPnlTone}">${formatSignedCurrency(monthPnl)}</strong>
         </div>
       </header>
       <div class="calendar-grid-shell">
@@ -1191,7 +1499,7 @@ function renderTimelineCalendar(trades, basisYear, realizedHistory = []) {
             const dateKey = buildMonthDayKey(selectedMonth.month, day);
             const dayProfit = realizedLookup.get(dateKey);
             const dayPnl = dayProfit?.dailyPnl ?? 0;
-            const dayPnlTone = toneClass(dayPnl);
+            const dayPnlTone = getSignedPriceToneClass(dayPnl);
             const hasDirectionalPnl = dayPnl !== 0;
 
             if (dayTrades.length) {
@@ -1239,7 +1547,7 @@ function renderTimelineCalendar(trades, basisYear, realizedHistory = []) {
                     .map(
                       (trade) => `
                         <div class="calendar-trade ${trade.side === "매수" ? "loss" : "gain"}">
-                          <span>${trade.asset}</span>
+                          <span>${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</span>
                           <strong>${trade.side}</strong>
                         </div>
                       `
@@ -1261,7 +1569,7 @@ function renderTimelineCalendar(trades, basisYear, realizedHistory = []) {
 }
 
 function renderTimeline(trades, basisDateLabel, realizedHistory = []) {
-  const basisYear = Number((basisDateLabel || "").slice(0, 4)) || new Date().getFullYear();
+  const basisYear = Number(basisDateLabel) || getCurrentBasisYear();
   const listContainer = document.querySelector("#timeline");
   const calendarContainer = document.querySelector("#timeline-calendar");
   const normalizedTrades = normalizeTimelineTrades(trades, basisYear);
@@ -1501,7 +1809,7 @@ function openCalendarDetailModal(detailKey) {
           <div class="calendar-modal-item-top">
             <div>
               <p class="mini-label">${trade.market}${trade.broker ? ` · ${trade.broker}` : ""}</p>
-              <strong>${trade.asset}</strong>
+              <strong>${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</strong>
             </div>
             <span class="trade-side ${trade.side === "매수" ? "trade-side-buy" : "trade-side-sell"}">${trade.side}</span>
           </div>
@@ -1525,7 +1833,7 @@ function openCalendarDetailModal(detailKey) {
             ${trade.note && trade.side === "매도" ? `
             <div class="calendar-modal-metric calendar-modal-pnl">
               <span>실현손익</span>
-              <strong class="calendar-pnl-value ${trade.note.includes("+") ? "gain" : trade.note.includes("-") ? "loss" : "neutral"}">${trade.note}</strong>
+              <strong class="calendar-pnl-value ${trade.note.includes("+") ? "price-move-up" : trade.note.includes("-") ? "price-move-down" : "price-move-neutral"}">${trade.note}</strong>
             </div>
             ` : ""}
           </div>
@@ -1748,7 +2056,7 @@ function buildLiveState(liveSnapshot) {
       updatedAt: null,
       refreshIntervalSeconds: 10,
       cryptoRefreshIntervalSeconds: 10,
-      marketRefreshIntervalSeconds: 60,
+      marketRefreshIntervalSeconds: 180,
       quotes: {},
       fx: {
         usdkrw: null,
@@ -1768,7 +2076,7 @@ function buildLiveState(liveSnapshot) {
       updatedAt: null,
       refreshIntervalSeconds: 10,
       cryptoRefreshIntervalSeconds: 10,
-      marketRefreshIntervalSeconds: 60,
+      marketRefreshIntervalSeconds: 180,
       quotes: {},
       fx: {
         usdkrw: null,
@@ -1787,7 +2095,7 @@ function buildLiveState(liveSnapshot) {
     updatedAt: liveSnapshot.live?.updatedAt || liveSnapshot.updatedAt || null,
     refreshIntervalSeconds: liveSnapshot.live?.refreshIntervalSeconds || 10,
     cryptoRefreshIntervalSeconds: liveSnapshot.live?.cryptoRefreshIntervalSeconds || 10,
-    marketRefreshIntervalSeconds: liveSnapshot.live?.marketRefreshIntervalSeconds || 60,
+    marketRefreshIntervalSeconds: liveSnapshot.live?.marketRefreshIntervalSeconds || 180,
     quotes: liveSnapshot.quotes || {},
     fx: liveSnapshot.fx || { usdkrw: null },
     status: liveSnapshot.live?.status || {
@@ -1816,7 +2124,7 @@ function decorateFailedLiveSnapshot(liveSnapshot, errorMessage = "") {
         updatedAt: null,
         refreshIntervalSeconds: 10,
         cryptoRefreshIntervalSeconds: 10,
-        marketRefreshIntervalSeconds: 60,
+        marketRefreshIntervalSeconds: 180,
         status: {
           level: "warning",
           message: fallbackMessage,
@@ -1836,7 +2144,7 @@ function decorateFailedLiveSnapshot(liveSnapshot, errorMessage = "") {
   next.live.errors = [...new Set([...(next.live.errors || []), fallbackMessage])];
   next.live.refreshIntervalSeconds = next.live.refreshIntervalSeconds || 10;
   next.live.cryptoRefreshIntervalSeconds = next.live.cryptoRefreshIntervalSeconds || 10;
-  next.live.marketRefreshIntervalSeconds = next.live.marketRefreshIntervalSeconds || 60;
+  next.live.marketRefreshIntervalSeconds = next.live.marketRefreshIntervalSeconds || 180;
   next.quotes = Object.fromEntries(
     Object.entries(next.quotes || {}).map(([key, quote]) => [
       key,
@@ -1857,7 +2165,7 @@ function decorateFailedLiveSnapshot(liveSnapshot, errorMessage = "") {
 
 function buildHeroSummary(live) {
   const cryptoRefresh = live?.cryptoRefreshIntervalSeconds || live?.refreshIntervalSeconds || 10;
-  const marketRefresh = live?.marketRefreshIntervalSeconds || 60;
+  const marketRefresh = live?.marketRefreshIntervalSeconds || 180;
   const refreshCopy = `코인 ${cryptoRefresh}초 · 미국주식 ${marketRefresh}초 주기`;
 
   if (window.location.protocol === "file:") {
@@ -1910,6 +2218,12 @@ function normalizeHoldingsForDisplay(holdings = []) {
         priceKrw: currentPriceKrw || null,
         priceUsd: Number.isFinite(currentPriceUsd) ? currentPriceUsd : null,
         changePercent: Number.isFinite(Number(item.liveQuote?.changePercent)) ? Number(item.liveQuote.changePercent) : null,
+        kimchiPremiumPercent: Number.isFinite(Number(item.liveQuote?.kimchiPremiumPercent))
+          ? Number(item.liveQuote.kimchiPremiumPercent)
+          : null,
+        globalPriceKrw: Number.isFinite(Number(item.liveQuote?.globalPriceKrw)) ? Number(item.liveQuote.globalPriceKrw) : null,
+        globalPriceUsd: Number.isFinite(Number(item.liveQuote?.globalPriceUsd)) ? Number(item.liveQuote.globalPriceUsd) : null,
+        globalUpdatedAt: item.liveQuote?.globalUpdatedAt || null,
         isMarketOpen: item.liveQuote?.isMarketOpen ?? null,
         isDelayed: item.liveQuote ? Boolean(item.liveQuote.isDelayed) : true,
         updatedAt: item.liveQuote?.updatedAt || null,
@@ -2045,14 +2359,9 @@ function buildInstrumentMeta(instrument, quote) {
     instrument.scope === "holding"
       ? `보유 ${formatNumber(instrument.quantity || 0)}`
       : buildMarketLabel(instrument.market);
-  const changeCopy =
-    Number.isFinite(Number(quote?.changePercent)) && quote?.available
-      ? formatSignedPercent(Number(quote.changePercent))
-      : quote?.isDelayed
-        ? "업데이트 지연"
-        : null;
+  const statusCopy = quote?.isDelayed ? "업데이트 지연" : null;
 
-  return [instrument.symbol || scopeCopy, changeCopy || scopeCopy].filter(Boolean).join(" · ");
+  return [instrument.symbol || scopeCopy, statusCopy || scopeCopy].filter(Boolean).join(" · ");
 }
 
 function buildTargetMeta(item) {
@@ -2149,19 +2458,24 @@ function formatQuotePrimary(quote, instrument = {}) {
   return "가격 없음";
 }
 
-function formatQuoteSecondary(quote, instrument = {}) {
+function formatQuoteSecondary(quote, instrument = {}, options = {}) {
   if (!quote?.available) {
     return quote?.error || "실시간 연결 준비 중";
   }
 
   const parts = [];
+  const includeKimchiPremium = Boolean(options.includeKimchiPremium && instrument.market === "crypto");
 
   if (instrument.market === "us-stock" && Number.isFinite(Number(quote.priceKrw))) {
-    parts.push(`약 ${formatCurrency(Number(quote.priceKrw))}`);
+    parts.push(`원화 ${formatCurrency(Number(quote.priceKrw))}`);
   }
 
   if (Number.isFinite(Number(quote.changePercent))) {
     parts.push(formatSignedPercent(Number(quote.changePercent)));
+  }
+
+  if (includeKimchiPremium && Number.isFinite(Number(quote.kimchiPremiumPercent))) {
+    parts.push(`김프 ${formatSignedPercent(Number(quote.kimchiPremiumPercent))}`);
   }
 
   if (!parts.length && instrument.scope === "holding") {
@@ -2255,6 +2569,59 @@ function formatDateTime(value) {
   }).format(date);
 }
 
+function renderCurrentDateBadge(now = new Date()) {
+  text("#basis-date", formatCurrentDateLabel(now));
+}
+
+function scheduleCurrentDateBadgeRefresh() {
+  renderCurrentDateBadge();
+
+  if (currentDateBadgeTimer) {
+    window.clearTimeout(currentDateBadgeTimer);
+  }
+
+  const now = new Date();
+  const nextRefreshAt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+  currentDateBadgeTimer = window.setTimeout(scheduleCurrentDateBadgeRefresh, nextRefreshAt.getTime() - now.getTime());
+}
+
+function formatCurrentDateLabel(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}.${month}.${day}`;
+}
+
+function formatCurrentMonthDay(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return `${date.getMonth() + 1}/${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getCurrentBasisYear(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date().getFullYear() : date.getFullYear();
+}
+
+function getSignedPriceToneClass(value) {
+  const numeric = Number(value || 0);
+  if (numeric > 0) {
+    return "price-move-up";
+  }
+  if (numeric < 0) {
+    return "price-move-down";
+  }
+  return "price-move-neutral";
+}
+
 function toneClass(value) {
   if (value > 0) {
     return "gain";
@@ -2284,6 +2651,25 @@ function alpha(hex, opacity) {
 
 // 거래 추가 모달 관리
 function initTradeModal() {
+  const BROKER_OPTIONS_BY_MARKET = {
+    국내주식: ["카카오증권", "미래에셋"],
+    미국주식: ["카카오증권", "미래에셋"],
+    암호화폐: ["업비트"],
+  };
+  const ESTIMATED_FEE_RATES = {
+    암호화폐: {
+      업비트: 0.0005,
+    },
+    국내주식: {
+      카카오증권: 0.00015,
+      미래에셋: 0.00014,
+    },
+    미국주식: {
+      카카오증권: 0.001,
+      미래에셋: 0.0025,
+    },
+  };
+
   const modal = document.querySelector("#trade-modal");
   const openBtn = document.querySelector("#btn-add-trade");
   const form = document.querySelector("#trade-form");
@@ -2333,13 +2719,7 @@ function initTradeModal() {
   };
 
   const parseBasisMonthDay = () => {
-    const label = currentPortfolioData?.metadata?.basisDateLabel || "";
-    const match = label.match(/\d{4}\.(\d{1,2})\.(\d{1,2})/);
-    if (!match) {
-      return "";
-    }
-
-    return `${Number(match[1])}/${String(Number(match[2])).padStart(2, "0")}`;
+    return formatCurrentMonthDay();
   };
 
   const formatEditableNumber = (value, decimals = 8) => {
@@ -2350,8 +2730,90 @@ function initTradeModal() {
     return Number(value.toFixed(decimals)).toString();
   };
 
+  const normalizeTradeAssetName = (value, market) => {
+    const raw = String(value || "").trim();
+    const upper = raw.toUpperCase();
+
+    if (market === "암호화폐") {
+      if (["BTC", "비트코인", "비트코인(BTC)"].includes(raw) || upper === "BTC") {
+        return "비트코인";
+      }
+      if (["ETH", "이더리움", "이더리움(ETH)"].includes(raw) || upper === "ETH") {
+        return "ETH";
+      }
+      if (["XRP", "엑스알피", "엑스알피(XRP)"].includes(raw) || upper === "XRP") {
+        return "XRP";
+      }
+    }
+
+    if (market === "미국주식") {
+      if (["PLTR", "팔란티어"].includes(raw) || upper === "PLTR") {
+        return "팔란티어";
+      }
+      if (["CRCL", "써클"].includes(raw) || upper === "CRCL") {
+        return "써클";
+      }
+    }
+
+    if (market === "국내주식" && raw === "에스케이하이닉스") {
+      return "SK하이닉스";
+    }
+
+    return raw;
+  };
+
+  const parseFormattedNumber = (value) => {
+    const numeric = Number(String(value || "").replaceAll(",", "").trim());
+    return Number.isFinite(numeric) ? numeric : 0;
+  };
+
+  const formatGroupedInputValue = (value) => {
+    const sanitized = String(value || "")
+      .replace(/[^\d.]/g, "")
+      .replace(/^(\.)+/, "")
+      .replace(/(\..*)\./g, "$1");
+
+    if (!sanitized) {
+      return "";
+    }
+
+    const [integerPartRaw, decimalPart] = sanitized.split(".");
+    const integerPart = integerPartRaw.replace(/^0+(?=\d)/, "") || integerPartRaw || "0";
+    const groupedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return decimalPart !== undefined ? `${groupedInteger}.${decimalPart}` : groupedInteger;
+  };
+
+  const syncFormattedNumericField = (input) => {
+    if (!input) {
+      return;
+    }
+
+    input.value = formatGroupedInputValue(input.value);
+  };
+
+  const renderBrokerOptions = (market, preferredValue = "") => {
+    if (!brokerInput) {
+      return;
+    }
+
+    const options = BROKER_OPTIONS_BY_MARKET[market] || [];
+    const isCrypto = market === "암호화폐";
+    const resolvedValue = options.includes(preferredValue) ? preferredValue : isCrypto ? "업비트" : "";
+    brokerInput.innerHTML = `
+      ${isCrypto ? "" : '<option value="">플랫폼 선택</option>'}
+      ${options
+        .map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`)
+        .join("")}
+    `;
+    brokerInput.value = resolvedValue;
+  };
+
   const getActiveBroker = () => {
     return marketSelect.value === "암호화폐" ? "업비트" : String(brokerInput?.value || "").trim();
+  };
+
+  const getEstimatedFeeRate = (broker, market) => {
+    return ESTIMATED_FEE_RATES?.[market]?.[broker] ?? null;
   };
 
   const syncTradeSummary = () => {
@@ -2368,10 +2830,10 @@ function initTradeModal() {
 
   const syncAssetChipState = () => {
     const market = marketSelect.value;
-    const asset = String(assetInput?.value || "").trim().toUpperCase();
+    const asset = normalizeTradeAssetName(assetInput?.value || "", market).toUpperCase();
     assetChips.forEach((chip) => {
       const chipMarket = chip.dataset.market || "";
-      const chipAsset = String(chip.dataset.asset || "").trim().toUpperCase();
+      const chipAsset = normalizeTradeAssetName(chip.dataset.asset || chip.dataset.displayAsset || "", chipMarket).toUpperCase();
       chip.hidden = chipMarket !== market;
       chip.classList.toggle("is-active", chipMarket === market && chipAsset === asset);
     });
@@ -2389,15 +2851,16 @@ function initTradeModal() {
       return;
     }
 
-    const rates = {
-      업비트: 0.0005,
-      카카오증권: 0.00014,
-      미래에셋: 0.0001,
-    };
+    const brokerageRate = getEstimatedFeeRate(broker, market);
+    if (brokerageRate == null) {
+      feeInput.value = "";
+      syncTradeSummary();
+      return;
+    }
 
-    let fee = amount * (rates[broker] || 0);
+    let fee = amount * brokerageRate;
 
-    if (market === "국내주식" && (broker === "카카오증권" || broker === "미래에셋") && side === "매도") {
+    if (market === "국내주식" && side === "매도") {
       fee += amount * 0.002;
     }
 
@@ -2406,8 +2869,8 @@ function initTradeModal() {
   };
 
   const calculateAmount = () => {
-    const quantity = parseFloat(quantityInput.value) || 0;
-    const price = parseFloat(priceInput.value) || 0;
+    const quantity = parseFormattedNumber(quantityInput.value);
+    const price = parseFormattedNumber(priceInput.value);
     const amount = quantity * price;
     amountInput.value = amount ? formatEditableNumber(amount) : "";
     calculateFee();
@@ -2425,15 +2888,9 @@ function initTradeModal() {
     }
 
     if (brokerInput) {
+      const currentBroker = brokerInput.value;
+      renderBrokerOptions(market, currentBroker);
       brokerInput.required = !isCrypto;
-      if (isCrypto) {
-        brokerInput.value = "업비트";
-      } else if (brokerInput.value === "업비트") {
-        brokerInput.value = "";
-      }
-
-      brokerInput.placeholder =
-        market === "국내주식" ? "카카오증권 / 미래에셋" : market === "미국주식" ? "미래에셋 / 토스증권" : "업비트";
     }
 
     if (assetInput) {
@@ -2441,8 +2898,8 @@ function initTradeModal() {
         market === "국내주식"
           ? "삼성전자 / SK하이닉스"
           : market === "미국주식"
-            ? "PLTR / CRCL / AAPL"
-            : "비트코인 / ETH / XRP";
+            ? "팔란티어 / 써클 / 애플"
+            : "비트코인 / 이더리움 / 엑스알피";
     }
 
     if (priceLabel) {
@@ -2450,7 +2907,7 @@ function initTradeModal() {
     }
 
     if (priceInput) {
-      priceInput.placeholder = isUsStock ? "35000" : isCrypto ? "2000" : "1001000";
+      priceInput.placeholder = isUsStock ? "35,000" : isCrypto ? "2,000" : "1,001,000";
     }
 
     if (priceHelp) {
@@ -2463,8 +2920,8 @@ function initTradeModal() {
 
     if (brokerHelp) {
       brokerHelp.textContent = isUsStock
-        ? "미국주식 거래에 사용한 증권사를 적고, 금액은 원화 기준으로 넣어주세요."
-        : "국내주식 거래에 사용한 증권사를 적어주세요.";
+        ? "카카오증권 0.10%, 미래에셋 0.25% 기준으로 계산하며 미국 현지 제비용은 별도입니다."
+        : "카카오증권 0.015%, 미래에셋 0.014% 기준이며 국내주식 매도 시 세금 0.20%를 더합니다.";
     }
 
     syncAssetChipState();
@@ -2542,16 +2999,24 @@ function initTradeModal() {
     return payload;
   };
 
-  quantityInput.addEventListener("input", calculateAmount);
-  priceInput.addEventListener("input", calculateAmount);
-  brokerInput?.addEventListener("input", calculateFee);
+  quantityInput.addEventListener("input", () => {
+    syncFormattedNumericField(quantityInput);
+    calculateAmount();
+  });
+  priceInput.addEventListener("input", () => {
+    syncFormattedNumericField(priceInput);
+    calculateAmount();
+  });
+  quantityInput.addEventListener("blur", () => syncFormattedNumericField(quantityInput));
+  priceInput.addEventListener("blur", () => syncFormattedNumericField(priceInput));
+  brokerInput?.addEventListener("change", calculateFee);
   sideSelect.addEventListener("change", calculateFee);
   marketSelect.addEventListener("change", syncTradeFormMode);
   assetInput?.addEventListener("input", syncAssetChipState);
   assetChips.forEach((chip) => {
     chip.addEventListener("click", () => {
       marketSelect.value = chip.dataset.market || "암호화폐";
-      assetInput.value = chip.dataset.asset || "";
+      assetInput.value = chip.dataset.displayAsset || chip.dataset.asset || "";
       syncTradeFormMode();
       calculateAmount();
     });
@@ -2568,10 +3033,10 @@ function initTradeModal() {
       date: formData.get("date"),
       market: formData.get("market"),
       broker: getActiveBroker(),
-      asset: formData.get("asset"),
+      asset: normalizeTradeAssetName(formData.get("asset"), formData.get("market")),
       side: formData.get("side"),
-      quantity: parseFloat(formData.get("quantity")),
-      price: parseFloat(formData.get("price")),
+      quantity: parseFormattedNumber(formData.get("quantity")),
+      price: parseFormattedNumber(formData.get("price")),
       amount: parseFloat(amountInput.value),
       fee: parseFloat(feeInput.value),
       note: formData.get("note") || "",
@@ -2581,7 +3046,7 @@ function initTradeModal() {
       setSubmitting(true);
       const updatedPortfolio = await persistTrade(tradeData);
       livePortfolioSnapshot = null;
-      applyPortfolioData(updatedPortfolio, null);
+      applyPortfolioData(updatedPortfolio, null, { renderMode: "full" });
       closeModal();
       await refreshLivePortfolio();
     } catch (error) {

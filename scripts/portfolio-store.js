@@ -27,6 +27,20 @@ const CASH_PLATFORM_ORDER = [
   "미래에셋 예수금",
 ];
 
+const ESTIMATED_FEE_RATES = {
+  암호화폐: {
+    업비트: 0.0005,
+  },
+  국내주식: {
+    카카오증권: 0.00015,
+    미래에셋: 0.00014,
+  },
+  미국주식: {
+    카카오증권: 0.001,
+    미래에셋: 0.0025,
+  },
+};
+
 const PRICE_KEY_BY_ASSET = {
   삼성전자: "samsungElectronics",
   SK하이닉스: "skHynix",
@@ -111,15 +125,10 @@ function compareDateOnly(left, right) {
 }
 
 function calculateTradeFee({ broker, side, amount, market }) {
-  const rates = {
-    업비트: 0.0005,
-    카카오증권: 0.00014,
-    미래에셋: 0.0001,
-  };
+  const brokerageRate = ESTIMATED_FEE_RATES?.[market]?.[broker] ?? 0;
+  let fee = amount * brokerageRate;
 
-  let fee = amount * (rates[broker] || 0);
-
-  if (market === "국내주식" && (broker === "카카오증권" || broker === "미래에셋") && side === "매도") {
+  if (market === "국내주식" && side === "매도") {
     fee += amount * 0.002;
   }
 
@@ -351,6 +360,7 @@ function buildRealizedEntry(trade, basis) {
   const unit = trade.market === "암호화폐" ? "개" : "주";
 
   return {
+    market: trade.market,
     platform: trade.broker,
     asset: `${trade.asset} ${formatQuantityForLabel(trade.quantity)}${unit} 매도`,
     assetName: trade.asset,
