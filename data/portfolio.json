@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "📊 투자 총괄 현황",
-    "mantra": "항상 돈에대한 자세는 겸손하게, 욕심부리지말자",
+    "mantra": "겸손하게, 욕심부리지말자",
     "basisDateLabel": "2026.04.10 기준",
     "workbook": "투자현황_4월9일.xlsx"
   },
@@ -48,6 +48,11 @@
     {
       "platform": "업비트",
       "asset": "XRP",
+      "name": "XRP",
+      "symbol": "KRW-XRP",
+      "market": "crypto",
+      "currency": "KRW",
+      "priceSource": "upbit",
       "quantity": 10654.84052713,
       "averagePrice": 2149.86058615,
       "valuation": 21277716.53267861,
@@ -65,7 +70,20 @@
         "tone": "crypto",
         "summary": "가격이 열리면 가장 먼저 체크할 메인 코인",
         "items": [
-          "ETH"
+          {
+            "name": "비트코인",
+            "symbol": "KRW-BTC",
+            "market": "crypto",
+            "currency": "KRW",
+            "priceSource": "upbit"
+          },
+          {
+            "name": "ETH",
+            "symbol": "KRW-ETH",
+            "market": "crypto",
+            "currency": "KRW",
+            "priceSource": "upbit"
+          }
         ]
       },
       {
@@ -74,8 +92,20 @@
         "tone": "global",
         "summary": "중장기 관점에서 우선순위가 높은 미국 주식",
         "items": [
-          "팔란티어",
-          "써클"
+          {
+            "name": "팔란티어",
+            "symbol": "PLTR",
+            "market": "us-stock",
+            "currency": "USD",
+            "priceSource": "twelve-data"
+          },
+          {
+            "name": "써클",
+            "symbol": "CRCL",
+            "market": "us-stock",
+            "currency": "USD",
+            "priceSource": "twelve-data"
+          }
         ]
       },
       {

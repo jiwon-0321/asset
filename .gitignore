@@ -7,6 +7,7 @@ firebase-config.js
 # 백업 파일 (엑셀 원본)
 backup/
 *.xlsx
+data/backups/
 
 # 임시/브로큰 파일
 *.broken
@@ -34,3 +35,7 @@ Thumbs.db
 # 임시 파일
 *.tmp
 *.log
+
+# 환경 변수
+.env
+.env.local

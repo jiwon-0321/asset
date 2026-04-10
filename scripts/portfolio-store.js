@@ -1,5 +1,7 @@
 const fs = require("fs/promises");
 const path = require("path");
+const { normalizeHoldingMetadata, resolveAssetCategory } = require("../lib/asset-metadata");
+const BACKUP_LIMIT = 10;
 
 const quantityFormatter = new Intl.NumberFormat("ko-KR", {
   maximumFractionDigits: 8,
@@ -28,6 +30,8 @@ const CASH_PLATFORM_ORDER = [
 const PRICE_KEY_BY_ASSET = {
   삼성전자: "samsungElectronics",
   SK하이닉스: "skHynix",
+  비트코인: "btc",
+  BTC: "btc",
   XRP: "xrp",
   ETH: "eth",
 };
@@ -106,7 +110,7 @@ function compareDateOnly(left, right) {
   return left.getTime() - right.getTime();
 }
 
-function calculateTradeFee({ broker, side, amount }) {
+function calculateTradeFee({ broker, side, amount, market }) {
   const rates = {
     업비트: 0.0005,
     카카오증권: 0.00014,
@@ -115,7 +119,7 @@ function calculateTradeFee({ broker, side, amount }) {
 
   let fee = amount * (rates[broker] || 0);
 
-  if ((broker === "카카오증권" || broker === "미래에셋") && side === "매도") {
+  if (market === "국내주식" && (broker === "카카오증권" || broker === "미래에셋") && side === "매도") {
     fee += amount * 0.002;
   }
 
@@ -192,7 +196,7 @@ function updateAssetPrice(analytics, asset, price) {
 
 function normalizeTradeInput(input, basisLabel) {
   const market = String(input.market || "").trim();
-  if (!["국내주식", "암호화폐"].includes(market)) {
+  if (!["국내주식", "미국주식", "암호화폐"].includes(market)) {
     throw new Error("시장 값을 확인하세요.");
   }
 
@@ -201,8 +205,8 @@ function normalizeTradeInput(input, basisLabel) {
     throw new Error("플랫폼을 선택하세요.");
   }
 
-  if (market === "국내주식" && broker === "업비트") {
-    throw new Error("국내주식 거래는 증권사를 선택하세요.");
+  if ((market === "국내주식" || market === "미국주식") && broker === "업비트") {
+    throw new Error(`${market} 거래는 증권사를 선택하세요.`);
   }
 
   if (market === "암호화폐" && broker !== "업비트") {
@@ -247,7 +251,7 @@ function normalizeTradeInput(input, basisLabel) {
 
   const fee =
     input.fee === "" || input.fee == null
-      ? calculateTradeFee({ broker, side, amount })
+      ? calculateTradeFee({ broker, side, amount, market })
       : normalizeMoney(Number(input.fee));
   if (!Number.isFinite(fee) || fee < 0) {
     throw new Error("수수료를 확인하세요.");
@@ -270,7 +274,7 @@ function normalizeTradeInput(input, basisLabel) {
 }
 
 function getTradeCollectionKey(trade) {
-  return trade.market === "국내주식" ? "stocks" : "crypto";
+  return trade.market === "암호화폐" ? "crypto" : "stocks";
 }
 
 function getCashPlatformName(broker) {
@@ -329,13 +333,13 @@ function revalueHoldings(holdings, analytics) {
       const valuation = normalizeMoney(item.quantity * getAssetPrice(analytics, item.asset, item.averagePrice));
       const pnl = normalizeMoney(valuation - principal);
 
-      return {
+      return normalizeHoldingMetadata({
         ...item,
         quantity: normalizeQuantity(item.quantity),
         averagePrice: normalizeMoney(item.averagePrice),
         valuation,
         returnRate: principal ? normalizeRate(pnl / principal) : 0,
-      };
+      });
     })
     .sort((left, right) => right.valuation - left.valuation || left.platform.localeCompare(right.platform, "ko"));
 }
@@ -344,7 +348,7 @@ function buildRealizedEntry(trade, basis) {
   const parsed = parseProfitNote(trade.note);
   const pnl = parsed ? parsed.pnl : normalizeMoney(trade.amount - trade.fee - basis);
   const returnRate = parsed && parsed.returnRate != null ? parsed.returnRate : basis ? normalizeRate(pnl / basis) : 0;
-  const unit = trade.market === "국내주식" ? "주" : "개";
+  const unit = trade.market === "암호화폐" ? "개" : "주";
 
   return {
     platform: trade.broker,
@@ -357,21 +361,59 @@ function buildRealizedEntry(trade, basis) {
   };
 }
 
+function getHoldingMetadataFromTrade(trade) {
+  if (trade.market === "암호화폐") {
+    return {
+      market: "crypto",
+      currency: "KRW",
+      priceSource: "upbit",
+      symbol:
+        trade.asset === "비트코인" || trade.asset === "BTC"
+          ? "KRW-BTC"
+          : trade.asset === "ETH"
+            ? "KRW-ETH"
+            : trade.asset === "XRP"
+              ? "KRW-XRP"
+              : "",
+    };
+  }
+
+  if (trade.market === "미국주식") {
+    return {
+      market: "us-stock",
+      currency: "KRW",
+      priceSource: "twelve-data",
+      symbol: /^[A-Z.\-]+$/.test(String(trade.asset || "").trim()) ? String(trade.asset).trim() : "",
+    };
+  }
+
+  return {
+    market: "kr-stock",
+    currency: "KRW",
+    priceSource: "",
+    symbol: "",
+  };
+}
+
 function applyTradeToHoldings(holdings, trade, analytics) {
   const next = holdings.map((item) => ({ ...item }));
   const platform = trade.market === "암호화폐" ? "업비트" : trade.broker;
   const index = next.findIndex((item) => item.platform === platform && item.asset === trade.asset);
   const currentHolding =
     index === -1
-      ? {
+      ? normalizeHoldingMetadata({
           platform,
           asset: trade.asset,
+          ...getHoldingMetadataFromTrade(trade),
           quantity: 0,
           averagePrice: 0,
           valuation: 0,
           returnRate: 0,
-        }
-      : { ...next[index] };
+        })
+      : {
+          ...next[index],
+          ...(!next[index].market ? getHoldingMetadataFromTrade(trade) : {}),
+        };
 
   const currentPrincipal = normalizeMoney(currentHolding.quantity * currentHolding.averagePrice);
   let realizedEntry = null;
@@ -416,7 +458,7 @@ function rebuildAssetStatus(holdings) {
   const groups = new Map();
 
   holdings.forEach((item) => {
-    const category = item.platform === "업비트" ? "암호화폐" : "국내주식";
+    const category = resolveAssetCategory(item);
     const key = `${category}::${item.platform}`;
     if (!groups.has(key)) {
       groups.set(key, {
@@ -445,7 +487,7 @@ function rebuildAssetStatus(holdings) {
       returnRate: item.principal ? normalizeRate(item.pnl / item.principal) : 0,
     }))
     .sort((left, right) => {
-      const categoryOrder = { 암호화폐: 0, 국내주식: 1 };
+      const categoryOrder = { 암호화폐: 0, 해외주식: 1, 국내주식: 2 };
       const categoryDelta = (categoryOrder[left.category] ?? 99) - (categoryOrder[right.category] ?? 99);
       if (categoryDelta !== 0) {
         return categoryDelta;
@@ -647,7 +689,8 @@ function appendTrade(portfolio, trade) {
   const collectionKey = getTradeCollectionKey(trade);
   const tradePayload = {
     date: trade.date,
-    ...(collectionKey === "stocks" ? { broker: trade.broker } : {}),
+    market: trade.market,
+    ...(trade.broker ? { broker: trade.broker } : {}),
     asset: trade.asset,
     side: trade.side,
     quantity: trade.quantity,
@@ -690,11 +733,41 @@ async function loadPortfolio(rootDir) {
   return JSON.parse(raw);
 }
 
+function buildBackupFilename() {
+  const timestamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
+  return `portfolio-${timestamp}.json`;
+}
+
+async function backupExistingPortfolio(rootDir, jsonPath) {
+  try {
+    await fs.access(jsonPath);
+  } catch {
+    return;
+  }
+
+  const backupDir = path.join(rootDir, "data", "backups");
+  await fs.mkdir(backupDir, { recursive: true });
+  await fs.copyFile(jsonPath, path.join(backupDir, buildBackupFilename()));
+
+  const entries = await fs.readdir(backupDir, { withFileTypes: true });
+  const backupFiles = entries
+    .filter((entry) => entry.isFile() && entry.name.startsWith("portfolio-") && entry.name.endsWith(".json"))
+    .map((entry) => entry.name)
+    .sort()
+    .reverse();
+
+  const staleBackups = backupFiles.slice(BACKUP_LIMIT);
+  await Promise.all(
+    staleBackups.map((fileName) => fs.unlink(path.join(backupDir, fileName)))
+  );
+}
+
 async function savePortfolio(rootDir, portfolio) {
   const payload = JSON.stringify(portfolio, null, 2);
   const jsonPath = path.join(rootDir, "data", "portfolio.json");
   const jsPath = path.join(rootDir, "data", "portfolio-data.js");
 
+  await backupExistingPortfolio(rootDir, jsonPath);
   await fs.writeFile(jsonPath, `${payload}\n`, "utf8");
   await fs.writeFile(jsPath, `window.__PORTFOLIO_DATA__ = ${payload};\n`, "utf8");
 }
@@ -711,7 +784,14 @@ module.exports = {
   addTrade,
   appendTrade,
   buildChartData,
+  getAssetPrice,
   loadPortfolio,
+  normalizeMoney,
+  normalizeRate,
   normalizeTradeInput,
+  rebuildAssetStatus,
+  rebuildSummary,
+  revalueHoldings,
   savePortfolio,
+  updateAssetPrice,
 };

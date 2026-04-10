@@ -25,16 +25,15 @@
     <div class="page-shell">
       <header class="hero reveal">
         <div class="hero-copy">
-          <p class="eyebrow">Task #1 · Portfolio Overview</p>
+          <p class="eyebrow">Personal Portfolio Board</p>
           <h1 id="page-title" class="hero-title">Sniper Capital Board</h1>
           <p class="hero-summary" id="hero-summary"></p>
           <div class="hero-meta">
             <span id="basis-date"></span>
-            <span id="workbook-name"></span>
           </div>
         </div>
         <aside class="hero-panel">
-          <p class="panel-kicker">Live posture</p>
+          <p class="panel-kicker">Live price</p>
           <div class="price-strip" id="price-strip"></div>
         </aside>
       </header>
@@ -42,13 +41,13 @@
       <main class="dashboard">
         <section class="metric-grid reveal" id="metric-grid"></section>
 
-        <section class="section reveal panel-accordion is-open" id="targets-section">
+        <section class="section reveal panel-accordion" id="targets-section">
           <div class="section-heading section-heading--accordion">
             <button
               type="button"
               class="section-toggle"
               id="targets-toggle"
-              aria-expanded="true"
+              aria-expanded="false"
               aria-controls="targets-panel"
             >
               <div class="section-heading-main">
@@ -63,8 +62,8 @@
                   </svg>
                 </span>
                 <div class="section-heading-copy">
-                  <p class="eyebrow">Target Board</p>
-                  <h2>목표</h2>
+                  <p class="eyebrow">Watchlist</p>
+                  <h2>관심종목</h2>
                 </div>
               </div>
               <span class="section-toggle-icon" aria-hidden="true">
@@ -74,7 +73,7 @@
               </span>
             </button>
           </div>
-          <div class="panel-collapse" id="targets-panel" aria-hidden="false">
+          <div class="panel-collapse" id="targets-panel" aria-hidden="true">
             <div class="targets-layout">
               <article class="panel targets-hero-card" id="targets-hero"></article>
               <div class="targets-grid" id="targets-grid"></div>
@@ -82,7 +81,7 @@
           </div>
         </section>
 
-        <section class="section split reveal">
+        <section class="section reveal" id="portfolio-overview-section">
           <div class="panel panel-accordion" id="allocation-section">
             <div class="section-heading section-heading--accordion">
               <button
@@ -98,11 +97,11 @@
                       <path d="M12 3v9l7.5 4.5A9 9 0 1 1 12 3Z" />
                       <path d="M13.5 3.2A9 9 0 0 1 21 12h-7.5V3.2Z" />
                     </svg>
-                  </span>
-                  <div class="section-heading-copy">
-                    <p class="eyebrow">Allocation</p>
-                    <h2>자산 분포</h2>
-                  </div>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Portfolio Mix</p>
+                  <h2>자산 분포</h2>
+                </div>
                 </div>
                 <span class="section-toggle-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
@@ -116,220 +115,6 @@
                 <div class="allocation-visual" id="allocation-visual"></div>
                 <div class="allocation-legend" id="allocation-legend"></div>
               </div>
-            </div>
-          </div>
-          <div class="panel panel-accordion" id="platform-section">
-            <div class="section-heading section-heading--accordion">
-              <button
-                type="button"
-                class="section-toggle"
-                id="platform-toggle"
-                aria-expanded="false"
-                aria-controls="platform-panel"
-              >
-                <div class="section-heading-main">
-                  <span class="section-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M4 5.5h16" />
-                      <path d="M4 12h16" />
-                      <path d="M4 18.5h16" />
-                      <path d="M8 4v16" />
-                      <path d="M16 4v16" />
-                    </svg>
-                  </span>
-                  <div class="section-heading-copy">
-                    <p class="eyebrow">By Platform</p>
-                    <h2>자산별 현황</h2>
-                  </div>
-                </div>
-                <span class="section-toggle-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </span>
-              </button>
-            </div>
-            <div class="panel-collapse" id="platform-panel" aria-hidden="true">
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>종목</th>
-                      <th>플랫폼</th>
-                      <th>평가금액</th>
-                      <th>원금</th>
-                      <th>손익</th>
-                      <th>수익률</th>
-                    </tr>
-                  </thead>
-                  <tbody id="asset-status-body"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="section reveal charts-section panel-accordion" id="performance-section">
-          <div class="section-heading section-heading--accordion">
-            <button
-              type="button"
-              class="section-toggle"
-              id="performance-toggle"
-              aria-expanded="false"
-              aria-controls="performance-panel"
-            >
-              <div class="section-heading-main">
-                <span class="section-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 18V6" />
-                    <path d="M4 18h16" />
-                    <path d="M8 14v-3" />
-                    <path d="M12 14V9" />
-                    <path d="M16 14V7" />
-                  </svg>
-                </span>
-                <div class="section-heading-copy">
-                  <p class="eyebrow">Performance View</p>
-                  <h2>수익률 및 손익 추이</h2>
-                </div>
-              </div>
-              <span class="section-toggle-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div class="panel-collapse" id="performance-panel" aria-hidden="true">
-            <div class="chart-grid">
-              <article class="chart-card chart-card--performance">
-                <div class="chart-card-header">
-                  <div>
-                    <p class="chart-kicker">Relative Performance</p>
-                    <h3>자산별 수익률 비교</h3>
-                  </div>
-                  <div class="chart-stat" id="returns-chart-stat"></div>
-                </div>
-                <div class="chart-canvas-wrap">
-                  <canvas id="returns-chart"></canvas>
-                </div>
-              </article>
-
-              <article class="chart-card chart-card--history">
-                <div class="chart-card-header">
-                  <div>
-                    <p class="chart-kicker">Realized History</p>
-                    <h3>실현손익 히스토리</h3>
-                  </div>
-                  <div class="chart-stat" id="realized-chart-stat"></div>
-                </div>
-                <div class="chart-canvas-wrap">
-                  <canvas id="realized-chart"></canvas>
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section class="section reveal panel-accordion" id="holdings-section">
-          <div class="section-heading section-heading--accordion">
-            <button
-              type="button"
-              class="section-toggle"
-              id="holdings-toggle"
-              aria-expanded="false"
-              aria-controls="holdings-panel"
-            >
-              <div class="section-heading-main">
-                <span class="section-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 7.5h16v10H4z" />
-                    <path d="M8 7.5V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5" />
-                    <path d="M4 12h16" />
-                  </svg>
-                </span>
-                <div class="section-heading-copy">
-                  <p class="eyebrow">Holdings</p>
-                  <h2>보유 종목 상세</h2>
-                </div>
-              </div>
-              <span class="section-toggle-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div class="panel-collapse" id="holdings-panel" aria-hidden="true">
-            <div class="holdings-grid" id="holdings-grid"></div>
-          </div>
-        </section>
-
-        <section class="section split reveal">
-          <div class="panel panel-accordion" id="realized-section">
-            <div class="section-heading section-heading--accordion">
-              <button
-                type="button"
-                class="section-toggle"
-                id="realized-toggle"
-                aria-expanded="false"
-                aria-controls="realized-panel"
-              >
-                <div class="section-heading-main">
-                  <span class="section-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M4 18V6" />
-                      <path d="M4 18h16" />
-                      <path d="m7 14 3-3 3 2 4-5" />
-                      <path d="m17 8 3-.5-.5 3" />
-                    </svg>
-                  </span>
-                  <div class="section-heading-copy">
-                    <p class="eyebrow">Realized PnL</p>
-                    <h2>실현 손익</h2>
-                  </div>
-                </div>
-                <span class="section-toggle-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </span>
-              </button>
-            </div>
-            <div class="panel-collapse" id="realized-panel" aria-hidden="true">
-              <div class="realized-list" id="realized-list"></div>
-            </div>
-          </div>
-          <div class="panel panel-accordion" id="defense-section">
-            <div class="section-heading section-heading--accordion">
-              <button
-                type="button"
-                class="section-toggle"
-                id="defense-toggle"
-                aria-expanded="false"
-                aria-controls="defense-panel"
-              >
-                <div class="section-heading-main">
-                  <span class="section-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 3 5 6v5c0 5 2.8 8.3 7 10 4.2-1.7 7-5 7-10V6l-7-3Z" />
-                      <path d="m9.5 12 1.7 1.7 3.8-4.2" />
-                    </svg>
-                  </span>
-                  <div class="section-heading-copy">
-                    <p class="eyebrow">XRP Defense</p>
-                    <h2>방어매매 핵심 지표</h2>
-                  </div>
-                </div>
-                <span class="section-toggle-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </span>
-              </button>
-            </div>
-            <div class="panel-collapse" id="defense-panel" aria-hidden="true">
-              <div class="defense-grid" id="defense-grid"></div>
             </div>
           </div>
         </section>
@@ -350,9 +135,9 @@
                       <path d="M12 7v5l3 2" />
                       <circle cx="12" cy="12" r="8.5" />
                     </svg>
-                  </span>
-                  <div class="section-heading-copy">
-                      <p class="eyebrow">Grouped Timeline</p>
+                </span>
+                <div class="section-heading-copy">
+                      <p class="eyebrow">Trade Journal</p>
                       <h2>전체 거래 타임라인</h2>
                   </div>
                 </div>
@@ -422,6 +207,124 @@
           </div>
         </section>
 
+        <section class="section reveal panel-accordion" id="holdings-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="holdings-toggle"
+              aria-expanded="false"
+              aria-controls="holdings-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 7.5h16v10H4z" />
+                    <path d="M8 7.5V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5" />
+                    <path d="M4 12h16" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Open Positions</p>
+                  <h2>보유 종목 상세</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="holdings-panel" aria-hidden="true">
+            <div class="holdings-grid" id="holdings-grid"></div>
+          </div>
+        </section>
+
+        <section class="section reveal charts-section panel-accordion" id="performance-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="performance-toggle"
+              aria-expanded="false"
+              aria-controls="performance-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 18V6" />
+                    <path d="M4 18h16" />
+                    <path d="M8 14v-3" />
+                    <path d="M12 14V9" />
+                    <path d="M16 14V7" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Realized PnL</p>
+                  <h2>누적 실현손익 추이</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="performance-panel" aria-hidden="true">
+            <div class="chart-grid">
+              <article class="chart-card chart-card--history">
+                <div class="chart-card-header">
+                  <div>
+                    <p class="chart-kicker">Cumulative PnL</p>
+                    <h3>누적 실현손익 추이</h3>
+                  </div>
+                  <div class="chart-stat" id="realized-chart-stat"></div>
+                </div>
+                <div class="chart-canvas-wrap">
+                  <canvas id="realized-chart"></canvas>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="insights-section">
+          <div class="panel panel-accordion" id="defense-section">
+            <div class="section-heading section-heading--accordion">
+              <button
+                type="button"
+                class="section-toggle"
+                id="defense-toggle"
+                aria-expanded="false"
+                aria-controls="defense-panel"
+              >
+                <div class="section-heading-main">
+                  <span class="section-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 3 5 6v5c0 5 2.8 8.3 7 10 4.2-1.7 7-5 7-10V6l-7-3Z" />
+                      <path d="m9.5 12 1.7 1.7 3.8-4.2" />
+                    </svg>
+                  </span>
+                  <div class="section-heading-copy">
+                    <p class="eyebrow">Defense Metrics</p>
+                    <h2>XRP 방어매매 지표</h2>
+                  </div>
+                </div>
+                <span class="section-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="panel-collapse" id="defense-panel" aria-hidden="true">
+              <div class="defense-grid" id="defense-grid"></div>
+            </div>
+          </div>
+        </section>
+
         <section class="section strategy reveal panel-accordion" id="strategy-section">
           <div class="section-heading section-heading--accordion">
             <button
@@ -440,7 +343,7 @@
                   </svg>
                 </span>
                 <div class="section-heading-copy">
-                  <p class="eyebrow">Playbook</p>
+                  <p class="eyebrow">Execution Playbook</p>
                   <h2>플레이 전략</h2>
                 </div>
               </div>
@@ -488,7 +391,11 @@
     <div class="trade-modal" id="trade-modal" hidden aria-hidden="true" role="dialog" aria-modal="true">
       <div class="trade-modal-dialog">
         <div class="trade-modal-header">
-          <h3>거래 추가</h3>
+          <div>
+            <p class="eyebrow">Quick Entry</p>
+            <h3>거래 추가</h3>
+            <p class="trade-modal-helper">필수값만 입력하면 거래금액과 수수료는 자동 계산됩니다.</p>
+          </div>
           <button type="button" class="trade-modal-close" data-trade-modal-close aria-label="닫기">
             <svg viewBox="0 0 24 24">
               <path d="M6 6l12 12" />
@@ -505,8 +412,8 @@
             <div class="form-group">
               <label for="trade-market">시장</label>
               <select id="trade-market" name="market" required>
-                <option value="">선택</option>
                 <option value="국내주식">국내주식</option>
+                <option value="미국주식">미국주식</option>
                 <option value="암호화폐">암호화폐</option>
               </select>
             </div>
@@ -514,54 +421,85 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label for="trade-broker">플랫폼</label>
-              <select id="trade-broker" name="broker" required>
-                <option value="">선택</option>
-                <option value="카카오증권">카카오증권</option>
-                <option value="미래에셋">미래에셋증권</option>
-                <option value="업비트">업비트</option>
-              </select>
-            </div>
-            <div class="form-group">
               <label for="trade-asset">자산</label>
               <input type="text" id="trade-asset" name="asset" placeholder="SK하이닉스" required />
             </div>
-          </div>
-
-          <div class="form-row">
             <div class="form-group">
               <label for="trade-side">매수/매도</label>
               <select id="trade-side" name="side" required>
-                <option value="">선택</option>
                 <option value="매수">매수</option>
                 <option value="매도">매도</option>
               </select>
             </div>
+          </div>
+
+          <div class="form-group form-group--full">
+            <label>빠른 선택</label>
+            <div class="form-chip-row" id="trade-asset-quick">
+              <button type="button" class="form-chip" data-asset-chip data-market="암호화폐" data-asset="비트코인">비트코인</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="암호화폐" data-asset="ETH">ETH</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="암호화폐" data-asset="XRP">XRP</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="미국주식" data-asset="PLTR">PLTR</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="미국주식" data-asset="CRCL">CRCL</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="국내주식" data-asset="삼성전자">삼성전자</button>
+              <button type="button" class="form-chip" data-asset-chip data-market="국내주식" data-asset="SK하이닉스">SK하이닉스</button>
+            </div>
+          </div>
+
+          <div class="form-row">
             <div class="form-group">
               <label for="trade-quantity">수량</label>
               <input type="number" id="trade-quantity" name="quantity" placeholder="7" step="any" required />
             </div>
-          </div>
-
-          <div class="form-row">
             <div class="form-group">
-              <label for="trade-price">단가 (원)</label>
+              <label for="trade-price" id="trade-price-label">단가 (원)</label>
               <input type="number" id="trade-price" name="price" placeholder="1001000" step="any" required />
-            </div>
-            <div class="form-group">
-              <label for="trade-amount">거래금액 (원)</label>
-              <input type="number" id="trade-amount" name="amount" placeholder="자동 계산" step="any" readonly />
+              <p class="form-help" id="trade-price-help">체결 단가 기준으로 입력합니다.</p>
             </div>
           </div>
 
+          <input type="hidden" id="trade-amount" name="amount" />
+          <input type="hidden" id="trade-fee" name="fee" />
+
+          <div class="trade-summary-grid">
+            <article class="trade-summary-card">
+              <span>플랫폼</span>
+              <strong id="trade-summary-broker">업비트</strong>
+            </article>
+            <article class="trade-summary-card">
+              <span>거래금액</span>
+              <strong id="trade-summary-amount">자동 계산</strong>
+            </article>
+            <article class="trade-summary-card">
+              <span>예상 수수료</span>
+              <strong id="trade-summary-fee">자동 계산</strong>
+            </article>
+          </div>
+
           <div class="form-row">
-            <div class="form-group">
-              <label for="trade-fee">수수료 (원)</label>
-              <input type="number" id="trade-fee" name="fee" placeholder="자동 계산" step="any" readonly />
+            <div class="form-group" data-trade-broker-group>
+              <label for="trade-broker">플랫폼</label>
+              <input
+                type="text"
+                id="trade-broker"
+                name="broker"
+                list="trade-broker-suggestions"
+                placeholder="미래에셋"
+                autocomplete="off"
+              />
+              <datalist id="trade-broker-suggestions">
+                <option value="카카오증권"></option>
+                <option value="미래에셋"></option>
+                <option value="토스증권"></option>
+                <option value="키움증권"></option>
+                <option value="한국투자증권"></option>
+                <option value="NH투자증권"></option>
+              </datalist>
+              <p class="form-help" id="trade-broker-help">국내주식과 미국주식 거래만 입력하면 됩니다.</p>
             </div>
             <div class="form-group">
               <label for="trade-note">메모 (선택)</label>
-              <input type="text" id="trade-note" name="note" placeholder="수익률 등" />
+              <input type="text" id="trade-note" name="note" placeholder="비워도 됩니다" />
             </div>
           </div>
 

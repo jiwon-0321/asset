@@ -13,10 +13,20 @@ const compactNumberFormatter = new Intl.NumberFormat("ko-KR", {
   maximumFractionDigits: 1,
 });
 
+const usdFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 const colors = ["#17F9A6", "#5EC8FF", "#FFB84D", "#FF6B87"];
 let chartRegistry = [];
 let calendarDetailStore = new Map();
 let currentPortfolioData = null;
+let basePortfolioData = null;
+let livePortfolioSnapshot = null;
+let liveRefreshTimer = null;
 let timelineCalendarState = {
   trades: [],
   basisYear: new Date().getFullYear(),
@@ -26,9 +36,11 @@ let timelineCalendarState = {
 
 document.addEventListener("DOMContentLoaded", () => {
   loadPortfolio()
-    .then((data) => {
+    .then(async (data) => {
       applyPortfolioData(data);
       initTradeModal();
+      await refreshLivePortfolio();
+      scheduleLivePortfolioRefresh();
     })
     .catch((error) => {
       console.error(error);
@@ -54,10 +66,83 @@ async function loadPortfolio() {
   return response.json();
 }
 
-function applyPortfolioData(data) {
-  currentPortfolioData = data;
+function applyPortfolioData(data, liveSnapshot = livePortfolioSnapshot) {
+  basePortfolioData = data;
   window.__PORTFOLIO_DATA__ = data;
-  renderDashboard(data);
+
+  const renderable = buildRenderablePortfolio(data, liveSnapshot);
+  currentPortfolioData = renderable;
+  renderDashboard(renderable);
+}
+
+function buildRenderablePortfolio(data, liveSnapshot = null) {
+  const next = structuredClone(data);
+  next.holdings = normalizeHoldingsForDisplay(next.holdings || []);
+  next.targets = normalizeTargetsForDisplay(next.targets || {});
+  next.live = buildLiveState(liveSnapshot);
+
+  if (!liveSnapshot?.portfolioLive) {
+    return next;
+  }
+
+  next.summary = liveSnapshot.portfolioLive.summary || next.summary;
+  next.assetStatus = liveSnapshot.portfolioLive.assetStatus || next.assetStatus;
+  next.holdings = normalizeHoldingsForDisplay(liveSnapshot.portfolioLive.holdings || next.holdings);
+  next.charts = liveSnapshot.portfolioLive.charts || next.charts;
+  next.analytics = {
+    ...(next.analytics || {}),
+    ...(liveSnapshot.portfolioLive.analytics || {}),
+  };
+  next.targets = normalizeTargetsForDisplay(liveSnapshot.portfolioLive.targets || next.targets);
+
+  return next;
+}
+
+async function refreshLivePortfolio() {
+  if (window.location.protocol === "file:") {
+    return null;
+  }
+
+  try {
+    const response = await fetch("./api/live-prices", {
+      cache: "no-store",
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(payload?.error || "실시간 가격을 불러오지 못했습니다.");
+    }
+
+    livePortfolioSnapshot = payload;
+    if (basePortfolioData) {
+      applyPortfolioData(basePortfolioData, livePortfolioSnapshot);
+    }
+    return payload;
+  } catch (error) {
+    console.error(error);
+    livePortfolioSnapshot = decorateFailedLiveSnapshot(livePortfolioSnapshot, error.message);
+    if (basePortfolioData) {
+      applyPortfolioData(basePortfolioData, livePortfolioSnapshot);
+    }
+    return null;
+  }
+}
+
+function scheduleLivePortfolioRefresh() {
+  if (window.location.protocol === "file:") {
+    return;
+  }
+
+  if (liveRefreshTimer) {
+    window.clearInterval(liveRefreshTimer);
+  }
+
+  const refreshIntervalMs = Math.max(5_000, Number(currentPortfolioData?.live?.refreshIntervalSeconds || 10) * 1000);
+  liveRefreshTimer = window.setInterval(() => {
+    if (document.hidden) {
+      return;
+    }
+    refreshLivePortfolio();
+  }, refreshIntervalMs);
 }
 
 function renderDashboard(data) {
@@ -73,16 +158,16 @@ function renderDashboard(data) {
     trades,
     analytics,
     charts,
+    live,
   } = data;
 
   text("#page-title", metadata.mantra);
-  text("#hero-summary", "");
+  text("#hero-summary", buildHeroSummary(live));
   text("#basis-date", `기준일 · ${metadata.basisDateLabel}`);
-  text("#workbook-name", `소스 파일 · ${metadata.workbook}`);
 
-  renderPriceStrip(analytics.prices, holdings);
+  renderPriceStrip(live?.quotes || {}, holdings, targets);
   renderMetricCards(summary);
-  renderTargets(targets);
+  renderTargets(targets, live);
   renderCharts(charts);
   renderAllocation(summary, assetStatus, cashPositions);
   renderAssetTable(assetStatus, holdings);
@@ -95,49 +180,66 @@ function renderDashboard(data) {
   initializeMotion();
 }
 
-function renderPriceStrip(prices, holdings = []) {
+function getDisplayAssetName(item = {}) {
+  const symbol = String(item.symbol || "").trim().toUpperCase();
+  const rawName = String(item.name || item.asset || "").trim();
+  const normalizedName = rawName.toUpperCase();
+
+  if (symbol === "KRW-BTC" || normalizedName === "BTC" || rawName === "비트코인" || rawName === "비트코인(BTC)") {
+    return "비트코인(BTC)";
+  }
+
+  if (symbol === "KRW-ETH" || normalizedName === "ETH" || rawName === "이더리움" || rawName === "이더리움(ETH)") {
+    return "이더리움(ETH)";
+  }
+
+  if (symbol === "KRW-XRP" || normalizedName === "XRP" || rawName === "엑스알피" || rawName === "엑스알피(XRP)") {
+    return "엑스알피(XRP)";
+  }
+
+  return rawName;
+}
+
+function renderPriceStrip(quotes = {}, holdings = [], targets = {}) {
   const container = document.querySelector("#price-strip");
-  const holdingQuantity = (matcher) =>
-    holdings.reduce((total, item) => {
-      const asset = item.asset || "";
-      if (!matcher(asset)) {
-        return total;
-      }
-      return total + (item.quantity || 0);
-    }, 0);
+  if (!container) {
+    return;
+  }
 
-  const priceItems = [
-    {
-      label: "삼성전자",
-      value: prices.samsungElectronics,
-      quantity: holdingQuantity((asset) => asset.includes("삼성전자")),
-    },
-    {
-      label: "SK하이닉스",
-      value: prices.skHynix,
-      quantity: holdingQuantity((asset) => asset.includes("SK하이닉스")),
-    },
-    {
-      label: "XRP",
-      value: prices.xrp,
-      quantity: holdingQuantity((asset) => asset.startsWith("XRP")),
-    },
-    {
-      label: "ETH",
-      value: prices.eth,
-      quantity: holdingQuantity((asset) => asset.startsWith("ETH")),
-    },
-  ].filter((item) => item.quantity > 0);
-
-  container.innerHTML = priceItems
-    .map(
-      ({ label, value }) => `
-        <div class="price-pill">
-          <span class="price-name">${label}</span>
-          <strong class="price-value">${formatCurrency(value)}</strong>
+  const instruments = collectTrackedQuoteItems(holdings, targets);
+  if (!instruments.length) {
+    container.innerHTML = `
+      <div class="price-pill price-pill--empty">
+        <div class="price-copy">
+          <span class="price-name">실시간 가격</span>
+          <span class="price-meta">추적 종목이 아직 없습니다.</span>
         </div>
-      `
-    )
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = instruments
+    .map((instrument) => {
+      const quote = instrument.liveQuote || quotes[instrument.name] || null;
+      const tone = normalizeTargetTone(instrument.market);
+      const quoteStateClass = quote?.available ? "" : " price-pill--inactive";
+      const staleClass = quote?.isDelayed ? " price-pill--stale" : "";
+      const movementClass = getQuoteToneClass(quote);
+
+      return `
+        <div class="price-pill price-pill--${tone}${quoteStateClass}${staleClass}">
+          <div class="price-copy">
+            <span class="price-name">${escapeHtml(getDisplayAssetName(instrument))}</span>
+            <span class="price-meta">${escapeHtml(buildInstrumentMeta(instrument, quote))}</span>
+          </div>
+          <div class="price-value-wrap">
+            <strong class="price-value ${movementClass}">${escapeHtml(formatQuotePrimary(quote, instrument))}</strong>
+            <span class="price-secondary ${movementClass}">${escapeHtml(formatQuoteSecondary(quote, instrument))}</span>
+          </div>
+        </div>
+      `;
+    })
     .join("");
 }
 
@@ -149,13 +251,13 @@ function renderMetricCards(summary) {
     {
       label: "초기 투자금",
       value: formatCurrency(initialInvestment),
-      detail: "업비트 매매일지 F4 기준 시작 자금",
+      detail: "업비트 기준 시작 자금",
       tone: "neutral",
     },
     {
       label: "총 자산",
       value: formatCurrency(summary.totalAssets),
-      detail: "엑셀 총괄현황 기준 전체 평가액",
+      detail: "전체 평가액",
       tone: "neutral",
     },
     {
@@ -165,15 +267,9 @@ function renderMetricCards(summary) {
       tone: toneClass(initialInvestmentPnl),
     },
     {
-      label: "평가 손익",
-      value: formatSignedCurrency(summary.portfolioPnl),
-      detail: `현재 투자원금 대비 ${formatPercent(summary.portfolioReturnRate)}`,
-      tone: toneClass(summary.portfolioPnl),
-    },
-    {
       label: "현금 보유",
       value: formatCurrency(summary.cashTotal),
-      detail: "예수금 + 페이머니 + 업비트 KRW",
+      detail: "주식예수금 + 현금 + 업비트 KRW",
       tone: "neutral",
     },
     {
@@ -199,7 +295,7 @@ function renderMetricCards(summary) {
   });
 }
 
-function renderTargets(targets) {
+function renderTargets(targets, live) {
   const hero = document.querySelector("#targets-hero");
   const grid = document.querySelector("#targets-grid");
   if (!hero || !grid) {
@@ -226,6 +322,12 @@ function renderTargets(targets) {
     <p class="targets-hero-summary">${escapeHtml(
       targets?.summary || "매수 버튼보다 먼저 보는 후보군입니다."
     )}</p>
+    <div class="targets-live-row">
+      <span class="targets-live-badge targets-live-badge--${escapeHtml(live?.status?.level || "neutral")}">${escapeHtml(
+        live?.status?.message || "실시간 연결 준비 중"
+      )}</span>
+      <span class="targets-live-meta">${escapeHtml(buildLiveTimestampCopy(live))}</span>
+    </div>
     <div class="targets-strip">
       ${groups
         .map((group) => {
@@ -249,8 +351,8 @@ function renderTargets(targets) {
                 const tone = normalizeTargetTone(group?.tone);
                 const items = Array.isArray(group?.items) ? group.items.filter(Boolean) : [];
                 return items.map((item) => {
-                  const name = typeof item === "string" ? item : item?.name || "";
-                  return `<span class="targets-pill targets-pill--${tone}">${escapeHtml(name)}</span>`;
+                  const assetItem = typeof item === "string" ? { name: item } : item;
+                  return `<span class="targets-pill targets-pill--${tone}">${escapeHtml(getDisplayAssetName(assetItem))}</span>`;
                 });
               })
               .join("")}
@@ -265,10 +367,10 @@ function renderTargets(targets) {
     }
   `;
 
-  grid.innerHTML = groups.map((group) => renderTargetGroupCard(group)).join("");
+  grid.innerHTML = groups.map((group) => renderTargetGroupCard(group, live)).join("");
 }
 
-function renderTargetGroupCard(group = {}) {
+function renderTargetGroupCard(group = {}, live = null) {
   const items = Array.isArray(group.items) ? group.items.filter(Boolean) : [];
   const tone = normalizeTargetTone(group.tone);
 
@@ -286,18 +388,7 @@ function renderTargetGroupCard(group = {}) {
         items.length
           ? `
             <ul class="targets-list">
-              ${items
-                .map((item) => {
-                  const name = typeof item === "string" ? item : item?.name || "";
-                  const note = typeof item === "string" ? "" : item?.note || "";
-                  return `
-                    <li>
-                      <span class="targets-item-name">${escapeHtml(name)}</span>
-                      ${note ? `<span class="targets-item-note">${escapeHtml(note)}</span>` : ""}
-                    </li>
-                  `;
-                })
-                .join("")}
+              ${items.map((item) => renderTargetListItem(item, tone, live)).join("")}
             </ul>
           `
           : `
@@ -312,6 +403,12 @@ function renderTargetGroupCard(group = {}) {
 }
 
 function normalizeTargetTone(value) {
+  if (value === "us-stock") {
+    return "global";
+  }
+  if (value === "kr-stock") {
+    return "domestic";
+  }
   if (value === "crypto" || value === "global" || value === "domestic") {
     return value;
   }
@@ -326,6 +423,12 @@ function renderAllocation(summary, assetStatus, cashPositions) {
       label: "암호화폐",
       value: assetStatus
         .filter(isCryptoAsset)
+        .reduce((total, item) => total + item.valuation, 0),
+    },
+    {
+      label: "해외주식",
+      value: assetStatus
+        .filter((item) => item.category === "해외주식")
         .reduce((total, item) => total + item.valuation, 0),
     },
     {
@@ -396,9 +499,16 @@ function renderAllocation(summary, assetStatus, cashPositions) {
 }
 
 function renderCharts(charts) {
+  const returnsCanvas = document.querySelector("#returns-chart");
+  const realizedCanvas = document.querySelector("#realized-chart");
+
   if (!charts) {
-    renderChartUnavailable("#returns-chart", "차트 데이터 없음");
-    renderChartUnavailable("#realized-chart", "차트 데이터 없음");
+    if (returnsCanvas) {
+      renderChartUnavailable("#returns-chart", "차트 데이터 없음");
+    }
+    if (realizedCanvas) {
+      renderChartUnavailable("#realized-chart", "차트 데이터 없음");
+    }
     return;
   }
 
@@ -406,8 +516,12 @@ function renderCharts(charts) {
   destroyCharts();
 
   if (!window.Chart) {
-    renderChartUnavailable("#returns-chart", "Chart.js 로드 실패");
-    renderChartUnavailable("#realized-chart", "Chart.js 로드 실패");
+    if (returnsCanvas) {
+      renderChartUnavailable("#returns-chart", "Chart.js 로드 실패");
+    }
+    if (realizedCanvas) {
+      renderChartUnavailable("#realized-chart", "Chart.js 로드 실패");
+    }
     return;
   }
 
@@ -456,10 +570,9 @@ function renderCharts(charts) {
     },
   };
 
-  if (!hasReturns) {
+  if (returnsCanvas && !hasReturns) {
     renderChartUnavailable("#returns-chart", "차트 데이터 없음");
-  } else {
-    const returnsCanvas = document.querySelector("#returns-chart");
+  } else if (returnsCanvas) {
     chartRegistry.push(
       new Chart(returnsCanvas, {
         type: "bar",
@@ -530,10 +643,9 @@ function renderCharts(charts) {
     );
   }
 
-  if (!hasRealized) {
+  if (realizedCanvas && !hasRealized) {
     renderChartUnavailable("#realized-chart", "차트 데이터 없음");
-  } else {
-    const realizedCanvas = document.querySelector("#realized-chart");
+  } else if (realizedCanvas) {
     chartRegistry.push(
       new Chart(realizedCanvas, {
         data: {
@@ -636,14 +748,19 @@ function renderCharts(charts) {
 
 function renderAssetTable(assetStatus, holdings = []) {
   const body = document.querySelector("#asset-status-body");
+  if (!body) {
+    return;
+  }
+
   const rows = holdings.length
     ? holdings.map((item) => {
         const principal = (item.quantity || 0) * (item.averagePrice || 0);
         const pnl = (item.valuation || 0) - principal;
 
         return {
-          asset: item.asset,
+          asset: getDisplayAssetName(item),
           platform: item.platform,
+          currentPrice: buildTableQuoteMarkup(item.liveQuote, item),
           valuation: item.valuation || 0,
           principal,
           pnl,
@@ -653,6 +770,7 @@ function renderAssetTable(assetStatus, holdings = []) {
     : assetStatus.map((item) => ({
         asset: item.asset || item.assetName || item.category,
         platform: item.platform,
+        currentPrice: buildTableFallbackMarkup(),
         valuation: item.valuation || 0,
         principal: item.principal || 0,
         pnl: item.pnl || 0,
@@ -665,6 +783,7 @@ function renderAssetTable(assetStatus, holdings = []) {
         <tr>
           ${tableCell("종목", item.asset)}
           ${tableCell("플랫폼", item.platform)}
+          ${tableCell("현재가", item.currentPrice, "align-right numeric-cell")}
           ${tableCell("평가금액", formatCurrency(item.valuation), "align-right numeric-cell")}
           ${tableCell("원금", formatCurrency(item.principal), "align-right numeric-cell")}
           ${tableCell(
@@ -689,19 +808,25 @@ function renderHoldings(holdings) {
 
   container.innerHTML = activeHoldings
     .map((item) => {
+      const quote = item.liveQuote;
+      const statusCopy = quote?.isDelayed ? "업데이트 지연" : "실시간";
       return `
         <article class="holding-card">
           <div class="holding-head">
             <div>
               <p class="mini-label">${item.platform}</p>
-              <strong class="holding-title">${item.asset}</strong>
+              <strong class="holding-title">${escapeHtml(getDisplayAssetName(item))}</strong>
             </div>
-            <span class="status-tag">보유 중</span>
+            <span class="status-tag ${quote?.isDelayed ? "status-tag--warning" : ""}">${statusCopy}</span>
           </div>
           <div class="mini-stack">
             <div class="mini-row">
               <span class="mini-label">수량</span>
               <span class="mini-value">${formatNumber(item.quantity)}</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-label">현재가</span>
+              ${buildHoldingQuoteMarkup(quote, item)}
             </div>
             <div class="mini-row">
               <span class="mini-label">평균단가</span>
@@ -724,6 +849,10 @@ function renderHoldings(holdings) {
 
 function renderRealized(realized, totalProfit) {
   const container = document.querySelector("#realized-list");
+  if (!container) {
+    return;
+  }
+
   const items = Array.isArray(realized) ? realized : [];
 
   container.innerHTML = `
@@ -811,6 +940,15 @@ function bindPanelAccordion(panel) {
     const body = panel.querySelector(".panel-collapse");
     const willOpen = trigger.getAttribute("aria-expanded") !== "true";
     toggleDisclosure(panel, trigger, body, willOpen);
+
+    if (willOpen && panel.id === "timeline-section") {
+      window.requestAnimationFrame(() => {
+        panel.scrollIntoView({
+          block: "start",
+          behavior: "smooth",
+        });
+      });
+    }
   });
 
   panel.dataset.accordionBound = "true";
@@ -827,7 +965,7 @@ function normalizeTimelineTrades(trades, basisYear) {
   const cryptoTrades = Array.isArray(trades.crypto) ? trades.crypto : [];
 
   return [
-    ...stockTrades.map((trade) => ({ ...trade, market: "국내주식" })),
+    ...stockTrades.map((trade) => ({ ...trade, market: trade.market || "국내주식" })),
     ...cryptoTrades.map((trade) => ({ ...trade, market: "암호화폐", broker: trade.broker || "업비트" })),
   ]
     .map((trade, index) => {
@@ -1603,6 +1741,440 @@ function initializeMotion() {
   uniqueNodes.forEach((node) => observer.observe(node));
 }
 
+function buildLiveState(liveSnapshot) {
+  if (window.location.protocol === "file:") {
+    return {
+      available: false,
+      updatedAt: null,
+      refreshIntervalSeconds: 10,
+      cryptoRefreshIntervalSeconds: 10,
+      marketRefreshIntervalSeconds: 60,
+      quotes: {},
+      fx: {
+        usdkrw: null,
+      },
+      status: {
+        level: "neutral",
+        message: "로컬 파일 모드 · 실시간 시세 비활성화",
+      },
+      errors: [],
+      warnings: [],
+    };
+  }
+
+  if (!liveSnapshot) {
+    return {
+      available: false,
+      updatedAt: null,
+      refreshIntervalSeconds: 10,
+      cryptoRefreshIntervalSeconds: 10,
+      marketRefreshIntervalSeconds: 60,
+      quotes: {},
+      fx: {
+        usdkrw: null,
+      },
+      status: {
+        level: "neutral",
+        message: "실시간 가격 연결 준비 중",
+      },
+      errors: [],
+      warnings: [],
+    };
+  }
+
+  return {
+    available: Boolean(liveSnapshot.portfolioLive || Object.keys(liveSnapshot.quotes || {}).length),
+    updatedAt: liveSnapshot.live?.updatedAt || liveSnapshot.updatedAt || null,
+    refreshIntervalSeconds: liveSnapshot.live?.refreshIntervalSeconds || 10,
+    cryptoRefreshIntervalSeconds: liveSnapshot.live?.cryptoRefreshIntervalSeconds || 10,
+    marketRefreshIntervalSeconds: liveSnapshot.live?.marketRefreshIntervalSeconds || 60,
+    quotes: liveSnapshot.quotes || {},
+    fx: liveSnapshot.fx || { usdkrw: null },
+    status: liveSnapshot.live?.status || {
+      level: "neutral",
+      message: "실시간 가격 연결 준비 중",
+    },
+    errors: Array.isArray(liveSnapshot.live?.errors) ? liveSnapshot.live.errors : [],
+    warnings: Array.isArray(liveSnapshot.live?.warnings) ? liveSnapshot.live.warnings : [],
+  };
+}
+
+function decorateFailedLiveSnapshot(liveSnapshot, errorMessage = "") {
+  const fallbackMessage = errorMessage || "실시간 가격 연결이 지연되고 있습니다.";
+  if (!liveSnapshot) {
+    return {
+      updatedAt: null,
+      quotes: {},
+      fx: {
+        usdkrw: null,
+        source: "fallback",
+        updatedAt: null,
+        isDelayed: true,
+      },
+      portfolioLive: null,
+      live: {
+        updatedAt: null,
+        refreshIntervalSeconds: 10,
+        cryptoRefreshIntervalSeconds: 10,
+        marketRefreshIntervalSeconds: 60,
+        status: {
+          level: "warning",
+          message: fallbackMessage,
+        },
+        errors: [fallbackMessage],
+        warnings: [],
+      },
+    };
+  }
+
+  const next = structuredClone(liveSnapshot);
+  next.live = next.live || {};
+  next.live.status = {
+    level: "warning",
+    message: next.portfolioLive ? "일부 종목 업데이트 지연 · 마지막 값 유지 중" : fallbackMessage,
+  };
+  next.live.errors = [...new Set([...(next.live.errors || []), fallbackMessage])];
+  next.live.refreshIntervalSeconds = next.live.refreshIntervalSeconds || 10;
+  next.live.cryptoRefreshIntervalSeconds = next.live.cryptoRefreshIntervalSeconds || 10;
+  next.live.marketRefreshIntervalSeconds = next.live.marketRefreshIntervalSeconds || 60;
+  next.quotes = Object.fromEntries(
+    Object.entries(next.quotes || {}).map(([key, quote]) => [
+      key,
+      {
+        ...quote,
+        isDelayed: true,
+      },
+    ])
+  );
+  if (next.fx) {
+    next.fx = {
+      ...next.fx,
+      isDelayed: true,
+    };
+  }
+  return next;
+}
+
+function buildHeroSummary(live) {
+  const cryptoRefresh = live?.cryptoRefreshIntervalSeconds || live?.refreshIntervalSeconds || 10;
+  const marketRefresh = live?.marketRefreshIntervalSeconds || 60;
+  const refreshCopy = `코인 ${cryptoRefresh}초 · 미국주식 ${marketRefresh}초 주기`;
+
+  if (window.location.protocol === "file:") {
+    return `실시간 가격은 서버 모드에서만 동작합니다. \`node scripts/dev-server.js\` 로 실행하면 ${refreshCopy}로 갱신됩니다.`;
+  }
+
+  const statusMessage = live?.status?.message || "실시간 가격 연결 준비 중";
+  const timestamp = buildLiveTimestampCopy(live);
+  return `${statusMessage} · ${timestamp} · ${refreshCopy}`;
+}
+
+function normalizeHoldingsForDisplay(holdings = []) {
+  return holdings.map((item) => {
+    const quantity = Number(item.quantity || 0);
+    const valuation = Number(item.valuation || 0);
+    const averagePrice = Number(item.averagePrice || 0);
+    const fallbackPriceKrw = quantity > 0 ? valuation / quantity : averagePrice;
+    const currentPriceKrw = Number.isFinite(Number(item.currentPriceKrw))
+      ? Number(item.currentPriceKrw)
+      : Number.isFinite(Number(item.liveQuote?.priceKrw))
+        ? Number(item.liveQuote.priceKrw)
+        : fallbackPriceKrw;
+    const currentPriceUsd = Number.isFinite(Number(item.currentPriceUsd))
+      ? Number(item.currentPriceUsd)
+      : Number.isFinite(Number(item.liveQuote?.priceUsd))
+        ? Number(item.liveQuote.priceUsd)
+        : null;
+
+    return {
+      ...item,
+      name: item.name || item.asset,
+      symbol: item.symbol || "",
+      market: item.market || (item.platform === "업비트" ? "crypto" : "kr-stock"),
+      currency: item.currency || (item.market === "us-stock" ? "USD" : "KRW"),
+      priceSource: item.priceSource || "",
+      quantity,
+      averagePrice,
+      valuation,
+      returnRate: Number(item.returnRate || 0),
+      currentPriceKrw,
+      currentPriceUsd,
+      currentPrice:
+        item.currency === "USD" && Number.isFinite(currentPriceUsd) ? currentPriceUsd : currentPriceKrw,
+      liveQuote: {
+        name: item.name || item.asset,
+        symbol: item.symbol || "",
+        market: item.market || (item.platform === "업비트" ? "crypto" : "kr-stock"),
+        available: currentPriceKrw > 0,
+        price: item.currency === "USD" && Number.isFinite(currentPriceUsd) ? currentPriceUsd : currentPriceKrw,
+        priceKrw: currentPriceKrw || null,
+        priceUsd: Number.isFinite(currentPriceUsd) ? currentPriceUsd : null,
+        changePercent: Number.isFinite(Number(item.liveQuote?.changePercent)) ? Number(item.liveQuote.changePercent) : null,
+        isMarketOpen: item.liveQuote?.isMarketOpen ?? null,
+        isDelayed: item.liveQuote ? Boolean(item.liveQuote.isDelayed) : true,
+        updatedAt: item.liveQuote?.updatedAt || null,
+        error: item.liveQuote?.error || null,
+      },
+    };
+  });
+}
+
+function normalizeTargetsForDisplay(targets = {}) {
+  const groups = Array.isArray(targets.groups) ? targets.groups : [];
+  return {
+    ...targets,
+    groups: groups.map((group) => {
+      const normalizedItems = (Array.isArray(group.items) ? group.items : []).map((item) => {
+        const base = typeof item === "string" ? { name: item } : item;
+        const market = base.market || "";
+        const currency = base.currency || (market === "us-stock" ? "USD" : "KRW");
+        return {
+          ...base,
+          name: base.name || "",
+          symbol: base.symbol || "",
+          market,
+          currency,
+          priceSource: base.priceSource || "",
+          liveQuote: base.liveQuote || null,
+        };
+      });
+
+      return {
+        ...group,
+        tone: normalizeTargetTone(group.tone || normalizedItems[0]?.market),
+        items: normalizedItems,
+      };
+    }),
+  };
+}
+
+function renderTargetListItem(item = {}, tone = "neutral") {
+  const quote = item.liveQuote || null;
+  const movementClass = getQuoteToneClass(quote);
+  return `
+    <li class="targets-list-item">
+      <div class="targets-item-head">
+        <div>
+          <span class="targets-item-name">${escapeHtml(getDisplayAssetName(item))}</span>
+          <span class="targets-item-note">${escapeHtml(buildTargetMeta(item))}</span>
+        </div>
+        <span class="targets-item-badge targets-item-badge--${tone}">${escapeHtml(getTargetBadgeLabel(item))}</span>
+      </div>
+      <div class="targets-item-price">
+        <strong class="${movementClass}">${escapeHtml(formatQuotePrimary(quote, item))}</strong>
+        <span class="${movementClass}">${escapeHtml(formatQuoteSecondary(quote, item))}</span>
+      </div>
+    </li>
+  `;
+}
+
+function collectTrackedQuoteItems(holdings = [], targets = {}) {
+  const registry = new Map();
+  const priorityRank = {
+    "KRW-BTC": 0,
+    비트코인: 0,
+    BTC: 0,
+    "KRW-ETH": 1,
+    ETH: 1,
+    "KRW-XRP": 2,
+    XRP: 2,
+  };
+  const scopeRank = {
+    holding: 0,
+    target: 1,
+  };
+  const marketRank = {
+    crypto: 0,
+    "us-stock": 1,
+    "kr-stock": 2,
+  };
+
+  holdings.forEach((item) => {
+    const key = item.symbol || item.name || item.asset;
+    registry.set(key, {
+      scope: "holding",
+      name: item.name || item.asset,
+      symbol: item.symbol || "",
+      market: item.market || "",
+      quantity: Number(item.quantity || 0),
+      liveQuote: item.liveQuote || null,
+    });
+  });
+
+  (targets.groups || []).forEach((group) => {
+    (group.items || []).forEach((item) => {
+      const key = item.symbol || item.name;
+      if (!registry.has(key)) {
+        registry.set(key, {
+          scope: "target",
+          name: item.name,
+          symbol: item.symbol || "",
+          market: item.market || "",
+          quantity: 0,
+          liveQuote: item.liveQuote || null,
+        });
+      }
+    });
+  });
+
+  return [...registry.values()].sort((left, right) => {
+    const leftPriority = priorityRank[left.symbol] ?? priorityRank[left.name] ?? 99;
+    const rightPriority = priorityRank[right.symbol] ?? priorityRank[right.name] ?? 99;
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
+    const leftScope = scopeRank[left.scope] ?? 99;
+    const rightScope = scopeRank[right.scope] ?? 99;
+    if (leftScope !== rightScope) {
+      return leftScope - rightScope;
+    }
+
+    const leftMarket = marketRank[left.market] ?? 99;
+    const rightMarket = marketRank[right.market] ?? 99;
+    if (leftMarket !== rightMarket) {
+      return leftMarket - rightMarket;
+    }
+
+    return String(left.name).localeCompare(String(right.name), "ko-KR");
+  });
+}
+
+function buildInstrumentMeta(instrument, quote) {
+  const scopeCopy =
+    instrument.scope === "holding"
+      ? `보유 ${formatNumber(instrument.quantity || 0)}`
+      : buildMarketLabel(instrument.market);
+  const changeCopy =
+    Number.isFinite(Number(quote?.changePercent)) && quote?.available
+      ? formatSignedPercent(Number(quote.changePercent))
+      : quote?.isDelayed
+        ? "업데이트 지연"
+        : null;
+
+  return [instrument.symbol || scopeCopy, changeCopy || scopeCopy].filter(Boolean).join(" · ");
+}
+
+function buildTargetMeta(item) {
+  return [item.symbol, buildMarketLabel(item.market)].filter(Boolean).join(" · ") || "실시간 연결 준비 중";
+}
+
+function getTargetBadgeLabel(item) {
+  return item.market === "us-stock" ? "USD" : item.market === "crypto" ? "KRW" : "관심";
+}
+
+function buildLiveTimestampCopy(live) {
+  if (!live?.updatedAt) {
+    return "마지막 갱신 대기 중";
+  }
+
+  return `마지막 갱신 ${formatDateTime(live.updatedAt)}`;
+}
+
+function buildHoldingQuoteMarkup(quote, item) {
+  const movementClass = getQuoteToneClass(quote);
+  return `
+    <span class="mini-value-stack">
+      <strong class="mini-value ${movementClass}">${escapeHtml(formatQuotePrimary(quote, item))}</strong>
+      <span class="mini-subvalue ${movementClass}">${escapeHtml(formatQuoteSecondary(quote, item))}</span>
+    </span>
+  `;
+}
+
+function buildTableQuoteMarkup(quote, item) {
+  const movementClass = getQuoteToneClass(quote);
+  return `
+    <div class="table-price-stack">
+      <strong class="table-price-primary ${movementClass}">${escapeHtml(formatQuotePrimary(quote, item))}</strong>
+      <span class="table-price-secondary ${movementClass}">${escapeHtml(formatQuoteSecondary(quote, item))}</span>
+    </div>
+  `;
+}
+
+function buildTableFallbackMarkup() {
+  return `
+    <div class="table-price-stack">
+      <strong class="table-price-primary">-</strong>
+      <span class="table-price-secondary">실시간 대상 아님</span>
+    </div>
+  `;
+}
+
+function buildMarketLabel(market) {
+  if (market === "crypto") {
+    return "암호화폐";
+  }
+  if (market === "us-stock") {
+    return "해외주식";
+  }
+  if (market === "kr-stock") {
+    return "국내주식";
+  }
+  return "관심 종목";
+}
+
+function getQuoteToneClass(quote) {
+  if (!quote?.available || !Number.isFinite(Number(quote.changePercent))) {
+    return "price-move-neutral";
+  }
+
+  if (Number(quote.changePercent) > 0) {
+    return "price-move-up";
+  }
+
+  if (Number(quote.changePercent) < 0) {
+    return "price-move-down";
+  }
+
+  return "price-move-neutral";
+}
+
+function formatQuotePrimary(quote, instrument = {}) {
+  if (!quote?.available) {
+    return "연결 대기";
+  }
+
+  if (instrument.market === "us-stock" && Number.isFinite(Number(quote.priceUsd))) {
+    return formatUsd(Number(quote.priceUsd));
+  }
+
+  if (Number.isFinite(Number(quote.priceKrw))) {
+    return formatCurrency(Number(quote.priceKrw));
+  }
+
+  if (Number.isFinite(Number(quote.price))) {
+    return instrument.currency === "USD" ? formatUsd(Number(quote.price)) : formatCurrency(Number(quote.price));
+  }
+
+  return "가격 없음";
+}
+
+function formatQuoteSecondary(quote, instrument = {}) {
+  if (!quote?.available) {
+    return quote?.error || "실시간 연결 준비 중";
+  }
+
+  const parts = [];
+
+  if (instrument.market === "us-stock" && Number.isFinite(Number(quote.priceKrw))) {
+    parts.push(`약 ${formatCurrency(Number(quote.priceKrw))}`);
+  }
+
+  if (Number.isFinite(Number(quote.changePercent))) {
+    parts.push(formatSignedPercent(Number(quote.changePercent)));
+  }
+
+  if (!parts.length && instrument.scope === "holding") {
+    parts.push(`보유 ${formatNumber(instrument.quantity || 0)}`);
+  }
+
+  if (!parts.length) {
+    parts.push(quote.isDelayed ? "업데이트 지연" : buildMarketLabel(instrument.market));
+  }
+
+  return parts.join(" · ");
+}
+
 function text(selector, value) {
   const element = document.querySelector(selector);
   if (element) {
@@ -1629,6 +2201,10 @@ function formatCurrency(value) {
   return currencyFormatter.format(value || 0);
 }
 
+function formatUsd(value) {
+  return usdFormatter.format(value || 0);
+}
+
 function formatSignedCurrency(value, forceNeutral = false) {
   const amount = value || 0;
   if (forceNeutral) {
@@ -1644,6 +2220,14 @@ function formatPercent(value) {
   return `${(value * 100).toFixed(2)}%`;
 }
 
+function formatSignedPercent(value) {
+  const numeric = Number(value || 0);
+  if (numeric > 0) {
+    return `+${formatPercent(numeric)}`;
+  }
+  return formatPercent(numeric);
+}
+
 function formatNumber(value) {
   return numberFormatter.format(value || 0);
 }
@@ -1654,6 +2238,21 @@ function formatCompactNumber(value) {
 
 function formatCompactCurrency(value) {
   return `${formatCompactNumber(value)}원`;
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "시간 정보 없음";
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }
 
 function toneClass(value) {
@@ -1688,13 +2287,23 @@ function initTradeModal() {
   const modal = document.querySelector("#trade-modal");
   const openBtn = document.querySelector("#btn-add-trade");
   const form = document.querySelector("#trade-form");
+  const tradeDateInput = document.querySelector("#trade-date");
   const marketSelect = document.querySelector("#trade-market");
+  const assetInput = document.querySelector("#trade-asset");
+  const brokerInput = document.querySelector("#trade-broker");
+  const brokerGroup = document.querySelector("[data-trade-broker-group]");
+  const brokerHelp = document.querySelector("#trade-broker-help");
+  const priceLabel = document.querySelector("#trade-price-label");
+  const priceHelp = document.querySelector("#trade-price-help");
   const quantityInput = document.querySelector("#trade-quantity");
   const priceInput = document.querySelector("#trade-price");
   const amountInput = document.querySelector("#trade-amount");
-  const brokerSelect = document.querySelector("#trade-broker");
   const sideSelect = document.querySelector("#trade-side");
   const feeInput = document.querySelector("#trade-fee");
+  const summaryBroker = document.querySelector("#trade-summary-broker");
+  const summaryAmount = document.querySelector("#trade-summary-amount");
+  const summaryFee = document.querySelector("#trade-summary-fee");
+  const assetChips = [...document.querySelectorAll("[data-asset-chip]")];
   const status = document.querySelector("#trade-form-status");
   const submitButton = form?.querySelector(".btn-primary");
   const cancelButton = form?.querySelector(".btn-secondary");
@@ -1741,44 +2350,149 @@ function initTradeModal() {
     return Number(value.toFixed(decimals)).toString();
   };
 
-  const syncBrokerOptions = () => {
+  const getActiveBroker = () => {
+    return marketSelect.value === "암호화폐" ? "업비트" : String(brokerInput?.value || "").trim();
+  };
+
+  const syncTradeSummary = () => {
+    if (summaryBroker) {
+      summaryBroker.textContent = getActiveBroker() || "입력 필요";
+    }
+    if (summaryAmount) {
+      summaryAmount.textContent = amountInput.value ? formatCurrency(Number(amountInput.value)) : "자동 계산";
+    }
+    if (summaryFee) {
+      summaryFee.textContent = feeInput.value ? formatCurrency(Number(feeInput.value)) : "자동 계산";
+    }
+  };
+
+  const syncAssetChipState = () => {
     const market = marketSelect.value;
-    const optionRules = {
-      카카오증권: market === "암호화폐",
-      미래에셋: market === "암호화폐",
-      업비트: market === "국내주식",
-    };
-
-    [...brokerSelect.options].forEach((option) => {
-      if (!option.value) {
-        option.disabled = false;
-        return;
-      }
-
-      option.disabled = Boolean(optionRules[option.value]);
+    const asset = String(assetInput?.value || "").trim().toUpperCase();
+    assetChips.forEach((chip) => {
+      const chipMarket = chip.dataset.market || "";
+      const chipAsset = String(chip.dataset.asset || "").trim().toUpperCase();
+      chip.hidden = chipMarket !== market;
+      chip.classList.toggle("is-active", chipMarket === market && chipAsset === asset);
     });
+  };
 
-    if (market === "암호화폐") {
-      brokerSelect.value = "업비트";
-    } else if (market === "국내주식" && brokerSelect.value === "업비트") {
-      brokerSelect.value = "";
+  const calculateFee = () => {
+    const broker = getActiveBroker();
+    const market = marketSelect.value;
+    const side = sideSelect.value;
+    const amount = parseFloat(amountInput.value) || 0;
+
+    if (!broker || !side || !amount) {
+      feeInput.value = "";
+      syncTradeSummary();
+      return;
     }
 
+    const rates = {
+      업비트: 0.0005,
+      카카오증권: 0.00014,
+      미래에셋: 0.0001,
+    };
+
+    let fee = amount * (rates[broker] || 0);
+
+    if (market === "국내주식" && (broker === "카카오증권" || broker === "미래에셋") && side === "매도") {
+      fee += amount * 0.002;
+    }
+
+    feeInput.value = fee ? formatEditableNumber(fee, 8) : "";
+    syncTradeSummary();
+  };
+
+  const calculateAmount = () => {
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    const amount = quantity * price;
+    amountInput.value = amount ? formatEditableNumber(amount) : "";
     calculateFee();
   };
 
+  const syncTradeFormMode = () => {
+    const market = marketSelect.value || "암호화폐";
+    const isCrypto = market === "암호화폐";
+    const isUsStock = market === "미국주식";
+
+    marketSelect.value = market;
+
+    if (brokerGroup) {
+      brokerGroup.hidden = isCrypto;
+    }
+
+    if (brokerInput) {
+      brokerInput.required = !isCrypto;
+      if (isCrypto) {
+        brokerInput.value = "업비트";
+      } else if (brokerInput.value === "업비트") {
+        brokerInput.value = "";
+      }
+
+      brokerInput.placeholder =
+        market === "국내주식" ? "카카오증권 / 미래에셋" : market === "미국주식" ? "미래에셋 / 토스증권" : "업비트";
+    }
+
+    if (assetInput) {
+      assetInput.placeholder =
+        market === "국내주식"
+          ? "삼성전자 / SK하이닉스"
+          : market === "미국주식"
+            ? "PLTR / CRCL / AAPL"
+            : "비트코인 / ETH / XRP";
+    }
+
+    if (priceLabel) {
+      priceLabel.textContent = isUsStock ? "단가 (원화 기준)" : "단가 (원)";
+    }
+
+    if (priceInput) {
+      priceInput.placeholder = isUsStock ? "35000" : isCrypto ? "2000" : "1001000";
+    }
+
+    if (priceHelp) {
+      priceHelp.textContent = isUsStock
+        ? "미국주식은 원화 환산 체결단가 기준으로 입력합니다."
+        : isCrypto
+          ? "업비트 체결 단가 기준으로 입력합니다."
+          : "체결 단가 기준으로 입력합니다.";
+    }
+
+    if (brokerHelp) {
+      brokerHelp.textContent = isUsStock
+        ? "미국주식 거래에 사용한 증권사를 적고, 금액은 원화 기준으로 넣어주세요."
+        : "국내주식 거래에 사용한 증권사를 적어주세요.";
+    }
+
+    syncAssetChipState();
+    calculateAmount();
+  };
+
+  const resetFormState = () => {
+    form.reset();
+    amountInput.value = "";
+    feeInput.value = "";
+    marketSelect.value = "암호화폐";
+    sideSelect.value = "매수";
+    tradeDateInput.value = parseBasisMonthDay();
+    syncTradeFormMode();
+  };
+
+  // 모달 열기
   const openModal = () => {
     setStatus("");
     setSubmitting(false);
+    resetFormState();
     modal.hidden = false;
     modal.setAttribute("aria-hidden", "false");
     modal.classList.add("is-open");
     document.body.classList.add("modal-open");
-    tradeDateInput.value = tradeDateInput.value || parseBasisMonthDay();
-    syncBrokerOptions();
+    assetInput?.focus();
   };
 
-  // 모달 열기
   openBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     openModal();
@@ -1792,8 +2506,7 @@ function initTradeModal() {
     document.body.classList.remove("modal-open");
     setStatus("");
     setSubmitting(false);
-    form.reset();
-    syncBrokerOptions();
+    resetFormState();
   };
 
   modal.addEventListener("click", (e) => {
@@ -1807,42 +2520,6 @@ function initTradeModal() {
       closeModal();
     }
   });
-
-  // 거래금액 자동 계산
-  const calculateAmount = () => {
-    const quantity = parseFloat(quantityInput.value) || 0;
-    const price = parseFloat(priceInput.value) || 0;
-    const amount = quantity * price;
-    amountInput.value = amount ? formatEditableNumber(amount) : "";
-    calculateFee();
-  };
-
-  // 수수료 자동 계산
-  const calculateFee = () => {
-    const broker = brokerSelect.value;
-    const side = sideSelect.value;
-    const amount = parseFloat(amountInput.value) || 0;
-
-    if (!broker || !side || !amount) {
-      feeInput.value = "";
-      return;
-    }
-
-    const rates = {
-      업비트: 0.0005,
-      카카오증권: 0.00014,
-      미래에셋: 0.0001,
-    };
-
-    let fee = amount * (rates[broker] || 0);
-
-    // 증권 매도 시 증권거래세 추가
-    if ((broker === "카카오증권" || broker === "미래에셋") && side === "매도") {
-      fee += amount * 0.002;
-    }
-
-    feeInput.value = fee ? formatEditableNumber(fee, 8) : "";
-  };
 
   const persistTrade = async (tradeData) => {
     if (window.location.protocol === "file:") {
@@ -1865,14 +2542,21 @@ function initTradeModal() {
     return payload;
   };
 
-  const tradeDateInput = document.querySelector("#trade-date");
-
   quantityInput.addEventListener("input", calculateAmount);
   priceInput.addEventListener("input", calculateAmount);
-  brokerSelect.addEventListener("change", calculateFee);
+  brokerInput?.addEventListener("input", calculateFee);
   sideSelect.addEventListener("change", calculateFee);
-  marketSelect.addEventListener("change", syncBrokerOptions);
-  syncBrokerOptions();
+  marketSelect.addEventListener("change", syncTradeFormMode);
+  assetInput?.addEventListener("input", syncAssetChipState);
+  assetChips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      marketSelect.value = chip.dataset.market || "암호화폐";
+      assetInput.value = chip.dataset.asset || "";
+      syncTradeFormMode();
+      calculateAmount();
+    });
+  });
+  resetFormState();
 
   // 폼 제출
   form.addEventListener("submit", async (e) => {
@@ -1883,7 +2567,7 @@ function initTradeModal() {
     const tradeData = {
       date: formData.get("date"),
       market: formData.get("market"),
-      broker: formData.get("broker"),
+      broker: getActiveBroker(),
       asset: formData.get("asset"),
       side: formData.get("side"),
       quantity: parseFloat(formData.get("quantity")),
@@ -1896,8 +2580,10 @@ function initTradeModal() {
     try {
       setSubmitting(true);
       const updatedPortfolio = await persistTrade(tradeData);
-      applyPortfolioData(updatedPortfolio);
+      livePortfolioSnapshot = null;
+      applyPortfolioData(updatedPortfolio, null);
       closeModal();
+      await refreshLivePortfolio();
     } catch (error) {
       console.error(error);
       setStatus(error.message || "거래 저장에 실패했습니다.", "error");

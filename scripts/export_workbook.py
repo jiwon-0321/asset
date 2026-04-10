@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import unicodedata
 from datetime import date
 from pathlib import Path
@@ -12,6 +13,22 @@ from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKBOOK_FILENAME = "투자현황_4월7일.xlsx"
+ASSET_METADATA_DEFAULTS = {
+    "XRP": {
+        "name": "XRP",
+        "symbol": "KRW-XRP",
+        "market": "crypto",
+        "currency": "KRW",
+        "priceSource": "upbit",
+    },
+    "ETH": {
+        "name": "ETH",
+        "symbol": "KRW-ETH",
+        "market": "crypto",
+        "currency": "KRW",
+        "priceSource": "upbit",
+    },
+}
 
 
 def normalize(value: Any) -> Any:
@@ -43,15 +60,76 @@ def parse_currency_cell(value: Any) -> int | float | None:
     return None
 
 
-def workbook_path() -> Path:
-    target_name = unicodedata.normalize("NFC", WORKBOOK_FILENAME)
-    for path in sorted(ROOT.glob("*.xlsx")):
-        if not path.is_file() or path.name.startswith("~$"):
-            continue
+def list_workbooks() -> list[Path]:
+    return sorted(
+        [
+            path
+            for path in ROOT.glob("*.xlsx")
+            if path.is_file() and not path.name.startswith("~$")
+        ],
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+
+
+def workbook_path(preferred_name: str | None = None) -> Path:
+    workbooks = list_workbooks()
+    if not workbooks:
+        raise FileNotFoundError("No workbook was found in the project root.")
+
+    target_name = unicodedata.normalize("NFC", preferred_name or WORKBOOK_FILENAME)
+    for path in workbooks:
         if unicodedata.normalize("NFC", path.name) == target_name:
             return path
 
-    raise FileNotFoundError(f"Workbook '{WORKBOOK_FILENAME}' was not found in the project root.")
+    return workbooks[0]
+
+
+def load_existing_portfolio() -> dict[str, Any]:
+    current_path = ROOT / "data" / "portfolio.json"
+    if not current_path.exists():
+        return {}
+    try:
+        return json.loads(current_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+
+def resolve_strategy(existing: dict[str, Any], parsed_strategy: dict[str, Any]) -> dict[str, Any]:
+    existing_strategy = existing.get("strategy")
+    if isinstance(existing_strategy, dict) and {"selection", "entry", "exit", "stops"} <= set(existing_strategy):
+        return existing_strategy
+    return parsed_strategy
+
+
+def enrich_holdings(existing: dict[str, Any], parsed_holdings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    metadata_keys = {"name", "symbol", "market", "currency", "priceSource"}
+    existing_holding_meta = {}
+
+    for item in existing.get("holdings", []):
+        if not isinstance(item, dict):
+            continue
+        key = (item.get("platform"), item.get("asset"))
+        existing_holding_meta[key] = {
+            meta_key: item.get(meta_key) for meta_key in metadata_keys if item.get(meta_key) is not None
+        }
+
+    enriched_holdings = []
+    for item in parsed_holdings:
+        key = (item.get("platform"), item.get("asset"))
+        metadata = {
+            **ASSET_METADATA_DEFAULTS.get(item.get("asset"), {}),
+            **existing_holding_meta.get(key, {}),
+        }
+        enriched_holdings.append(
+            {
+                **item,
+                **metadata,
+                "name": metadata.get("name") or item.get("asset"),
+            }
+        )
+
+    return enriched_holdings
 
 
 def basis_year(label: str | None) -> int:
@@ -500,8 +578,10 @@ def parse_xrp_defense(sheet) -> dict[str, Any]:
 
 
 def main() -> None:
-    source = workbook_path()
+    preferred_workbook = sys.argv[1] if len(sys.argv) > 1 else None
+    source = workbook_path(preferred_workbook)
     workbook_values = load_workbook(source, data_only=True)
+    existing_portfolio = load_existing_portfolio()
 
     overview = workbook_values["총괄현황"]
     stocks = workbook_values["국내주식 매매일지"]
@@ -511,7 +591,7 @@ def main() -> None:
 
     asset_status = parse_asset_status(overview)
     cash_positions = parse_cash_positions(overview)
-    holdings = parse_holdings(overview)
+    holdings = enrich_holdings(existing_portfolio, parse_holdings(overview))
     stock_trades = parse_stock_trades(stocks)
     crypto_trades = parse_crypto_trades(crypto)
     realized = group_realized_trades(parse_realized_summary(overview), stock_trades)
@@ -551,7 +631,7 @@ def main() -> None:
         "holdings": holdings,
         "realized": realized,
         "charts": chart_data,
-        "strategy": parse_strategy(strategy_sheet),
+        "strategy": resolve_strategy(existing_portfolio, parse_strategy(strategy_sheet)),
         "trades": {
             "stocks": stock_trades,
             "crypto": crypto_trades,
@@ -566,6 +646,9 @@ def main() -> None:
             "xrpDefense": parse_xrp_defense(crypto),
         },
     }
+
+    if isinstance(existing_portfolio.get("targets"), dict):
+        portfolio["targets"] = existing_portfolio["targets"]
 
     payload = json.dumps(portfolio, ensure_ascii=False, indent=2)
     output_path = ROOT / "data" / "portfolio.json"

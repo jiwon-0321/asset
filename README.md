@@ -13,6 +13,12 @@
 python3 scripts/export_workbook.py
 ```
 
+특정 엑셀 파일을 지정하려면 아래처럼 파일명을 넘기면 됩니다.
+
+```bash
+python3 scripts/export_workbook.py 투자현황_4월9일.xlsx
+```
+
 이후 `index.html`을 브라우저에서 바로 열면 됩니다.
 
 거래 추가 저장 기능까지 쓰려면 아래 서버로 실행하세요.
@@ -22,3 +28,30 @@ node scripts/dev-server.js
 ```
 
 그 다음 브라우저에서 `http://127.0.0.1:4173` 로 접속하면 됩니다.
+
+거래를 추가하면 기존 `data/portfolio.json`은 `data/backups/`에 자동 백업됩니다.
+
+## 실시간 시세
+
+- 코인 현재가: 업비트 공개 API
+- 미국주식/환율: Twelve Data API
+- 국내주식: 이번 버전에서는 구조만 준비되어 있고, 실제 종목이 생기면 같은 형식으로 추가하면 됩니다.
+- 기본 갱신 정책: 코인 `10초`, 미국주식/환율 `60초`
+
+실시간 가격을 쓰려면 `.env.example`을 복사해 `.env.local`을 만든 뒤 API 키를 넣어주세요.
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.local` 안에는 아래 값을 넣으면 됩니다.
+
+```bash
+TWELVE_DATA_API_KEY=발급받은_키
+```
+
+이후 개발 서버로 접속하면 아래 API가 같이 열립니다.
+
+- `GET /api/live-prices`
+
+이 API는 보유 자산과 목표 자산의 현재가를 모아서 내려주고, 총 자산과 평가손익도 실시간 가격 기준으로 다시 계산합니다.
