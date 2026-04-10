@@ -493,7 +493,7 @@
           <div>
             <p class="eyebrow" id="trade-modal-eyebrow">Quick Entry</p>
             <h3 id="trade-modal-title">거래 추가</h3>
-            <p class="trade-modal-helper" id="trade-modal-helper">필수값만 입력하면 거래금액과 수수료는 자동 계산됩니다.</p>
+            <p class="trade-modal-helper" id="trade-modal-helper">날짜와 체결값만 넣으면 거래금액은 계산되고, 수수료 기준은 플랫폼에 맞춰 고정됩니다.</p>
           </div>
           <button type="button" class="trade-modal-close" data-trade-modal-close aria-label="닫기">
             <svg viewBox="0 0 24 24">
@@ -506,7 +506,11 @@
           <div class="form-row">
             <div class="form-group">
               <label for="trade-date">날짜</label>
-              <input type="text" id="trade-date" name="date" placeholder="4/08" required />
+              <div class="trade-date-fields">
+                <select id="trade-date-month" aria-label="거래 월 선택"></select>
+                <select id="trade-date-day" aria-label="거래 일 선택"></select>
+              </div>
+              <input type="hidden" id="trade-date" name="date" required />
             </div>
             <div class="form-group">
               <label for="trade-market">시장</label>
@@ -549,11 +553,11 @@
           <div class="form-row">
             <div class="form-group">
               <label for="trade-quantity">수량</label>
-              <input type="text" id="trade-quantity" name="quantity" placeholder="7" inputmode="decimal" autocomplete="off" required />
+              <input type="text" id="trade-quantity" name="quantity" placeholder="0" inputmode="decimal" autocomplete="off" required />
             </div>
             <div class="form-group">
               <label for="trade-price" id="trade-price-label">단가 (원)</label>
-              <input type="text" id="trade-price" name="price" placeholder="1,001,000" inputmode="decimal" autocomplete="off" required />
+              <input type="text" id="trade-price" name="price" placeholder="0" inputmode="decimal" autocomplete="off" required />
               <p class="form-help" id="trade-price-help">체결 단가 기준으로 입력합니다.</p>
             </div>
           </div>
@@ -568,11 +572,11 @@
             </article>
             <article class="trade-summary-card">
               <span>거래금액</span>
-              <strong id="trade-summary-amount">자동 계산</strong>
+              <strong id="trade-summary-amount">₩0</strong>
             </article>
             <article class="trade-summary-card">
-              <span>예상 수수료</span>
-              <strong id="trade-summary-fee">자동 계산</strong>
+              <span>적용 수수료</span>
+              <strong id="trade-summary-fee">선택 필요</strong>
             </article>
           </div>
 

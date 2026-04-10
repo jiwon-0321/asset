@@ -1,5 +1,6 @@
 const path = require("path");
 const { buildLivePriceSnapshot } = require("../lib/live-price-service");
+const bundledPortfolioData = require("../data/portfolio.json");
 
 module.exports = async (request, response) => {
   if (request.method !== "GET") {
@@ -13,6 +14,7 @@ module.exports = async (request, response) => {
   try {
     const payload = await buildLivePriceSnapshot({
       rootDir: path.resolve(__dirname, ".."),
+      portfolioData: bundledPortfolioData,
     });
 
     response.statusCode = 200;

@@ -4032,6 +4032,12 @@ th.align-right {
   gap: 8px;
 }
 
+.trade-date-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .form-group--full {
   gap: 10px;
 }

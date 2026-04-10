@@ -932,7 +932,7 @@ function renderTargetGroupCard(group = {}, live = null) {
         items.length
           ? `
             <ul class="targets-list">
-              ${items.map((item) => renderTargetListItem(item, tone, live)).join("")}
+              ${items.map((item) => renderTargetListItem(item, tone, live?.fx || {})).join("")}
             </ul>
           `
           : `
@@ -3392,7 +3392,7 @@ function normalizeTargetsForDisplay(targets = {}) {
   };
 }
 
-function renderTargetListItem(item = {}, tone = "neutral") {
+function renderTargetListItem(item = {}, tone = "neutral", fx = {}) {
   const quote = item.liveQuote || null;
   const movementClass = getQuoteToneClass(quote);
   const marketLabel = getMarketLabelFromMetaMarket(item.market);
@@ -3418,8 +3418,13 @@ function renderTargetListItem(item = {}, tone = "neutral") {
         </div>
       </div>
       <div class="targets-item-price">
-        <strong class="${movementClass}">${escapeHtml(formatQuotePrimary(quote, item))}</strong>
-        <span class="${movementClass}">${escapeHtml(formatQuoteSecondary(quote, item))}</span>
+        <strong class="${movementClass}">${escapeHtml(formatTargetPricePrimary(quote, item, fx))}</strong>
+        <span class="${movementClass}">${escapeHtml(
+          formatQuoteSecondary(quote, item, {
+            includeKimchiPremium: item.market === "crypto",
+            includeKrwForUsStock: false,
+          })
+        )}</span>
       </div>
     </li>
   `;
@@ -3573,6 +3578,30 @@ function formatLivePricePrimary(quote, instrument = {}, fx = {}) {
   }
 
   return formatQuotePrimary(quote, instrument);
+}
+
+function formatTargetPricePrimary(quote, instrument = {}, fx = {}) {
+  if (!quote?.available) {
+    return "연결 대기";
+  }
+
+  const krwValue = toFiniteNumber(quote.priceKrw);
+  const globalUsdValue = toFiniteNumber(quote.globalPriceUsd);
+  const fxRate = toFiniteNumber(fx.usdkrw);
+  const usdValue =
+    instrument.market === "us-stock"
+      ? toFiniteNumber(quote.priceUsd)
+      : globalUsdValue != null
+        ? globalUsdValue
+        : krwValue != null && fxRate != null && fxRate > 0
+          ? krwValue / fxRate
+          : null;
+
+  if (instrument.market === "us-stock" && usdValue != null && krwValue != null) {
+    return `${formatUsd(usdValue)} / ${formatCurrency(krwValue)}`;
+  }
+
+  return formatLivePricePrimary(quote, instrument, fx);
 }
 
 function buildTargetMeta(item) {
@@ -3775,6 +3804,10 @@ function formatPercent(value) {
   return `${(value * 100).toFixed(2)}%`;
 }
 
+function formatRatePercent(value, digits = 3) {
+  return `${(Number(value || 0) * 100).toFixed(digits)}%`;
+}
+
 function formatSignedPercent(value) {
   const numeric = Number(value || 0);
   if (numeric > 0) {
@@ -3885,6 +3918,43 @@ function formatCurrentMonthDay(value = new Date()) {
   return `${date.getMonth() + 1}/${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function formatDateInputValue(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatMonthDayToDateInputValue(value, year = getCurrentBasisYear()) {
+  if (typeof value !== "string") {
+    return formatDateInputValue();
+  }
+
+  const [month, day] = value.split("/").map((segment) => Number(segment));
+  if (!month || !day) {
+    return formatDateInputValue();
+  }
+
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function formatDateInputToMonthDay(value) {
+  const match = String(value || "")
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    return formatCurrentMonthDay();
+  }
+
+  return `${Number(match[2])}/${match[3]}`;
+}
+
 function getCurrentBasisYear(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? new Date().getFullYear() : date.getFullYear();
@@ -3956,6 +4026,8 @@ function initTradeModal() {
   const modalTitle = document.querySelector("#trade-modal-title");
   const modalHelper = document.querySelector("#trade-modal-helper");
   const tradeDateInput = document.querySelector("#trade-date");
+  const tradeMonthSelect = document.querySelector("#trade-date-month");
+  const tradeDaySelect = document.querySelector("#trade-date-day");
   const marketSelect = document.querySelector("#trade-market");
   const assetInput = document.querySelector("#trade-asset");
   const assetSuggestionPanel = document.querySelector("#trade-asset-suggestions");
@@ -4019,7 +4091,7 @@ function initTradeModal() {
     if (modalHelper) {
       modalHelper.textContent = isEditing
         ? "기존 거래를 수정하면 보유수량과 손익도 함께 다시 계산됩니다."
-        : "필수값만 입력하면 거래금액과 수수료는 자동 계산됩니다.";
+        : "날짜와 체결값만 넣으면 거래금액은 계산되고, 수수료 기준은 플랫폼에 맞춰 고정됩니다.";
     }
     if (submitButton) {
       submitButton.textContent = isEditing ? "수정 저장" : "저장";
@@ -4049,11 +4121,11 @@ function initTradeModal() {
   };
 
   const formatEditableNumber = (value, decimals = 8) => {
-    if (!value) {
+    if (value == null || Number.isNaN(Number(value))) {
       return "";
     }
 
-    return Number(value.toFixed(decimals)).toString();
+    return Number(Number(value).toFixed(decimals)).toString();
   };
 
   const normalizeTradeAssetName = (value, market) => {
@@ -4156,15 +4228,37 @@ function initTradeModal() {
     return ESTIMATED_FEE_RATES?.[market]?.[broker] ?? null;
   };
 
+  const buildFeePolicyCopy = (broker, market, side) => {
+    if (!broker || !market) {
+      return "플랫폼 선택 필요";
+    }
+
+    const brokerageRate = getEstimatedFeeRate(broker, market);
+    if (brokerageRate == null) {
+      return "기준 없음";
+    }
+
+    const feeCopy = `거래수수료 ${formatRatePercent(brokerageRate, 3)}`;
+    if (market === "국내주식" && side === "매도") {
+      return `${feeCopy} + 거래세 ${formatRatePercent(0.002, 3)}`;
+    }
+
+    if (market === "미국주식" && side === "매도") {
+      return `${feeCopy} · 현지 fee 별도`;
+    }
+
+    return feeCopy;
+  };
+
   const syncTradeSummary = () => {
     if (summaryBroker) {
       summaryBroker.textContent = getActiveBroker() || "입력 필요";
     }
     if (summaryAmount) {
-      summaryAmount.textContent = amountInput.value ? formatCurrency(Number(amountInput.value)) : "자동 계산";
+      summaryAmount.textContent = formatCurrency(Number(amountInput.value || 0));
     }
     if (summaryFee) {
-      summaryFee.textContent = feeInput.value ? formatCurrency(Number(feeInput.value)) : "자동 계산";
+      summaryFee.textContent = buildFeePolicyCopy(getActiveBroker(), marketSelect.value, sideSelect.value);
     }
   };
 
@@ -4186,14 +4280,14 @@ function initTradeModal() {
     const amount = parseFloat(amountInput.value) || 0;
 
     if (!broker || !side || !amount) {
-      feeInput.value = "";
+      feeInput.value = "0";
       syncTradeSummary();
       return;
     }
 
     const brokerageRate = getEstimatedFeeRate(broker, market);
     if (brokerageRate == null) {
-      feeInput.value = "";
+      feeInput.value = "0";
       syncTradeSummary();
       return;
     }
@@ -4204,7 +4298,7 @@ function initTradeModal() {
       fee += amount * 0.002;
     }
 
-    feeInput.value = fee ? formatEditableNumber(fee, 8) : "";
+    feeInput.value = formatEditableNumber(fee, 8) || "0";
     syncTradeSummary();
   };
 
@@ -4212,7 +4306,7 @@ function initTradeModal() {
     const quantity = parseFormattedNumber(quantityInput.value);
     const price = parseFormattedNumber(priceInput.value);
     const amount = quantity * price;
-    amountInput.value = amount ? formatEditableNumber(amount) : "";
+    amountInput.value = formatEditableNumber(amount) || "0";
     calculateFee();
   };
 
@@ -4247,7 +4341,7 @@ function initTradeModal() {
     }
 
     if (priceInput) {
-      priceInput.placeholder = isUsStock ? "35,000" : isCrypto ? "2,000" : "1,001,000";
+      priceInput.placeholder = "0";
     }
 
     if (priceHelp) {
@@ -4259,23 +4353,73 @@ function initTradeModal() {
     }
 
     if (brokerHelp) {
-      brokerHelp.textContent = isUsStock
-        ? "카카오증권 0.10%, 미래에셋 0.25% 기준으로 계산하며 미국 현지 제비용은 별도입니다."
-        : "카카오증권 0.015%, 미래에셋 0.014% 기준이며 국내주식 매도 시 세금 0.20%를 더합니다.";
+      brokerHelp.textContent = isCrypto
+        ? "업비트 거래수수료 0.050% 기준입니다. 출금 수수료는 거래가 아니라 별도라 앱 계산에 포함하지 않습니다."
+        : isUsStock
+          ? "카카오증권 0.100%, 미래에셋 0.250% 거래수수료 기준입니다. 미국주식 매도 시 현지 유관기관 fee가 추가될 수 있으며 앱 계산에는 아직 포함하지 않습니다."
+          : "카카오증권 0.015%, 미래에셋 0.014% 거래수수료 기준입니다. 국내주식 매도 시 거래세 0.200%를 더하고, 유관기관 제비용은 앱 계산에 아직 포함하지 않습니다.";
     }
 
     syncAssetChipState();
     calculateAmount();
   };
 
+  const populateTradeMonthOptions = (selectedMonth = new Date().getMonth() + 1) => {
+    if (!tradeMonthSelect) {
+      return;
+    }
+
+    tradeMonthSelect.innerHTML = Array.from({ length: 12 }, (_, index) => {
+      const month = index + 1;
+      return `<option value="${month}" ${month === selectedMonth ? "selected" : ""}>${month}월</option>`;
+    }).join("");
+  };
+
+  const populateTradeDayOptions = (selectedDay = new Date().getDate()) => {
+    if (!tradeDaySelect || !tradeMonthSelect) {
+      return;
+    }
+
+    const selectedMonth = Number(tradeMonthSelect.value || new Date().getMonth() + 1);
+    const daysInMonth = new Date(getCurrentBasisYear(), selectedMonth, 0).getDate();
+    const resolvedDay = Math.min(selectedDay, daysInMonth);
+    tradeDaySelect.innerHTML = Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1;
+      return `<option value="${day}" ${day === resolvedDay ? "selected" : ""}>${day}일</option>`;
+    }).join("");
+  };
+
+  const syncTradeDateField = () => {
+    if (!tradeDateInput || !tradeMonthSelect || !tradeDaySelect) {
+      return;
+    }
+
+    const month = Number(tradeMonthSelect.value || new Date().getMonth() + 1);
+    const day = String(Number(tradeDaySelect.value || new Date().getDate())).padStart(2, "0");
+    tradeDateInput.value = `${month}/${day}`;
+  };
+
+  const setTradeDate = (monthDay = parseBasisMonthDay()) => {
+    const [month, day] = String(monthDay || parseBasisMonthDay())
+      .split("/")
+      .map((segment) => Number(segment));
+    const selectedMonth = month || new Date().getMonth() + 1;
+    const selectedDay = day || new Date().getDate();
+    populateTradeMonthOptions(selectedMonth);
+    populateTradeDayOptions(selectedDay);
+    syncTradeDateField();
+  };
+
   const resetFormState = () => {
     editingTradeRef = null;
     form.reset();
-    amountInput.value = "";
-    feeInput.value = "";
+    quantityInput.value = "0";
+    priceInput.value = "0";
+    amountInput.value = "0";
+    feeInput.value = "0";
     marketSelect.value = "암호화폐";
     sideSelect.value = "매수";
-    tradeDateInput.value = parseBasisMonthDay();
+    setTradeDate(parseBasisMonthDay());
     setModalMode("create");
     syncTradeFormMode();
   };
@@ -4287,7 +4431,7 @@ function initTradeModal() {
     };
     setModalMode("edit");
     form.reset();
-    tradeDateInput.value = trade.date || parseBasisMonthDay();
+    setTradeDate(trade.date || parseBasisMonthDay());
     marketSelect.value = trade.market || "암호화폐";
     sideSelect.value = trade.side || "매수";
     assetInput.value = formatTradeAssetInputValue(trade);
@@ -4357,6 +4501,11 @@ function initTradeModal() {
   });
   quantityInput.addEventListener("blur", () => syncFormattedNumericField(quantityInput));
   priceInput.addEventListener("blur", () => syncFormattedNumericField(priceInput));
+  tradeMonthSelect?.addEventListener("change", () => {
+    populateTradeDayOptions(Number(tradeDaySelect?.value || 1));
+    syncTradeDateField();
+  });
+  tradeDaySelect?.addEventListener("change", syncTradeDateField);
   brokerInput?.addEventListener("change", calculateFee);
   sideSelect.addEventListener("change", calculateFee);
   marketSelect.addEventListener("change", syncTradeFormMode);
@@ -4380,7 +4529,7 @@ function initTradeModal() {
 
     const formData = new FormData(form);
     const tradeData = {
-      date: formData.get("date"),
+      date: formatDateInputToMonthDay(formData.get("date")),
       market: formData.get("market"),
       broker: getActiveBroker(),
       asset: normalizeTradeAssetName(formData.get("asset"), formData.get("market")),
