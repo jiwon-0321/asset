@@ -12,7 +12,7 @@ from openpyxl import load_workbook
 
 
 ROOT = Path(__file__).resolve().parents[1]
-WORKBOOK_FILENAME = "투자현황_4월7일.xlsx"
+DEFAULT_WORKBOOK_FILENAME: str | None = None
 ASSET_METADATA_DEFAULTS = {
     "XRP": {
         "name": "XRP",
@@ -77,10 +77,12 @@ def workbook_path(preferred_name: str | None = None) -> Path:
     if not workbooks:
         raise FileNotFoundError("No workbook was found in the project root.")
 
-    target_name = unicodedata.normalize("NFC", preferred_name or WORKBOOK_FILENAME)
-    for path in workbooks:
-        if unicodedata.normalize("NFC", path.name) == target_name:
-            return path
+    target_name = preferred_name or DEFAULT_WORKBOOK_FILENAME
+    if target_name:
+        normalized_target_name = unicodedata.normalize("NFC", target_name)
+        for path in workbooks:
+            if unicodedata.normalize("NFC", path.name) == normalized_target_name:
+                return path
 
     return workbooks[0]
 
@@ -652,13 +654,9 @@ def main() -> None:
 
     payload = json.dumps(portfolio, ensure_ascii=False, indent=2)
     output_path = ROOT / "data" / "portfolio.json"
-    script_output_path = ROOT / "data" / "portfolio-data.js"
 
     output_path.write_text(payload, encoding="utf-8")
-    script_output_path.write_text(f"window.__PORTFOLIO_DATA__ = {payload};\n", encoding="utf-8")
-    print(
-        f"Wrote {output_path.relative_to(ROOT)} and {script_output_path.relative_to(ROOT)} from {source.name}"
-    )
+    print(f"Wrote {output_path.relative_to(ROOT)} from {source.name}")
 
 
 if __name__ == "__main__":

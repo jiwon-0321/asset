@@ -1337,11 +1337,9 @@ async function backupExistingPortfolio(rootDir, jsonPath) {
 async function savePortfolio(rootDir, portfolio) {
   const payload = JSON.stringify(portfolio, null, 2);
   const jsonPath = path.join(rootDir, "data", "portfolio.json");
-  const jsPath = path.join(rootDir, "data", "portfolio-data.js");
 
   await backupExistingPortfolio(rootDir, jsonPath);
   await fs.writeFile(jsonPath, `${payload}\n`, "utf8");
-  await fs.writeFile(jsPath, `window.__PORTFOLIO_DATA__ = ${payload};\n`, "utf8");
 }
 
 async function addTrade(rootDir, input) {

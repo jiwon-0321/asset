@@ -10,9 +10,10 @@
 ## 실행
 
 ```bash
-python3 scripts/export_workbook.py
+npm run export
 ```
 
+파일명을 넘기지 않으면 프로젝트 루트의 가장 최신 `.xlsx` 파일을 사용합니다.
 특정 엑셀 파일을 지정하려면 아래처럼 파일명을 넘기면 됩니다.
 
 ```bash
@@ -24,7 +25,7 @@ python3 scripts/export_workbook.py 투자현황_4월9일.xlsx
 거래 추가 저장 기능까지 쓰려면 아래 서버로 실행하세요.
 
 ```bash
-node scripts/dev-server.js
+npm run dev
 ```
 
 그 다음 브라우저에서 `http://127.0.0.1:4173` 로 접속하면 됩니다.
@@ -56,3 +57,9 @@ TWELVE_DATA_API_KEY=발급받은_키
 - `GET /api/live-prices`
 
 이 API는 보유 자산과 목표 자산의 현재가를 모아서 내려주고, 총 자산과 평가손익도 실시간 가격 기준으로 다시 계산합니다.
+
+## 점검
+
+```bash
+npm run smoke
+```

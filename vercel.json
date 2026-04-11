@@ -4,10 +4,6 @@
     {
       "src": "/data/portfolio\\.json",
       "dest": "/api/blocked-data"
-    },
-    {
-      "src": "/data/portfolio-data\\.js",
-      "dest": "/api/blocked-data"
     }
   ]
 }
