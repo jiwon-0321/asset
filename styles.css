@@ -1880,6 +1880,14 @@ th.align-right {
   min-width: 0;
 }
 
+.timeline-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .holding-actions {
   display: inline-flex;
   flex-wrap: wrap;
@@ -2907,6 +2915,54 @@ th.align-right {
 .trade-side-sell {
   background: rgba(51, 255, 170, 0.12);
   color: var(--gain);
+}
+
+.trade-stage-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(176, 202, 197, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-strong);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.trade-stage-badge--watch {
+  border-color: rgba(176, 202, 197, 0.18);
+  background: rgba(176, 202, 197, 0.09);
+  color: #d5e7df;
+}
+
+.trade-stage-badge--scout {
+  border-color: rgba(94, 200, 255, 0.24);
+  background: rgba(94, 200, 255, 0.12);
+  color: #d7f2ff;
+}
+
+.trade-stage-badge--entry {
+  border-color: rgba(23, 249, 166, 0.22);
+  background: rgba(23, 249, 166, 0.12);
+  color: var(--accent);
+}
+
+.trade-stage-badge--exit {
+  border-color: rgba(255, 184, 77, 0.26);
+  background: rgba(255, 184, 77, 0.12);
+  color: #ffd79e;
+}
+
+.trade-stage-badge--stop {
+  border-color: rgba(255, 107, 135, 0.26);
+  background: rgba(255, 107, 135, 0.12);
+  color: #ffd3dd;
 }
 
 .targets-layout {
@@ -4329,6 +4385,24 @@ th.align-right {
     font-size: 0.8rem;
   }
 
+  .notes-composer-head,
+  .memo-card-head,
+  .memo-card-meta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .notes-composer-head > div,
+  .memo-card-head > div {
+    flex-basis: auto;
+    width: 100%;
+  }
+
+  #notes-count {
+    width: 100%;
+    justify-content: center;
+  }
+
   .timeline-date-head {
     grid-template-columns: 1fr;
   }
@@ -4715,6 +4789,7 @@ th.align-right {
 
 .notes-composer-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
@@ -4723,11 +4798,15 @@ th.align-right {
 .notes-composer-head > div {
   display: grid;
   gap: 6px;
+  min-width: 0;
+  flex: 1 1 220px;
 }
 
 .notes-composer-head h3 {
   font-size: 1.16rem;
   line-height: 1.2;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .notes-status {
@@ -4761,6 +4840,7 @@ th.align-right {
 .memo-card-head,
 .memo-card-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
@@ -4776,6 +4856,8 @@ th.align-right {
 .memo-card-head > div {
   display: grid;
   gap: 4px;
+  min-width: 0;
+  flex: 1 1 220px;
 }
 
 .memo-card-title {
@@ -4783,6 +4865,8 @@ th.align-right {
   font-size: 1rem;
   font-weight: 800;
   line-height: 1.35;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .memo-card-body {
@@ -4799,6 +4883,10 @@ th.align-right {
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+#notes-count {
+  align-self: flex-start;
 }
 
 .memo-card-delete {

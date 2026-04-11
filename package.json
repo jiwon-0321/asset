@@ -1,6 +1,9 @@
 {
   "name": "asset",
   "private": true,
+  "scripts": {
+    "smoke": "node scripts/smoke-test.js"
+  },
   "dependencies": {
     "@vercel/blob": "^2.0.0"
   }

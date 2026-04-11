@@ -1,6 +1,6 @@
 const bundledPortfolioData = require("../data/portfolio.json");
 const { readJsonBody, sendJson } = require("../lib/api-route-utils");
-const { resolveAccessProfile } = require("../lib/access-control");
+const { getAccessFailureResponse, resolveAccessProfile } = require("../lib/access-control");
 
 module.exports = async (request, response) => {
   if (request.method !== "POST") {
@@ -13,7 +13,8 @@ module.exports = async (request, response) => {
     const profile = resolveAccessProfile(payload.code, bundledPortfolioData);
 
     if (!profile.ok) {
-      sendJson(response, 401, { error: "코드가 맞지 않습니다." });
+      const failure = getAccessFailureResponse(profile);
+      sendJson(response, failure.statusCode, failure.payload);
       return;
     }
 

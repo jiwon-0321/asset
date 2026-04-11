@@ -294,12 +294,12 @@ const colors = ["#17F9A6", "#5EC8FF", "#FFB84D", "#FF6B87"];
 let chartRegistry = [];
 let assetDetailChart = null;
 let assetChartRefreshTimer = null;
-let calendarDetailStore = new Map();
 let currentPortfolioData = null;
 let basePortfolioData = null;
 let livePortfolioSnapshot = null;
 let liveRefreshTimer = null;
 let currentDateBadgeTimer = null;
+let lastPortfolioLoadSource = "unknown";
 let notesState = [];
 let noteEditorState = {
   editingId: null,
@@ -310,13 +310,10 @@ let hasLoadedNotes = false;
 let hasBootedDashboard = false;
 let activeAccessCode = "";
 let activeAccessMode = "owner";
-let timelineCalendarState = {
-  trades: [],
-  basisYear: new Date().getFullYear(),
-  selectedMonthKey: null,
-  realizedHistory: [],
-  activeView: "list",
-};
+let deferredMobileDashboardData = null;
+let deferredMobileSectionTimers = new Map();
+let deferredMobileSectionsRendered = new Set();
+let motionObserver = null;
 let mobileSectionState = {
   section: null,
   sectionId: "",
@@ -370,6 +367,60 @@ const MOBILE_SECTION_SHORTCUTS = Object.freeze([
   { id: "insights-section", eyebrow: "Defense", title: "XRP 방어지표", icon: "◇", summary: "방어 매매 기준 점검" },
   { id: "strategy-section", eyebrow: "Playbook", title: "플레이 전략", icon: "▣", summary: "매매 원칙 다시 보기" },
 ]);
+
+const MOBILE_DEFERRED_SECTION_DELAYS = Object.freeze({
+  "holdings-section": 90,
+  "performance-section": 160,
+  "timeline-section": 240,
+  "strategy-section": 320,
+});
+
+const TRADE_STRATEGY_STAGE_OPTIONS = Object.freeze([
+  { value: "관망", label: "관망", tone: "watch" },
+  { value: "정찰병", label: "정찰병", tone: "scout" },
+  { value: "1차 진입", label: "1차 진입", tone: "entry" },
+  { value: "2차 진입", label: "2차 진입", tone: "entry" },
+  { value: "3차 진입", label: "3차 진입", tone: "entry" },
+  { value: "1단계 익절", label: "1단계 익절", tone: "exit" },
+  { value: "2단계 익절", label: "2단계 익절", tone: "exit" },
+  { value: "3단계 추적", label: "3단계 추적", tone: "exit" },
+  { value: "가격 손절", label: "가격 손절", tone: "stop" },
+  { value: "시간 손절", label: "시간 손절", tone: "stop" },
+]);
+
+function normalizeTradeStrategyStage(value = "") {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function resolveTradeStrategyTone(stage = "") {
+  const normalized = normalizeTradeStrategyStage(stage);
+  return TRADE_STRATEGY_STAGE_OPTIONS.find((item) => item.value === normalized)?.tone || "neutral";
+}
+
+function buildTradeStageOptionsMarkup(selectedValue = "") {
+  const normalizedSelected = normalizeTradeStrategyStage(selectedValue);
+  const hasKnownOption = TRADE_STRATEGY_STAGE_OPTIONS.some((item) => item.value === normalizedSelected);
+  return [
+    '<option value="">선택 안 함</option>',
+    ...(normalizedSelected && !hasKnownOption
+      ? [`<option value="${escapeHtml(normalizedSelected)}" selected>${escapeHtml(normalizedSelected)}</option>`]
+      : []),
+    ...TRADE_STRATEGY_STAGE_OPTIONS.map(
+      (item) => `<option value="${escapeHtml(item.value)}" ${item.value === normalizedSelected ? "selected" : ""}>${escapeHtml(item.label)}</option>`
+    ),
+  ].join("");
+}
+
+function renderTradeStageBadge(stage = "") {
+  const normalized = normalizeTradeStrategyStage(stage);
+  if (!normalized) {
+    return "";
+  }
+
+  return `<span class="trade-stage-badge trade-stage-badge--${resolveTradeStrategyTone(normalized)}">${escapeHtml(normalized)}</span>`;
+}
 
 function normalizeAutocompleteToken(value = "") {
   return String(value || "")
@@ -583,7 +634,7 @@ async function fetchRemoteAssetSuggestions(market, query) {
   url.searchParams.set("market", trimmedMarket);
   url.searchParams.set("query", trimmedQuery);
 
-  const response = await fetch(url.toString(), {
+  const response = await fetchWithAccess(url.toString(), {
     headers: {
       Accept: "application/json",
     },
@@ -775,6 +826,50 @@ async function fetchWithAccess(input, options = {}) {
   });
 }
 
+async function fetchWithTimeout(input, options = {}, timeoutMs = 4500) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+async function fetchWithAccessTimeout(input, options = {}, timeoutMs = 4500) {
+  const headers = buildAccessHeaders(options.headers || {});
+  return fetchWithTimeout(
+    input,
+    {
+      ...options,
+      headers,
+    },
+    timeoutMs
+  );
+}
+
+async function fetchJsonWithTimeout(input, options = {}, timeoutMs = 3500) {
+  const response = await fetchWithTimeout(input, options, timeoutMs);
+  if (!response.ok) {
+    throw new Error(`Failed to load JSON: ${response.status}`);
+  }
+  return response.json();
+}
+
+async function fetchJsonWithAccessTimeout(input, options = {}, timeoutMs = 3500) {
+  const response = await fetchWithAccessTimeout(input, options, timeoutMs);
+  if (!response.ok) {
+    throw new Error(`Failed to load JSON: ${response.status}`);
+  }
+  return response.json();
+}
+
 function bootDashboard() {
   if (hasBootedDashboard) {
     return;
@@ -790,10 +885,15 @@ function bootDashboard() {
   hydrateNotesFromServer();
   initTargetManager();
   initTargetRemovalActions();
+  bindAllPanelAccordions();
+  bindMobileSectionOverlay();
   loadPortfolio()
     .then(async (data) => {
       applyPortfolioData(data, livePortfolioSnapshot, { renderMode: "full" });
       initTradeModal();
+      if (lastPortfolioLoadSource !== "api") {
+        await syncPortfolioBaseData();
+      }
       await refreshLivePortfolio();
       scheduleLivePortfolioRefresh();
     })
@@ -827,7 +927,6 @@ function unlockAccessGate() {
   document.body.classList.remove("access-locked");
   interactionLockUntil = Date.now() + 900;
   closeMobileSectionOverlay();
-  closeCalendarDetailModal();
   closeAssetChartModal();
 
   const tradeModal = document.querySelector("#trade-modal");
@@ -854,7 +953,6 @@ function relockAccessGate(options = {}) {
   }
 
   closeMobileSectionOverlay();
-  closeCalendarDetailModal();
   closeAssetChartModal();
 
   const tradeModal = document.querySelector("#trade-modal");
@@ -891,7 +989,6 @@ function initAccessGate() {
   const form = document.querySelector("#access-gate-form");
   const input = document.querySelector("#access-gate-code");
   let isSubmittingCode = false;
-  let autoSubmitTimer = null;
 
   syncViewportHeight();
   relockAccessGate();
@@ -955,22 +1052,6 @@ function initAccessGate() {
     await submitAccessCode(submittedCode);
   });
 
-  input.addEventListener("input", () => {
-    if (autoSubmitTimer) {
-      window.clearTimeout(autoSubmitTimer);
-      autoSubmitTimer = null;
-    }
-
-    const submittedCode = String(input.value || "").trim();
-    if (submittedCode !== "0321" || isSubmittingCode) {
-      return;
-    }
-
-    autoSubmitTimer = window.setTimeout(() => {
-      form.requestSubmit();
-    }, 120);
-  });
-
   window.setTimeout(() => {
     input.focus();
   }, 60);
@@ -986,37 +1067,63 @@ function initAccessGate() {
 
 document.addEventListener("DOMContentLoaded", initAccessGate);
 
+async function fetchPortfolioFromApi(timeoutMs = 4500) {
+  return fetchJsonWithAccessTimeout(
+    "./api/portfolio",
+    {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
+    },
+    timeoutMs
+  );
+}
+
+async function fetchPortfolioFromStaticFile(timeoutMs = 2000) {
+  return fetchJsonWithTimeout(
+    "./data/portfolio.json",
+    {
+      cache: "no-store",
+    },
+    timeoutMs
+  );
+}
+
 async function loadPortfolio() {
+  if (window.__PORTFOLIO_DATA__) {
+    lastPortfolioLoadSource = "memory";
+    return window.__PORTFOLIO_DATA__;
+  }
+
   if (window.location.protocol !== "file:") {
     try {
-      const response = await fetchWithAccess("./api/portfolio", {
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      if (response.ok) {
-        return response.json();
-      }
+      const apiData = await fetchPortfolioFromApi(4500);
+      lastPortfolioLoadSource = "api";
+      return apiData;
     } catch (error) {
       console.error(error);
     }
   }
 
-  if (window.__PORTFOLIO_DATA__) {
-    return window.__PORTFOLIO_DATA__;
+  try {
+    const staticData = await fetchPortfolioFromStaticFile(2000);
+    lastPortfolioLoadSource = "static";
+    return staticData;
+  } catch (error) {
+    console.error(error);
+    throw new Error("Failed to load portfolio data.");
   }
-
-  const response = await fetch("./data/portfolio.json");
-  if (!response.ok) {
-    throw new Error(`Failed to load portfolio.json: ${response.status}`);
-  }
-
-  return response.json();
 }
 
 function isMobileSectionMode() {
-  return window.matchMedia("(max-width: 980px)").matches;
+  const isSmallViewport = window.matchMedia("(max-width: 980px)").matches;
+  const hasTouchPointer =
+    window.matchMedia("(pointer: coarse)").matches ||
+    window.matchMedia("(any-pointer: coarse)").matches ||
+    Number(window.navigator?.maxTouchPoints || 0) > 0;
+
+  return isSmallViewport && hasTouchPointer;
 }
 
 function syncViewportHeight() {
@@ -1072,17 +1179,25 @@ function forceOpenPanelAccordionsWithin(root) {
   });
 }
 
+function forceVisibleRevealsWithin(root) {
+  if (!root) {
+    return;
+  }
+
+  const nodes = [root, ...root.querySelectorAll(".scroll-reveal")];
+  nodes.forEach((node) => {
+    if (node?.classList?.contains("scroll-reveal")) {
+      node.classList.add("is-visible");
+    }
+  });
+}
+
 function prepareTimelineSectionForMobile(section) {
   if (!section) {
     return;
   }
 
-  activateTimelineView(section, timelineCalendarState.activeView || "list");
   forceOpenPanelAccordionsWithin(section);
-
-  if ((timelineCalendarState.activeView || "list") !== "list") {
-    return;
-  }
 
   const firstGroup = section.querySelector(".timeline-group");
   const firstToggle = firstGroup?.querySelector(".timeline-toggle");
@@ -1183,6 +1298,7 @@ function openMobileSectionOverlay(sectionId) {
   if (!isMobileSectionMode()) {
     const section = document.getElementById(sectionId);
     if (section) {
+      ensureDeferredMobileSectionRendered(sectionId);
       section.scrollIntoView({
         block: "start",
         behavior: "smooth",
@@ -1202,6 +1318,7 @@ function openMobileSectionOverlay(sectionId) {
     return;
   }
 
+  ensureDeferredMobileSectionRendered(sectionId);
   closeMobileSectionOverlay();
 
   const originalParent = section.parentElement;
@@ -1217,6 +1334,7 @@ function openMobileSectionOverlay(sectionId) {
   } else {
     forceOpenPanelAccordionsWithin(section);
   }
+  forceVisibleRevealsWithin(section);
 
   if (kicker) {
     kicker.textContent = config.eyebrow;
@@ -1329,6 +1447,22 @@ function buildRenderablePortfolio(data, liveSnapshot = null) {
   return next;
 }
 
+async function syncPortfolioBaseData() {
+  if (window.location.protocol === "file:" || !activeAccessCode) {
+    return null;
+  }
+
+  try {
+    const nextData = await fetchPortfolioFromApi(5000);
+    lastPortfolioLoadSource = "api";
+    applyPortfolioData(nextData, livePortfolioSnapshot, { renderMode: "full" });
+    return nextData;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
 async function refreshLivePortfolio() {
   if (window.location.protocol === "file:") {
     return null;
@@ -1376,6 +1510,85 @@ function scheduleLivePortfolioRefresh() {
   }, refreshIntervalMs);
 }
 
+function clearDeferredMobileSectionTimers() {
+  deferredMobileSectionTimers.forEach((timerId) => {
+    window.clearTimeout(timerId);
+  });
+  deferredMobileSectionTimers.clear();
+}
+
+function renderDeferredMobileSection(sectionId, data = deferredMobileDashboardData) {
+  if (!data || deferredMobileSectionsRendered.has(sectionId)) {
+    return;
+  }
+
+  if (sectionId === "holdings-section") {
+    renderHoldings(data.holdings || []);
+  } else if (sectionId === "performance-section") {
+    renderCharts(data.charts);
+    renderRealized(data.realized, data.summary?.realizedProfitTotal || 0);
+  } else if (sectionId === "timeline-section") {
+    renderTimeline(data.trades, getCurrentBasisYear(), data.charts?.realizedHistory || [], data.realized || []);
+  } else if (sectionId === "strategy-section") {
+    renderStrategy(data.strategy);
+  } else {
+    return;
+  }
+
+  deferredMobileSectionsRendered.add(sectionId);
+}
+
+function queueDeferredMobileSection(sectionId, delayMs = 0) {
+  if (!(sectionId in MOBILE_DEFERRED_SECTION_DELAYS)) {
+    return;
+  }
+
+  if (!isMobileSectionMode()) {
+    renderDeferredMobileSection(sectionId);
+    return;
+  }
+
+  if (deferredMobileSectionsRendered.has(sectionId)) {
+    return;
+  }
+
+  const existingTimer = deferredMobileSectionTimers.get(sectionId);
+  if (existingTimer) {
+    window.clearTimeout(existingTimer);
+  }
+
+  const timerId = window.setTimeout(() => {
+    deferredMobileSectionTimers.delete(sectionId);
+    renderDeferredMobileSection(sectionId);
+  }, delayMs);
+
+  deferredMobileSectionTimers.set(sectionId, timerId);
+}
+
+function ensureDeferredMobileSectionRendered(sectionId) {
+  if (!(sectionId in MOBILE_DEFERRED_SECTION_DELAYS)) {
+    return;
+  }
+
+  const pendingTimer = deferredMobileSectionTimers.get(sectionId);
+  if (pendingTimer) {
+    window.clearTimeout(pendingTimer);
+    deferredMobileSectionTimers.delete(sectionId);
+  }
+
+  renderDeferredMobileSection(sectionId);
+}
+
+function queueDeferredMobileDashboardSections(data) {
+  deferredMobileDashboardData = data;
+  deferredMobileSectionsRendered = new Set();
+  clearDeferredMobileSectionTimers();
+
+  Object.entries(MOBILE_DEFERRED_SECTION_DELAYS).forEach(([sectionId, delayMs]) => {
+    queueDeferredMobileSection(sectionId, delayMs);
+  });
+}
+
 function renderDashboard(data, options = {}) {
   const isLiveRefresh = options.renderMode === "live";
   const {
@@ -1403,7 +1616,6 @@ function renderDashboard(data, options = {}) {
   renderTargets(targets, live);
   renderAllocation(summary, assetStatus, cashPositions);
   renderAssetTable(assetStatus, holdings);
-  renderHoldings(holdings);
   renderDefense({
     metadata,
     trades,
@@ -1417,14 +1629,22 @@ function renderDashboard(data, options = {}) {
   }
 
   renderMobileSectionHub();
-  renderCharts(charts);
-  renderRealized(realized, summary.realizedProfitTotal);
-  renderTimeline(trades, getCurrentBasisYear(), charts.realizedHistory, realized);
   renderNotes(notesState);
-  renderStrategy(strategy);
   bindAllPanelAccordions();
   bindMobileSectionOverlay();
   bindNotesSection(document.querySelector("#notes-section"));
+  clearDeferredMobileSectionTimers();
+
+  if (isMobileSectionMode()) {
+    queueDeferredMobileDashboardSections(data);
+  } else {
+    renderHoldings(holdings);
+    renderCharts(charts);
+    renderRealized(realized, summary.realizedProfitTotal);
+    renderTimeline(trades, getCurrentBasisYear(), charts.realizedHistory, realized);
+    renderStrategy(strategy);
+  }
+
   initializeMotion();
   syncActiveMobileSectionOverlay();
 }
@@ -3038,6 +3258,9 @@ function bindPanelAccordion(panel) {
 
     const body = panel.querySelector(".panel-collapse");
     const willOpen = trigger.getAttribute("aria-expanded") !== "true";
+    if (willOpen) {
+      ensureDeferredMobileSectionRendered(panel.id);
+    }
     toggleDisclosure(panel, trigger, body, willOpen);
 
     if (willOpen && panel.id === "timeline-section") {
@@ -3108,6 +3331,15 @@ function getDisplayTradeNote(note = "") {
   }
 
   return trimmed;
+}
+
+function renderTimelineTradeBadges(trade) {
+  return `
+    <div class="timeline-badges">
+      <span class="trade-side ${trade.side === "매수" ? "trade-side-buy" : "trade-side-sell"}">${trade.side}</span>
+      ${renderTradeStageBadge(trade.stage)}
+    </div>
+  `;
 }
 
 function formatRealizedTradeDisplay(pnl, returnRate = null) {
@@ -3244,27 +3476,6 @@ function groupTimelineTradesByDate(trades) {
   }, []);
 }
 
-function groupTimelineTradesByMonth(trades) {
-  const months = new Map();
-
-  trades.forEach((trade) => {
-    const tradeDate = trade.sortValue ? new Date(trade.sortValue) : new Date();
-    const year = tradeDate.getFullYear();
-    const monthKey = buildCalendarMonthKey(year, trade.month);
-    if (!months.has(monthKey)) {
-      months.set(monthKey, {
-        key: monthKey,
-        month: trade.month,
-        year,
-        trades: [],
-      });
-    }
-    months.get(monthKey).trades.push(trade);
-  });
-
-  return [...months.values()].sort((left, right) => right.year - left.year || right.month - left.month);
-}
-
 function buildRealizedHistoryLookup(realizedHistory = []) {
   return realizedHistory.reduce((lookup, entry) => {
     lookup.set(normalizeMonthDayKey(entry.date), entry);
@@ -3326,18 +3537,18 @@ function renderTimelineList(trades, basisYear, realizedHistory = []) {
             <div class="timeline-group-list">
               ${group.trades
                 .map(
-                  (trade) => `
-                    <article class="timeline-item">
-                      <div class="timeline-top">
-                        <div>
-                          <p class="mini-label timeline-market">${trade.market}${trade.broker ? ` · ${trade.broker}` : ""}</p>
-                          <strong class="timeline-title">${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</strong>
-                        </div>
-                        <div class="timeline-item-actions">
-                          <span class="trade-side ${trade.side === "매수" ? "trade-side-buy" : "trade-side-sell"}">${trade.side}</span>
-                          <button
-                            type="button"
-                            class="timeline-action timeline-action--edit"
+	                  (trade) => `
+	                    <article class="timeline-item">
+	                      <div class="timeline-top">
+	                        <div>
+	                          <p class="mini-label timeline-market">${trade.market}${trade.broker ? ` · ${trade.broker}` : ""}</p>
+	                          <strong class="timeline-title">${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</strong>
+	                          ${renderTimelineTradeBadges(trade)}
+	                        </div>
+	                        <div class="timeline-item-actions">
+	                          <button
+	                            type="button"
+	                            class="timeline-action timeline-action--edit"
                             data-trade-edit
                             data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
                             data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
@@ -3382,185 +3593,18 @@ function renderTimelineList(trades, basisYear, realizedHistory = []) {
     .join("");
 }
 
-function renderTimelineCalendar(trades, basisYear, realizedHistory = []) {
-  const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"];
-  const months = groupTimelineTradesByMonth(trades);
-  const realizedLookup = buildRealizedHistoryLookup(realizedHistory);
-  calendarDetailStore = new Map();
-
-  if (!months.length) {
-    return `<div class="timeline-empty">표시할 거래가 없습니다.</div>`;
-  }
-
-  if (!months.some((month) => month.key === timelineCalendarState.selectedMonthKey)) {
-    timelineCalendarState.selectedMonthKey = months[0].key;
-  }
-
-  const selectedMonth = months.find((month) => month.key === timelineCalendarState.selectedMonthKey) || months[0];
-  const monthTrades = [...selectedMonth.trades].sort((left, right) => left.day - right.day || left.order - right.order);
-  const tradesByDay = monthTrades.reduce((map, trade) => {
-    const key = String(trade.day);
-    if (!map.has(key)) {
-      map.set(key, []);
-    }
-    map.get(key).push(trade);
-    return map;
-  }, new Map());
-  const daysInMonth = new Date(selectedMonth.year, selectedMonth.month, 0).getDate();
-  const firstDayOffset = new Date(selectedMonth.year, selectedMonth.month - 1, 1).getDay();
-  const totalAmount = monthTrades.reduce((sum, trade) => sum + trade.amount, 0);
-  const activeDays = tradesByDay.size;
-  const monthPnl = Array.from({ length: daysInMonth }, (_, dayIndex) => {
-    const dateKey = buildMonthDayKey(selectedMonth.month, dayIndex + 1);
-    return realizedLookup.get(dateKey)?.dailyPnl ?? 0;
-  }).reduce((sum, value) => sum + value, 0);
-  const monthPnlTone = getSignedPriceToneClass(monthPnl);
-
-  return `
-    <div class="calendar-toolbar">
-      <label class="calendar-month-picker" for="timeline-calendar-month">
-        <span class="calendar-picker-label">월 선택</span>
-        <div class="calendar-select-wrap">
-          <select id="timeline-calendar-month" class="calendar-select">
-            ${months
-              .map(
-                (month) => `
-                  <option value="${month.key}" ${month.key === selectedMonth.key ? "selected" : ""}>
-                    ${formatCalendarMonthLabel(month.year, month.month)}
-                  </option>
-                `
-              )
-              .join("")}
-          </select>
-          <span class="calendar-select-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </span>
-        </div>
-      </label>
-      <div class="calendar-toolbar-meta">
-        <span>거래일 ${activeDays}일</span>
-        <strong class="${monthPnlTone}">총 ${monthTrades.length}건 · 월 누적 실현손익 ${formatSignedCurrency(monthPnl)}</strong>
-      </div>
-    </div>
-    <article class="calendar-month">
-      <header class="calendar-month-header">
-        <div>
-          <p class="mini-label">Calendar View</p>
-          <strong>${formatCalendarMonthLabel(selectedMonth.year, selectedMonth.month)}</strong>
-        </div>
-        <div class="calendar-month-summary">
-          <span>선택 월 누적 실현손익</span>
-          <strong class="${monthPnlTone}">${formatSignedCurrency(monthPnl)}</strong>
-        </div>
-      </header>
-      <div class="calendar-grid-shell">
-        <div class="calendar-grid">
-          ${weekdayLabels.map((label) => `<div class="calendar-weekday">${label}</div>`).join("")}
-          ${Array.from({ length: firstDayOffset }, () => `<div class="calendar-day calendar-day--blank" aria-hidden="true"></div>`).join("")}
-          ${Array.from({ length: daysInMonth }, (_, dayIndex) => {
-            const day = dayIndex + 1;
-            const dayTrades = tradesByDay.get(String(day)) || [];
-            const dayAmount = dayTrades.reduce((sum, trade) => sum + trade.amount, 0);
-            const buyCount = dayTrades.filter((trade) => trade.side === "매수").length;
-            const sellCount = dayTrades.length - buyCount;
-            const detailKey = buildCalendarDetailKey(selectedMonth.year, selectedMonth.month, day);
-            const dateKey = buildMonthDayKey(selectedMonth.month, day);
-            const dayProfit = realizedLookup.get(dateKey);
-            const dayPnl = dayProfit?.dailyPnl ?? 0;
-            const dayPnlTone = getSignedPriceToneClass(dayPnl);
-            const hasDirectionalPnl = dayPnl !== 0;
-
-            if (dayTrades.length) {
-              calendarDetailStore.set(detailKey, {
-                dateLabel: formatTimelineDate(`${selectedMonth.month}/${day}`, selectedMonth.year),
-                trades: dayTrades,
-                totalAmount: dayAmount,
-                buyCount,
-                sellCount,
-                dayPnl,
-              });
-            }
-
-            if (!dayTrades.length) {
-              return `
-                <article class="calendar-day">
-                  <div class="calendar-day-top">
-                    <span class="calendar-day-number">${day}</span>
-                  </div>
-                  <div class="calendar-day-idle">거래 없음</div>
-                </article>
-              `;
-            }
-
-            return `
-              <button
-                type="button"
-                class="calendar-day calendar-day--interactive has-trades ${hasDirectionalPnl ? (dayPnl > 0 ? "has-profit" : "has-loss") : ""}"
-                data-detail-key="${detailKey}"
-                aria-haspopup="dialog"
-                aria-label="${formatTimelineDate(`${selectedMonth.month}/${day}`, selectedMonth.year)} 거래 ${dayTrades.length}건 보기"
-              >
-                <div class="calendar-day-top">
-                  <span class="calendar-day-number">${day}</span>
-                  <span class="calendar-day-count">${dayTrades.length}건</span>
-                </div>
-                <strong class="calendar-day-total ${dayPnlTone}">
-                  <span class="calendar-total-full">${formatSignedCurrency(dayPnl)}</span>
-                  <span class="calendar-total-compact">${dayPnl > 0 ? "+" : ""}${formatCompactCurrency(Math.abs(dayPnl))}</span>
-                </strong>
-                <p class="calendar-day-summary">매수 ${buyCount}건 · 매도 ${sellCount}건</p>
-                <div class="calendar-day-items">
-                  ${dayTrades
-                    .slice(0, 2)
-                    .map(
-                      (trade) => `
-                        <div class="calendar-trade ${trade.side === "매수" ? "loss" : "gain"}">
-                          <span>${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</span>
-                          <strong>${trade.side}</strong>
-                        </div>
-                      `
-                    )
-                    .join("")}
-                  ${
-                    dayTrades.length > 2
-                      ? `<span class="calendar-more">+${dayTrades.length - 2}건 더</span>`
-                      : `<span class="calendar-more">상세 보기</span>`
-                  }
-                </div>
-              </button>
-            `;
-          }).join("")}
-        </div>
-      </div>
-    </article>
-  `;
-}
-
 function renderTimeline(trades, basisDateLabel, realizedHistory = [], realizedEntries = []) {
   const basisYear = Number(basisDateLabel) || getCurrentBasisYear();
   const listContainer = document.querySelector("#timeline");
-  const calendarContainer = document.querySelector("#timeline-calendar");
   const normalizedTrades = normalizeTimelineTrades(trades, basisYear, realizedEntries);
   timelineTradeRegistry = normalizedTrades.reduce((registry, trade) => {
     registry.set(getTimelineTradeKey(trade), trade);
     return registry;
   }, new Map());
-  timelineCalendarState = {
-    ...timelineCalendarState,
-    trades: normalizedTrades,
-    basisYear,
-    realizedHistory,
-  };
 
   listContainer.innerHTML = renderTimelineList(normalizedTrades, basisYear, realizedHistory);
-  calendarContainer.innerHTML = renderTimelineCalendar(normalizedTrades, basisYear, realizedHistory);
 
   bindTimelineSection(document.querySelector("#timeline-section"));
-  bindCalendarDetailModal(document.querySelector("#calendar-detail-modal"));
-  bindPanelAccordion(document.querySelector("#timeline-section .panel"));
-  activateTimelineView(document.querySelector("#timeline-section"), timelineCalendarState.activeView || "list");
 }
 
 function renderStrategy(strategy) {
@@ -3737,10 +3781,6 @@ function buildTimelineSummary(trades) {
   return `매수 ${buyCount}건 · 매도 ${sellCount}건`;
 }
 
-function buildCalendarMonthKey(year, month) {
-  return `${year}-${String(month).padStart(2, "0")}`;
-}
-
 function buildMonthDayKey(month, day) {
   const normalizedMonth = Number(month);
   const normalizedDay = Number(day);
@@ -3756,202 +3796,6 @@ function normalizeMonthDayKey(value) {
   }
   const [month, day] = value.split("/").map((segment) => Number(segment));
   return buildMonthDayKey(month, day);
-}
-
-function buildCalendarDetailKey(year, month, day) {
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-function formatCalendarMonthLabel(year, month) {
-  return `${year}년 ${month}월`;
-}
-
-function openCalendarDetailModal(detailKey) {
-  const detail = calendarDetailStore.get(detailKey);
-  const modal = document.querySelector("#calendar-detail-modal");
-  if (!detail || !modal) {
-    return;
-  }
-
-  const summary = `총 ${detail.trades.length}건 · 매수 ${detail.buyCount}건 · 매도 ${detail.sellCount}건 · 실현 손익 ${formatSignedCurrency(detail.dayPnl ?? 0)} · 총 거래금액 ${formatCurrency(detail.totalAmount)}`;
-
-  text("#calendar-detail-title", detail.dateLabel);
-  text("#calendar-detail-summary", summary);
-  document.querySelector("#calendar-detail-list").innerHTML = detail.trades
-    .map(
-      (trade) => `
-        <article class="calendar-modal-item">
-          <div class="calendar-modal-item-top">
-            <div>
-              <p class="mini-label">${trade.market}${trade.broker ? ` · ${trade.broker}` : ""}</p>
-              <strong>${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</strong>
-            </div>
-            <div class="timeline-item-actions">
-              <span class="trade-side ${trade.side === "매수" ? "trade-side-buy" : "trade-side-sell"}">${trade.side}</span>
-              <button
-                type="button"
-                class="timeline-action timeline-action--edit"
-                data-trade-edit
-                data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
-                data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
-              >
-                수정
-              </button>
-              <button
-                type="button"
-                class="timeline-action timeline-action--delete"
-                data-trade-delete
-                data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
-                data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-          <div class="calendar-modal-metrics">
-            <div class="calendar-modal-metric">
-              <span>수량</span>
-              <strong>${formatNumber(trade.quantity)}</strong>
-            </div>
-            <div class="calendar-modal-metric">
-              <span>단가</span>
-              <strong>${formatCurrency(trade.price)}</strong>
-            </div>
-            <div class="calendar-modal-metric">
-              <span>거래금액</span>
-              <strong class="${trade.side === "매수" ? "loss" : "gain"}">${formatCurrency(trade.amount)}</strong>
-            </div>
-            <div class="calendar-modal-metric">
-              <span>수수료</span>
-              <strong>${formatCurrency(trade.fee)}</strong>
-            </div>
-            ${trade.realizedDisplay && trade.side === "매도" ? `
-            <div class="calendar-modal-metric calendar-modal-pnl">
-              <span>실현손익</span>
-              <strong class="calendar-pnl-value ${Number.isFinite(Number(trade.realizedPnl)) ? getSignedPriceToneClass(trade.realizedPnl) : "price-move-neutral"}">${trade.realizedDisplay}</strong>
-            </div>
-            ` : ""}
-          </div>
-          ${
-            getDisplayTradeNote(trade.note)
-              ? `<p class="calendar-modal-note">메모 · ${escapeHtml(getDisplayTradeNote(trade.note))}</p>`
-              : ""
-          }
-        </article>
-      `
-    )
-    .join("");
-
-  modal.hidden = false;
-  modal.classList.add("is-open");
-  document.body.classList.add("modal-open");
-  modal.querySelector(".calendar-modal-close")?.focus();
-}
-
-function closeCalendarDetailModal() {
-  const modal = document.querySelector("#calendar-detail-modal");
-  if (!modal || modal.hidden) {
-    return;
-  }
-
-  modal.hidden = true;
-  modal.classList.remove("is-open");
-  document.body.classList.remove("modal-open");
-}
-
-function bindCalendarDetailModal(modal) {
-  if (!modal || modal.dataset.modalBound === "true") {
-    return;
-  }
-
-  modal.addEventListener("click", (event) => {
-    const editButton = event.target.closest("[data-trade-edit]");
-    if (editButton && modal.contains(editButton)) {
-      const trade = timelineTradeRegistry.get(`${editButton.dataset.tradeCollection}:${editButton.dataset.tradeIndex}`);
-      if (trade) {
-        closeCalendarDetailModal();
-        tradeModalController?.openEdit?.(trade);
-      }
-      return;
-    }
-
-    const deleteButton = event.target.closest("[data-trade-delete]");
-    if (deleteButton && modal.contains(deleteButton)) {
-      const trade = timelineTradeRegistry.get(`${deleteButton.dataset.tradeCollection}:${deleteButton.dataset.tradeIndex}`);
-      if (!trade) {
-        return;
-      }
-
-      const confirmed = window.confirm(
-        `정말 삭제하실건가요?\n\n거래내역에서 제거합니다.\n대상: ${getDisplayAssetName({
-          asset: trade.asset,
-          symbol: trade.symbol,
-          market: getMarketLabelFromMetaMarket(trade.market),
-        })}`
-      );
-      if (!confirmed) {
-        return;
-      }
-
-      deleteButton.disabled = true;
-      deleteTimelineTrade(trade)
-        .then(() => {
-          closeCalendarDetailModal();
-        })
-        .catch((error) => {
-          console.error(error);
-          deleteButton.disabled = false;
-          window.alert(error.message || "거래 삭제에 실패했습니다.");
-        });
-      return;
-    }
-
-    if (event.target.closest("[data-calendar-modal-close]")) {
-      closeCalendarDetailModal();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeCalendarDetailModal();
-    }
-  });
-
-  modal.dataset.modalBound = "true";
-}
-
-function rerenderTimelineCalendarView() {
-  const calendarContainer = document.querySelector("#timeline-calendar");
-  if (!calendarContainer) {
-    return;
-  }
-
-  calendarContainer.innerHTML = renderTimelineCalendar(
-    timelineCalendarState.trades,
-    timelineCalendarState.basisYear,
-    timelineCalendarState.realizedHistory
-  );
-}
-
-function activateTimelineView(section, viewName) {
-  if (!section) {
-    return;
-  }
-
-  timelineCalendarState.activeView = viewName === "calendar" ? "calendar" : "list";
-
-  section.querySelectorAll(".view-tab").forEach((button) => {
-    const isActive = button.dataset.viewTarget === viewName;
-    button.classList.toggle("is-active", isActive);
-    button.setAttribute("aria-selected", String(isActive));
-    button.tabIndex = isActive ? 0 : -1;
-  });
-
-  section.querySelectorAll(".timeline-view").forEach((panel) => {
-    const isActive = panel.dataset.view === viewName;
-    panel.classList.toggle("is-active", isActive);
-    panel.hidden = !isActive;
-  });
 }
 
 async function deleteTimelineTrade(trade) {
@@ -3970,29 +3814,12 @@ function bindTimelineSection(section) {
     return;
   }
 
-  section.addEventListener("change", (event) => {
-    const monthSelect = event.target.closest("#timeline-calendar-month");
-    if (!monthSelect || !section.contains(monthSelect)) {
-      return;
-    }
-
-    timelineCalendarState.selectedMonthKey = monthSelect.value;
-    rerenderTimelineCalendarView();
-  });
-
   section.addEventListener("click", (event) => {
-    const tab = event.target.closest(".view-tab");
-    if (tab && section.contains(tab)) {
-      activateTimelineView(section, tab.dataset.viewTarget || "list");
-      return;
-    }
-
     const editButton = event.target.closest("[data-trade-edit]");
     if (editButton && section.contains(editButton)) {
       const key = `${editButton.dataset.tradeCollection}:${editButton.dataset.tradeIndex}`;
       const trade = timelineTradeRegistry.get(key);
       if (trade) {
-        closeCalendarDetailModal();
         finalizeMobileModalLaunch("timeline-section");
         tradeModalController?.openEdit?.(trade);
       }
@@ -4024,12 +3851,6 @@ function bindTimelineSection(section) {
         deleteButton.disabled = false;
         window.alert(error.message || "거래 삭제에 실패했습니다.");
       });
-      return;
-    }
-
-    const calendarDay = event.target.closest(".calendar-day--interactive");
-    if (calendarDay && section.contains(calendarDay)) {
-      openCalendarDetailModal(calendarDay.dataset.detailKey);
       return;
     }
 
@@ -4572,17 +4393,20 @@ function bindPriceStripInteractions() {
 }
 
 function initializeMotion() {
-  const mobileMotion = window.matchMedia("(max-width: 980px)").matches;
+  const mobileMotion = isMobileSectionMode();
   const revealDistance = mobileMotion ? "18px" : "24px";
   const revealDuration = mobileMotion ? "420ms" : "560ms";
-  const nodes = [
-    ...document.querySelectorAll(".reveal"),
-    ...document.querySelectorAll(
-      ".metric-card, .panel, .chart-card, .holding-card, .legend-item, .realized-item, .defense-card, .timeline-group, .calendar-month, .rule-card, .note-card, .price-sector, .mobile-hub-button"
-    ),
-  ];
+  const selector = mobileMotion
+    ? ".reveal, .section, .mobile-hub-button, .price-sector"
+    : ".reveal, .metric-card, .panel, .chart-card, .holding-card, .legend-item, .realized-item, .defense-card, .timeline-group, .rule-card, .note-card, .price-sector, .mobile-hub-button";
+  const nodes = [...document.querySelectorAll(selector)];
 
   const uniqueNodes = [...new Set(nodes)];
+  if (motionObserver) {
+    motionObserver.disconnect();
+    motionObserver = null;
+  }
+
   uniqueNodes.forEach((node, index) => {
     node.classList.add("scroll-reveal");
     node.style.setProperty("--reveal-delay", `${Math.min(index % 8, 7) * 60}ms`);
@@ -4595,7 +4419,7 @@ function initializeMotion() {
     return;
   }
 
-  const observer = new IntersectionObserver(
+  motionObserver = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
         if (!entry.isIntersecting) {
@@ -4603,7 +4427,7 @@ function initializeMotion() {
         }
 
         entry.target.classList.add("is-visible");
-        observer.unobserve(entry.target);
+        motionObserver?.unobserve(entry.target);
       });
     },
     {
@@ -4612,7 +4436,7 @@ function initializeMotion() {
     }
   );
 
-  uniqueNodes.forEach((node) => observer.observe(node));
+  uniqueNodes.forEach((node) => motionObserver?.observe(node));
 }
 
 function buildLiveState(liveSnapshot) {
@@ -5492,6 +5316,7 @@ function initTradeModal() {
   const priceInput = document.querySelector("#trade-price");
   const amountInput = document.querySelector("#trade-amount");
   const sideSelect = document.querySelector("#trade-side");
+  const stageSelect = document.querySelector("#trade-stage");
   const feeInput = document.querySelector("#trade-fee");
   const summaryBroker = document.querySelector("#trade-summary-broker");
   const summaryAmount = document.querySelector("#trade-summary-amount");
@@ -5672,6 +5497,14 @@ function initTradeModal() {
         .join("")}
     `;
     brokerInput.value = resolvedValue;
+  };
+
+  const populateTradeStageOptions = (selectedValue = "") => {
+    if (!stageSelect) {
+      return;
+    }
+
+    stageSelect.innerHTML = buildTradeStageOptionsMarkup(selectedValue);
   };
 
   const getActiveBroker = () => {
@@ -5873,6 +5706,7 @@ function initTradeModal() {
     feeInput.value = "0";
     marketSelect.value = "암호화폐";
     sideSelect.value = "매수";
+    populateTradeStageOptions();
     setTradeDate(parseBasisMonthDay());
     setModalMode("create");
     syncTradeFormMode();
@@ -5885,6 +5719,7 @@ function initTradeModal() {
     };
     setModalMode("edit");
     form.reset();
+    populateTradeStageOptions(trade.stage || "");
     setTradeDate(trade.date || parseBasisMonthDay());
     marketSelect.value = trade.market || "암호화폐";
     sideSelect.value = trade.side || "매수";
@@ -5990,6 +5825,7 @@ function initTradeModal() {
       broker: getActiveBroker(),
       asset: normalizeTradeAssetName(formData.get("asset"), formData.get("market")),
       side: formData.get("side"),
+      stage: formData.get("stage") || "",
       quantity: parseFormattedNumber(formData.get("quantity")),
       price: parseFormattedNumber(formData.get("price")),
       amount: parseFloat(amountInput.value),

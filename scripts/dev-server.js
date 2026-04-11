@@ -1,25 +1,36 @@
 #!/usr/bin/env node
 
 const http = require("http");
+const fsSync = require("fs");
 const fs = require("fs/promises");
 const path = require("path");
 const { URL } = require("url");
 
-const { addTarget, addTrade, loadPortfolio, removeTarget, removeTrade, updateTrade } = require("./portfolio-store");
+const { loadPortfolio } = require("./portfolio-store");
 const { searchAssets } = require("../lib/asset-search-service");
 const { buildAssetChartSnapshot } = require("../lib/asset-chart-service");
 const { buildLivePriceSnapshot } = require("../lib/live-price-service");
 const { loadPersistedNotes, savePersistedNotes } = require("../lib/server-state-store");
-const { resolveAccessProfile } = require("../lib/access-control");
+const {
+  createTarget,
+  createTrade,
+  deleteTargetEntry,
+  deleteTradeEntry,
+  getCurrentPortfolio,
+  updateTradeEntry,
+} = require("../lib/persisted-portfolio-service");
+const { getAccessFailureResponse, resolveAccessProfile } = require("../lib/access-control");
 
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 4173);
 const ROOT = path.resolve(__dirname, "..");
+const LOCAL_ENV_FILES = [".env.local", ".env"];
 const ALLOWED_ORIGINS = new Set([
   `http://${HOST}:${PORT}`,
   `http://127.0.0.1:${PORT}`,
   `http://localhost:${PORT}`,
 ]);
+let localEnvCache = null;
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -41,7 +52,7 @@ function setCommonHeaders(response, requestOrigin = "") {
     response.setHeader("Vary", "Origin");
   }
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Access-Code");
   response.setHeader("Cache-Control", "no-store");
 }
 
@@ -64,12 +75,94 @@ function sendText(response, statusCode, contentType, body, requestOrigin = "") {
 function resolvePublicPath(requestPath) {
   const normalizedPath = decodeURIComponent(requestPath === "/" ? "/index.html" : requestPath);
   const absolutePath = path.resolve(ROOT, `.${normalizedPath}`);
+  const relativePath = path.relative(ROOT, absolutePath);
 
-  if (!absolutePath.startsWith(ROOT)) {
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
     return null;
   }
 
   return absolutePath;
+}
+
+function parseEnvContent(content = "") {
+  return content.split(/\r?\n/).reduce((env, line) => {
+    const trimmed = String(line || "").trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      return env;
+    }
+
+    const separator = trimmed.indexOf("=");
+    if (separator === -1) {
+      return env;
+    }
+
+    const key = trimmed.slice(0, separator).trim();
+    const rawValue = trimmed.slice(separator + 1).trim();
+    env[key] = rawValue.replace(/^['"]|['"]$/g, "");
+    return env;
+  }, {});
+}
+
+function readLocalEnv() {
+  if (localEnvCache) {
+    return localEnvCache;
+  }
+
+  const merged = {};
+  LOCAL_ENV_FILES.forEach((fileName) => {
+    const filePath = path.join(ROOT, fileName);
+    try {
+      const content = fsSync.readFileSync(filePath, "utf8");
+      Object.assign(merged, parseEnvContent(content));
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  });
+
+  localEnvCache = merged;
+  return merged;
+}
+
+function resolveLocalEnvValue(key = "") {
+  return String(process.env[key] || readLocalEnv()[key] || "").trim();
+}
+
+function getLocalUpstreamOrigin() {
+  return resolveLocalEnvValue("LOCAL_UPSTREAM_ORIGIN").replace(/\/+$/, "");
+}
+
+async function proxyJsonToUpstream(request, response, requestOrigin, url) {
+  const upstreamOrigin = getLocalUpstreamOrigin();
+  if (!upstreamOrigin) {
+    return false;
+  }
+
+  const accessCode = String(request.headers["x-access-code"] || "").trim();
+  if (!accessCode) {
+    return false;
+  }
+
+  const targetUrl = new URL(`${url.pathname}${url.search}`, upstreamOrigin);
+  const body = ["GET", "HEAD"].includes(String(request.method || "").toUpperCase()) ? undefined : await readRequestBody(request);
+  const upstreamResponse = await fetch(targetUrl, {
+    method: request.method,
+    headers: {
+      Accept: "application/json",
+      "X-Access-Code": accessCode,
+      ...(body ? { "Content-Type": request.headers["content-type"] || "application/json" } : {}),
+    },
+    body,
+  });
+
+  const payload = await upstreamResponse.text();
+  setCommonHeaders(response, requestOrigin);
+  response.writeHead(upstreamResponse.status, {
+    "Content-Type": upstreamResponse.headers.get("content-type") || "application/json; charset=utf-8",
+  });
+  response.end(payload);
+  return true;
 }
 
 async function readRequestBody(request) {
@@ -95,7 +188,7 @@ async function handleApi(request, response, url) {
   }
 
   const bundledPortfolioData = await loadPortfolio(ROOT);
-  const protectedPathnames = new Set(["/api/access", "/api/portfolio", "/api/live-prices", "/api/asset-chart", "/api/trades", "/api/targets", "/api/notes"]);
+  const protectedPathnames = new Set(["/api/access", "/api/portfolio", "/api/live-prices", "/api/asset-chart", "/api/asset-search", "/api/trades", "/api/targets", "/api/notes"]);
   const profile = url.pathname === "/api/access"
     ? null
     : protectedPathnames.has(url.pathname)
@@ -103,8 +196,28 @@ async function handleApi(request, response, url) {
       : null;
 
   if (profile && !profile.ok) {
-    sendJson(response, 401, { error: "코드가 맞지 않습니다." }, requestOrigin);
+    const failure = getAccessFailureResponse(profile);
+    sendJson(response, failure.statusCode, failure.payload, requestOrigin);
     return true;
+  }
+
+  const upstreamProxyPathnames = new Set([
+    "/api/portfolio",
+    "/api/live-prices",
+    "/api/asset-chart",
+    "/api/asset-search",
+    "/api/trades",
+    "/api/targets",
+    "/api/notes",
+  ]);
+  if (profile && upstreamProxyPathnames.has(url.pathname)) {
+    try {
+      if (await proxyJsonToUpstream(request, response, requestOrigin, url)) {
+        return true;
+      }
+    } catch (error) {
+      console.warn(`Upstream proxy failed for ${url.pathname}: ${error.message}`);
+    }
   }
 
   if (url.pathname === "/api/access" && request.method === "POST") {
@@ -113,7 +226,8 @@ async function handleApi(request, response, url) {
       const payload = JSON.parse(body || "{}");
       const accessProfile = resolveAccessProfile(payload.code, bundledPortfolioData);
       if (!accessProfile.ok) {
-        sendJson(response, 401, { error: "코드가 맞지 않습니다." }, requestOrigin);
+        const failure = getAccessFailureResponse(accessProfile);
+        sendJson(response, failure.statusCode, failure.payload, requestOrigin);
         return true;
       }
       sendJson(response, 200, { ok: true, mode: accessProfile.mode }, requestOrigin);
@@ -126,7 +240,7 @@ async function handleApi(request, response, url) {
 
   if (url.pathname === "/api/portfolio" && request.method === "GET") {
     try {
-      const portfolio = profile.mode === "owner" ? bundledPortfolioData : profile.seedPortfolio;
+      const portfolio = await getCurrentPortfolio(ROOT, profile.seedPortfolio, profile.stateKey);
       sendJson(response, 200, portfolio, requestOrigin);
     } catch (error) {
       sendJson(response, 500, { error: error.message }, requestOrigin);
@@ -183,7 +297,7 @@ async function handleApi(request, response, url) {
       }
       const body = await readRequestBody(request);
       const trade = JSON.parse(body || "{}");
-      const updatedPortfolio = await addTrade(ROOT, trade);
+      const updatedPortfolio = await createTrade(ROOT, trade, profile.seedPortfolio, profile.stateKey);
       sendJson(response, 200, updatedPortfolio, requestOrigin);
     } catch (error) {
       const statusCode = error instanceof SyntaxError ? 400 : 422;
@@ -200,7 +314,7 @@ async function handleApi(request, response, url) {
       }
       const body = await readRequestBody(request);
       const payload = JSON.parse(body || "{}");
-      const updatedPortfolio = await updateTrade(ROOT, payload);
+      const updatedPortfolio = await updateTradeEntry(ROOT, payload, profile.seedPortfolio, profile.stateKey);
       sendJson(response, 200, updatedPortfolio, requestOrigin);
     } catch (error) {
       const statusCode = error instanceof SyntaxError ? 400 : 422;
@@ -217,7 +331,7 @@ async function handleApi(request, response, url) {
       }
       const body = await readRequestBody(request);
       const payload = JSON.parse(body || "{}");
-      const updatedPortfolio = await removeTrade(ROOT, payload);
+      const updatedPortfolio = await deleteTradeEntry(ROOT, payload, profile.seedPortfolio, profile.stateKey);
       sendJson(response, 200, updatedPortfolio, requestOrigin);
     } catch (error) {
       const statusCode = error instanceof SyntaxError ? 400 : 422;
@@ -234,7 +348,7 @@ async function handleApi(request, response, url) {
       }
       const body = await readRequestBody(request);
       const target = JSON.parse(body || "{}");
-      const updatedPortfolio = await addTarget(ROOT, target);
+      const updatedPortfolio = await createTarget(ROOT, target, profile.seedPortfolio, profile.stateKey);
       sendJson(response, 200, updatedPortfolio, requestOrigin);
     } catch (error) {
       const statusCode = error instanceof SyntaxError ? 400 : 422;
@@ -251,7 +365,7 @@ async function handleApi(request, response, url) {
       }
       const body = await readRequestBody(request);
       const target = JSON.parse(body || "{}");
-      const updatedPortfolio = await removeTarget(ROOT, target);
+      const updatedPortfolio = await deleteTargetEntry(ROOT, target, profile.seedPortfolio, profile.stateKey);
       sendJson(response, 200, updatedPortfolio, requestOrigin);
     } catch (error) {
       const statusCode = error instanceof SyntaxError ? 400 : 422;
@@ -262,7 +376,7 @@ async function handleApi(request, response, url) {
 
   if (url.pathname === "/api/notes" && request.method === "GET") {
     try {
-      const notes = profile.mode === "owner" ? await loadPersistedNotes(ROOT) : [];
+      const notes = profile.mode === "owner" ? await loadPersistedNotes(ROOT, profile.stateKey) : [];
       sendJson(response, 200, { notes }, requestOrigin);
     } catch (error) {
       sendJson(response, 500, { error: error.message }, requestOrigin);
@@ -278,7 +392,7 @@ async function handleApi(request, response, url) {
       }
       const body = await readRequestBody(request);
       const payload = JSON.parse(body || "{}");
-      const notes = await loadPersistedNotes(ROOT);
+      const notes = await loadPersistedNotes(ROOT, profile.stateKey);
 
       if (request.method === "POST") {
         const timestamp = new Date().toISOString();
@@ -292,7 +406,7 @@ async function handleApi(request, response, url) {
           },
           ...notes,
         ];
-        await savePersistedNotes(ROOT, next);
+        await savePersistedNotes(ROOT, next, profile.stateKey);
         sendJson(response, 200, { notes: next }, requestOrigin);
         return true;
       }
@@ -310,14 +424,14 @@ async function handleApi(request, response, url) {
               }
             : note
         );
-        await savePersistedNotes(ROOT, next);
+        await savePersistedNotes(ROOT, next, profile.stateKey);
         sendJson(response, 200, { notes: next }, requestOrigin);
         return true;
       }
 
       const noteId = String(payload.id || "").trim();
       const next = notes.filter((note) => note.id !== noteId);
-      await savePersistedNotes(ROOT, next);
+      await savePersistedNotes(ROOT, next, profile.stateKey);
       sendJson(response, 200, { notes: next }, requestOrigin);
     } catch (error) {
       const statusCode = error instanceof SyntaxError ? 400 : 422;

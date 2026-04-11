@@ -42,3 +42,4 @@ Thumbs.db
 .vercel
 node_modules/
 data/notes.json
+.env*.local

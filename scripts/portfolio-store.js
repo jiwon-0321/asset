@@ -291,6 +291,15 @@ function updateAssetPrice(analytics, asset, price) {
   analytics.assetPrices[asset] = normalizeMoney(price);
 }
 
+function normalizeTradeStage(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized ? normalized.slice(0, 40) : null;
+}
+
 function normalizeTradeInput(input, basisLabel, options = {}) {
   const allowPastDate = options.allowPastDate === true;
   const market = String(input.market || "").trim();
@@ -357,6 +366,7 @@ function normalizeTradeInput(input, basisLabel, options = {}) {
   }
 
   const note = typeof input.note === "string" && input.note.trim() ? input.note.trim() : null;
+  const stage = normalizeTradeStage(input.stage);
 
   return {
     date,
@@ -369,6 +379,7 @@ function normalizeTradeInput(input, basisLabel, options = {}) {
     price: normalizeMoney(price),
     amount,
     fee,
+    stage,
     note,
   };
 }
@@ -1036,6 +1047,7 @@ function buildTradePayload(trade) {
     price: trade.price,
     amount: trade.amount,
     fee: trade.fee,
+    ...(trade.stage ? { stage: trade.stage } : {}),
     ...(trade.note ? { note: trade.note } : {}),
   };
 }

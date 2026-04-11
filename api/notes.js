@@ -1,7 +1,7 @@
 const path = require("path");
 
 const { readJsonBody, sendJson } = require("../lib/api-route-utils");
-const { resolveAccessProfile } = require("../lib/access-control");
+const { getAccessFailureResponse, resolveAccessProfile } = require("../lib/access-control");
 const { loadPersistedNotes, savePersistedNotes } = require("../lib/server-state-store");
 const bundledPortfolioData = require("../data/portfolio.json");
 
@@ -30,7 +30,8 @@ module.exports = async (request, response) => {
   try {
     const profile = resolveAccessProfile(request.headers["x-access-code"], bundledPortfolioData);
     if (!profile.ok) {
-      sendJson(response, 401, { error: "코드가 맞지 않습니다." });
+      const failure = getAccessFailureResponse(profile);
+      sendJson(response, failure.statusCode, failure.payload);
       return;
     }
     if (profile.mode !== "owner" && request.method !== "GET") {

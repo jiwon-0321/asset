@@ -1,6 +1,6 @@
 const path = require("path");
 const { buildLivePriceSnapshot } = require("../lib/live-price-service");
-const { resolveAccessProfile } = require("../lib/access-control");
+const { getAccessFailureResponse, resolveAccessProfile } = require("../lib/access-control");
 const bundledPortfolioData = require("../data/portfolio.json");
 
 module.exports = async (request, response) => {
@@ -15,10 +15,11 @@ module.exports = async (request, response) => {
   try {
     const profile = resolveAccessProfile(request.headers["x-access-code"], bundledPortfolioData);
     if (!profile.ok) {
-      response.statusCode = 401;
+      const failure = getAccessFailureResponse(profile);
+      response.statusCode = failure.statusCode;
       response.setHeader("Cache-Control", "no-store");
       response.setHeader("Content-Type", "application/json; charset=utf-8");
-      response.end(JSON.stringify({ error: "코드가 맞지 않습니다." }));
+      response.end(JSON.stringify(failure.payload));
       return;
     }
 

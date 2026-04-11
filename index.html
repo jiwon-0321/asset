@@ -225,59 +225,14 @@
             </div>
             <div class="panel-collapse" id="timeline-panel" aria-hidden="true">
               <div class="timeline-toolbar">
-                <div class="view-tabs" role="tablist" aria-label="거래 타임라인 보기">
-                  <button
-                    type="button"
-                    class="view-tab is-active"
-                    id="timeline-tab-list"
-                    role="tab"
-                    aria-selected="true"
-                    aria-controls="timeline-view-list"
-                    data-view-target="list"
-                  >
-                    리스트 뷰
-                  </button>
-                  <button
-                    type="button"
-                    class="view-tab"
-                    id="timeline-tab-calendar"
-                    role="tab"
-                  aria-selected="false"
-                  aria-controls="timeline-view-calendar"
-                  data-view-target="calendar"
-                  tabindex="-1"
-                >
-                  캘린더 뷰
+                <button type="button" class="btn-add-trade" id="btn-add-trade" aria-label="거래 추가">
+                  <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  거래 추가
                 </button>
               </div>
-              <button type="button" class="btn-add-trade" id="btn-add-trade" aria-label="거래 추가">
-                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-                거래 추가
-              </button>
-            </div>
-              <div class="timeline-views">
-                <div
-                  class="timeline-view is-active"
-                  id="timeline-view-list"
-                  data-view="list"
-                  role="tabpanel"
-                  aria-labelledby="timeline-tab-list"
-                >
-                  <div class="timeline" id="timeline"></div>
-                </div>
-                <div
-                  class="timeline-view"
-                  id="timeline-view-calendar"
-                  data-view="calendar"
-                  role="tabpanel"
-                  aria-labelledby="timeline-tab-calendar"
-                  hidden
-                >
-                  <div class="timeline-calendar" id="timeline-calendar"></div>
-                </div>
-              </div>
+              <div class="timeline" id="timeline"></div>
             </div>
           </div>
         </section>
@@ -556,32 +511,6 @@
       </div>
     </div>
 
-    <div class="calendar-modal" id="calendar-detail-modal" hidden>
-      <div class="calendar-modal-backdrop" data-calendar-modal-close></div>
-      <div
-        class="calendar-modal-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="calendar-detail-title"
-        aria-describedby="calendar-detail-summary"
-      >
-        <div class="calendar-modal-header">
-          <div>
-            <p class="eyebrow">Trade Detail</p>
-            <h3 id="calendar-detail-title"></h3>
-            <p class="calendar-modal-summary" id="calendar-detail-summary"></p>
-          </div>
-          <button type="button" class="calendar-modal-close" data-calendar-modal-close aria-label="상세 내역 닫기">
-            <svg viewBox="0 0 24 24">
-              <path d="M6 6l12 12" />
-              <path d="M18 6 6 18" />
-            </svg>
-          </button>
-        </div>
-        <div class="calendar-modal-list" id="calendar-detail-list"></div>
-      </div>
-    </div>
-
     <!-- 거래 추가 모달 -->
     <div class="trade-modal" id="trade-modal" hidden aria-hidden="true" role="dialog" aria-modal="true">
       <div class="trade-modal-dialog">
@@ -661,19 +590,24 @@
           <input type="hidden" id="trade-amount" name="amount" />
           <input type="hidden" id="trade-fee" name="fee" />
 
-          <div class="form-row">
-            <div class="form-group" data-trade-broker-group>
-              <label for="trade-broker">플랫폼</label>
-              <select id="trade-broker" name="broker"></select>
-            </div>
-            <div class="form-group">
-              <label for="trade-note">메모 (선택)</label>
-              <input type="text" id="trade-note" name="note" placeholder="비워도 됩니다" />
-            </div>
-          </div>
+	          <div class="form-row">
+	            <div class="form-group" data-trade-broker-group>
+	              <label for="trade-broker">플랫폼</label>
+	              <select id="trade-broker" name="broker"></select>
+	            </div>
+	            <div class="form-group">
+	              <label for="trade-stage">전략 단계 (선택)</label>
+	              <select id="trade-stage" name="stage"></select>
+	            </div>
+	          </div>
 
-          <div class="trade-summary-grid">
-            <article class="trade-summary-card">
+	          <div class="form-group form-group--full">
+	            <label for="trade-note">전략 메모 (선택)</label>
+	            <textarea id="trade-note" name="note" rows="3" placeholder="예: 2차 진입 전 RSI 25 재확인, 장 초반 추격 금지"></textarea>
+	          </div>
+
+	          <div class="trade-summary-grid">
+	            <article class="trade-summary-card">
               <span>플랫폼</span>
               <strong id="trade-summary-broker">업비트</strong>
             </article>
