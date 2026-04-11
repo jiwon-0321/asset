@@ -21,6 +21,8 @@ const usdFormatter = new Intl.NumberFormat("en-US", {
 });
 
 const NOTES_STORAGE_KEY = "sniper-capital-notes-v1";
+const PENDING_MUTATIONS_STORAGE_KEY = "sniper-capital-pending-mutations-v1";
+const PENDING_MUTATION_RETRY_INTERVAL_MS = 15000;
 const US_STOCK_TAX_ALLOWANCE = 2_500_000;
 const US_STOCK_TAX_RATE = 0.22;
 const ASSET_AUTOCOMPLETE_SEEDS = Object.freeze({
@@ -310,6 +312,10 @@ let hasLoadedNotes = false;
 let hasBootedDashboard = false;
 let activeAccessCode = "";
 let activeAccessMode = "owner";
+let pendingMutationRetryTimer = null;
+let pendingMutationFlushTimeout = null;
+let pendingMutationEventsBound = false;
+let isFlushingPendingMutations = false;
 let deferredMobileDashboardData = null;
 let deferredMobileSectionTimers = new Map();
 let deferredMobileSectionsRendered = new Set();
@@ -797,6 +803,146 @@ function getNotesStorageKey() {
   return `${NOTES_STORAGE_KEY}${suffix}`;
 }
 
+function getPendingMutationsStorageKey() {
+  const suffix = activeAccessCode ? `:${String(activeAccessCode).trim().toLowerCase()}` : "";
+  return `${PENDING_MUTATIONS_STORAGE_KEY}${suffix}`;
+}
+
+function setTradeFormStatus(message = "", tone = "neutral") {
+  const status = document.querySelector("#trade-form-status");
+  if (!status) {
+    return;
+  }
+
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+function setNotesBoardStatus(message = "", tone = "neutral") {
+  const status = document.querySelector("#notes-status");
+  if (!status) {
+    return;
+  }
+
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+function broadcastPendingMutationStatus(message = "", tone = "neutral") {
+  setTradeFormStatus(message, tone);
+  setTargetFormStatus(message, tone);
+  setNotesBoardStatus(message, tone);
+}
+
+function normalizePendingMutationEntry(entry = {}) {
+  const id = String(entry.id || "").trim();
+  const kind = String(entry.kind || "").trim();
+  const method = String(entry.method || "").trim().toUpperCase();
+  if (!id || !kind || !method) {
+    return null;
+  }
+
+  return {
+    id,
+    kind,
+    method,
+    payload: entry.payload || {},
+    queuedAt: entry.queuedAt || new Date().toISOString(),
+    successMessage: String(entry.successMessage || "").trim(),
+  };
+}
+
+function loadPendingMutationsFromStorage() {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(getPendingMutationsStorageKey());
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.map(normalizePendingMutationEntry).filter(Boolean);
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+function persistPendingMutationsToStorage(entries = []) {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return false;
+  }
+
+  try {
+    const normalized = (Array.isArray(entries) ? entries : []).map(normalizePendingMutationEntry).filter(Boolean);
+    window.localStorage.setItem(getPendingMutationsStorageKey(), JSON.stringify(normalized));
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+function enqueuePendingMutation(entry = {}) {
+  const normalized = normalizePendingMutationEntry(entry);
+  if (!normalized) {
+    return loadPendingMutationsFromStorage().length;
+  }
+
+  const queue = loadPendingMutationsFromStorage();
+  const existingIndex = queue.findIndex((item) => item.id === normalized.id);
+  if (existingIndex >= 0) {
+    queue[existingIndex] = normalized;
+  } else {
+    queue.push(normalized);
+  }
+
+  persistPendingMutationsToStorage(queue);
+  return queue.length;
+}
+
+function createMutationId(kind = "mutation") {
+  const prefix = String(kind || "mutation").trim().toLowerCase() || "mutation";
+  if (window.crypto?.randomUUID) {
+    return `${prefix}-${window.crypto.randomUUID()}`;
+  }
+
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
+function createMutationRequestError(message = "", options = {}) {
+  const error = new Error(message || "요청 처리에 실패했습니다.");
+  error.status = Number.isFinite(Number(options.status)) ? Number(options.status) : 0;
+  error.retryable = Boolean(options.retryable);
+  return error;
+}
+
+function isRetryableMutationError(error) {
+  return Boolean(error?.retryable);
+}
+
+function describePendingMutationCount(count = 0) {
+  return `저장 대기 ${formatNumber(count)}건 · 연결 복구 후 자동 저장`;
+}
+
+function schedulePendingMutationFlush(delayMs = 1200) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (pendingMutationFlushTimeout) {
+    window.clearTimeout(pendingMutationFlushTimeout);
+  }
+
+  pendingMutationFlushTimeout = window.setTimeout(() => {
+    pendingMutationFlushTimeout = null;
+    void flushPendingMutations();
+  }, delayMs);
+}
+
 function buildAccessHeaders(headers = {}) {
   const nextHeaders = {
     ...headers,
@@ -861,12 +1007,116 @@ async function fetchJsonWithAccessTimeout(input, options = {}, timeoutMs = 3500)
   return response.json();
 }
 
+function applyNotesServerResult(result = null) {
+  const nextNotes = normalizeStoredNotes(result?.notes);
+  notesState = nextNotes;
+  hasLoadedNotes = true;
+  persistNotesToStorage(nextNotes);
+  renderNotes(notesState);
+  return nextNotes;
+}
+
+async function replayPendingMutation(entry) {
+  if (entry.kind === "trade") {
+    return requestTradeMutation(entry.method, entry.payload, { mutationId: entry.id });
+  }
+
+  if (entry.kind === "target") {
+    return requestTargetMutation(entry.method, entry.payload, { mutationId: entry.id });
+  }
+
+  if (entry.kind === "note") {
+    return requestNotesMutation(entry.method, entry.payload, { mutationId: entry.id });
+  }
+
+  throw createMutationRequestError("지원하지 않는 임시보관 항목입니다.");
+}
+
+async function applyReplayedMutation(entry, result) {
+  if (entry.kind === "trade") {
+    await reconcilePortfolioAfterMutation(result, {
+      resetLiveSnapshot: true,
+    });
+    return;
+  }
+
+  if (entry.kind === "target") {
+    await reconcilePortfolioAfterMutation(result);
+    return;
+  }
+
+  if (entry.kind === "note") {
+    applyNotesServerResult(result);
+  }
+}
+
+async function flushPendingMutations() {
+  if (isFlushingPendingMutations || activeAccessMode !== "owner" || !activeAccessCode || window.location.protocol === "file:") {
+    return false;
+  }
+
+  let queue = loadPendingMutationsFromStorage();
+  if (!queue.length) {
+    return true;
+  }
+
+  isFlushingPendingMutations = true;
+
+  try {
+    for (const entry of [...queue]) {
+      try {
+        const result = await replayPendingMutation(entry);
+        await applyReplayedMutation(entry, result);
+        queue = queue.filter((item) => item.id !== entry.id);
+        persistPendingMutationsToStorage(queue);
+      } catch (error) {
+        if (isRetryableMutationError(error)) {
+          broadcastPendingMutationStatus(describePendingMutationCount(queue.length), "neutral");
+          return false;
+        }
+
+        broadcastPendingMutationStatus(error.message || "임시보관 항목을 다시 확인해주세요.", "error");
+        return false;
+      }
+    }
+
+    broadcastPendingMutationStatus("임시보관된 변경을 모두 반영했습니다.", "success");
+    return true;
+  } finally {
+    isFlushingPendingMutations = false;
+  }
+}
+
+function initPendingMutationRetryLoop() {
+  if (pendingMutationEventsBound || typeof window === "undefined") {
+    return;
+  }
+
+  pendingMutationEventsBound = true;
+  window.addEventListener("online", () => {
+    void flushPendingMutations();
+  });
+  window.addEventListener("focus", () => {
+    void flushPendingMutations();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void flushPendingMutations();
+    }
+  });
+
+  pendingMutationRetryTimer = window.setInterval(() => {
+    void flushPendingMutations();
+  }, PENDING_MUTATION_RETRY_INTERVAL_MS);
+}
+
 function bootDashboard() {
   if (hasBootedDashboard) {
     return;
   }
 
   hasBootedDashboard = true;
+  initPendingMutationRetryLoop();
   syncViewportHeight();
   syncResponsiveShellMode();
   scheduleCurrentDateBadgeRefresh();
@@ -887,6 +1137,7 @@ function bootDashboard() {
       }
       await refreshLivePortfolio();
       scheduleLivePortfolioRefresh();
+      schedulePendingMutationFlush(800);
     })
     .catch((error) => {
       console.error(error);
@@ -1026,6 +1277,7 @@ function initAccessGate() {
       if (hasBootedDashboard) {
         refreshLivePortfolio();
         scheduleLivePortfolioRefresh();
+        schedulePendingMutationFlush(400);
       } else {
         bootDashboard();
       }
@@ -2762,23 +3014,37 @@ function persistNotesToStorage(notes) {
   }
 }
 
-async function requestNotesMutation(method = "GET", payload = null) {
+async function requestNotesMutation(method = "GET", payload = null, options = {}) {
   if (window.location.protocol === "file:") {
     throw new Error("메모 서버 저장은 배포 사이트 또는 로컬 서버에서만 가능합니다.");
   }
 
-  const response = await fetchWithAccess("./api/notes", {
-    method,
-    headers: {
-      Accept: "application/json",
-      ...(method === "GET" ? {} : { "Content-Type": "application/json" }),
-    },
-    ...(method === "GET" ? {} : { body: JSON.stringify(payload || {}) }),
-  });
+  const mutationId = String(options.mutationId || "").trim();
+  let response = null;
+
+  try {
+    response = await fetchWithAccess("./api/notes", {
+      method,
+      headers: {
+        Accept: "application/json",
+        ...(method === "GET" ? {} : { "Content-Type": "application/json" }),
+        ...(mutationId && method !== "GET" ? { "X-Mutation-Id": mutationId } : {}),
+      },
+      ...(method === "GET" ? {} : { body: JSON.stringify(payload || {}) }),
+    });
+  } catch (error) {
+    throw createMutationRequestError("메모 저장 연결이 일시적으로 끊겼습니다.", {
+      retryable: method !== "GET",
+    });
+  }
+
   const result = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(result?.error || "메모 처리에 실패했습니다.");
+    throw createMutationRequestError(result?.error || "메모 처리에 실패했습니다.", {
+      status: response.status,
+      retryable: method !== "GET" && (response.status >= 500 || response.status === 429),
+    });
   }
 
   return result;
@@ -2894,22 +3160,35 @@ function setTargetFormStatus(message = "", tone = "neutral") {
   status.dataset.tone = tone;
 }
 
-async function requestTargetMutation(method, targetData) {
+async function requestTargetMutation(method, targetData, options = {}) {
   if (window.location.protocol === "file:") {
     throw new Error("관심종목 저장/삭제는 로컬 서버에서만 가능합니다. `node scripts/dev-server.js` 실행 후 접속하세요.");
   }
 
-  const response = await fetchWithAccess("./api/targets", {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(targetData),
-  });
+  const mutationId = String(options.mutationId || "").trim();
+  let response = null;
+
+  try {
+    response = await fetchWithAccess("./api/targets", {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(mutationId ? { "X-Mutation-Id": mutationId } : {}),
+      },
+      body: JSON.stringify(targetData),
+    });
+  } catch (error) {
+    throw createMutationRequestError("관심종목 저장 연결이 일시적으로 끊겼습니다.", {
+      retryable: true,
+    });
+  }
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(payload?.error || "관심종목 처리에 실패했습니다.");
+    throw createMutationRequestError(payload?.error || "관심종목 처리에 실패했습니다.", {
+      status: response.status,
+      retryable: response.status >= 500 || response.status === 429,
+    });
   }
 
   return payload;
@@ -2936,38 +3215,88 @@ async function reconcilePortfolioAfterMutation(updatedPortfolio, options = {}) {
 }
 
 async function applyTargetMutation(method, targetData, successMessage) {
-  const updatedPortfolio = await requestTargetMutation(method, targetData);
-  const confirmedPortfolio = await reconcilePortfolioAfterMutation(updatedPortfolio);
-  setTargetFormStatus(successMessage, "success");
-  return confirmedPortfolio;
+  const mutationId = createMutationId("target");
+
+  try {
+    const updatedPortfolio = await requestTargetMutation(method, targetData, { mutationId });
+    const confirmedPortfolio = await reconcilePortfolioAfterMutation(updatedPortfolio);
+    setTargetFormStatus(successMessage, "success");
+    return confirmedPortfolio;
+  } catch (error) {
+    if (!isRetryableMutationError(error)) {
+      throw error;
+    }
+
+    const pendingCount = enqueuePendingMutation({
+      id: mutationId,
+      kind: "target",
+      method,
+      payload: targetData,
+      successMessage,
+    });
+    setTargetFormStatus(`${successMessage.split(".")[0]} 요청을 임시보관했습니다. ${describePendingMutationCount(pendingCount)}`, "neutral");
+    schedulePendingMutationFlush();
+    return currentPortfolioData;
+  }
 }
 
-async function requestTradeMutation(method, payload) {
+async function requestTradeMutation(method, payload, options = {}) {
   if (window.location.protocol === "file:") {
     throw new Error("거래 저장/수정/삭제는 로컬 서버에서만 가능합니다. `node scripts/dev-server.js` 실행 후 접속하세요.");
   }
 
-  const response = await fetchWithAccess("./api/trades", {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const mutationId = String(options.mutationId || "").trim();
+  let response = null;
+
+  try {
+    response = await fetchWithAccess("./api/trades", {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(mutationId ? { "X-Mutation-Id": mutationId } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    throw createMutationRequestError("거래 저장 연결이 일시적으로 끊겼습니다.", {
+      retryable: true,
+    });
+  }
 
   const result = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(result?.error || "거래 처리에 실패했습니다.");
+    throw createMutationRequestError(result?.error || "거래 처리에 실패했습니다.", {
+      status: response.status,
+      retryable: response.status >= 500 || response.status === 429,
+    });
   }
 
   return result;
 }
 
 async function applyTradeMutation(method, payload) {
-  const updatedPortfolio = await requestTradeMutation(method, payload);
-  return reconcilePortfolioAfterMutation(updatedPortfolio, {
-    resetLiveSnapshot: true,
-  });
+  const mutationId = createMutationId("trade");
+
+  try {
+    const updatedPortfolio = await requestTradeMutation(method, payload, { mutationId });
+    return reconcilePortfolioAfterMutation(updatedPortfolio, {
+      resetLiveSnapshot: true,
+    });
+  } catch (error) {
+    if (!isRetryableMutationError(error)) {
+      throw error;
+    }
+
+    const pendingCount = enqueuePendingMutation({
+      id: mutationId,
+      kind: "trade",
+      method,
+      payload,
+    });
+    broadcastPendingMutationStatus(`거래 변경을 임시보관했습니다. ${describePendingMutationCount(pendingCount)}`, "neutral");
+    schedulePendingMutationFlush();
+    return currentPortfolioData;
+  }
 }
 
 function finalizeMobileModalLaunch(sectionId = mobileSectionState.sectionId || "") {
@@ -3101,7 +3430,10 @@ function initTargetRemovalActions() {
     } catch (error) {
       console.error(error);
       setTargetFormStatus(error.message || "관심종목 삭제에 실패했습니다.", "error");
-      button.disabled = false;
+    } finally {
+      if (button.isConnected) {
+        button.disabled = false;
+      }
     }
   };
 
@@ -3139,12 +3471,41 @@ function bindNotesSection(section) {
   const formTitle = section.querySelector("#notes-form-title");
 
   const setStatus = (message, tone = "neutral") => {
-    if (!status) {
-      return;
+    setNotesBoardStatus(message || "", tone);
+  };
+
+  const buildOptimisticNotes = (method, payload = {}) => {
+    const timestamp = new Date().toISOString();
+
+    if (method === "POST") {
+      return normalizeStoredNotes([
+        {
+          id: payload.id || `note-${Date.now()}`,
+          title: payload.title,
+          body: payload.body,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+        ...notesState,
+      ]);
     }
 
-    status.textContent = message || "";
-    status.dataset.tone = tone;
+    if (method === "PUT") {
+      return normalizeStoredNotes(
+        notesState.map((note) =>
+          note.id === payload.id
+            ? {
+                ...note,
+                title: payload.title,
+                body: payload.body,
+                updatedAt: timestamp,
+              }
+            : note
+        )
+      );
+    }
+
+    return normalizeStoredNotes(notesState.filter((note) => note.id !== payload.id));
   };
 
   const setComposerMode = (note = null) => {
@@ -3184,44 +3545,38 @@ function bindNotesSection(section) {
     }
 
     const isEditing = Boolean(noteEditorState.editingId);
+    const method = isEditing ? "PUT" : "POST";
+    const notePayload = {
+      ...(isEditing ? { id: noteEditorState.editingId } : { id: `note-${Date.now()}` }),
+      title,
+      body,
+    };
     let nextNotes = [];
+    let queuedMessage = "";
 
     if (window.location.protocol !== "file:") {
+      const mutationId = createMutationId("note");
       try {
-        const result = await requestNotesMutation(isEditing ? "PUT" : "POST", {
-          ...(isEditing ? { id: noteEditorState.editingId } : {}),
-          title,
-          body,
-        });
+        const result = await requestNotesMutation(method, notePayload, { mutationId });
         nextNotes = normalizeStoredNotes(result?.notes);
       } catch (error) {
-        setStatus(error.message || "메모 저장에 실패했습니다.", "error");
-        return;
+        if (!isRetryableMutationError(error)) {
+          setStatus(error.message || "메모 저장에 실패했습니다.", "error");
+          return;
+        }
+
+        const pendingCount = enqueuePendingMutation({
+          id: mutationId,
+          kind: "note",
+          method,
+          payload: notePayload,
+        });
+        nextNotes = buildOptimisticNotes(method, notePayload);
+        queuedMessage = `메모를 임시보관했습니다. ${describePendingMutationCount(pendingCount)}`;
+        schedulePendingMutationFlush();
       }
     } else {
-      const timestamp = new Date().toISOString();
-      nextNotes = noteEditorState.editingId
-        ? notesState.map((note) =>
-            note.id === noteEditorState.editingId
-              ? {
-                  ...note,
-                  title,
-                  body,
-                  updatedAt: timestamp,
-                }
-              : note
-          )
-        : [
-            {
-              id: `note-${Date.now()}`,
-              title,
-              body,
-              createdAt: timestamp,
-              updatedAt: timestamp,
-            },
-            ...notesState,
-          ];
-      nextNotes = normalizeStoredNotes(nextNotes);
+      nextNotes = buildOptimisticNotes(method, notePayload);
     }
 
     persistNotesToStorage(nextNotes);
@@ -3229,7 +3584,7 @@ function bindNotesSection(section) {
     notesState = nextNotes;
     renderNotes(notesState);
     setComposerMode();
-    setStatus(isEditing ? "메모를 수정했습니다." : "메모를 저장했습니다.", "success");
+    setStatus(queuedMessage || (isEditing ? "메모를 수정했습니다." : "메모를 저장했습니다."), queuedMessage ? "neutral" : "success");
     titleInput?.focus();
   });
 
@@ -3269,17 +3624,31 @@ function bindNotesSection(section) {
       return;
     }
     let nextNotes = [];
+    let queuedMessage = "";
 
     if (window.location.protocol !== "file:") {
+      const mutationId = createMutationId("note");
       try {
-        const result = await requestNotesMutation("DELETE", { id: noteId });
+        const result = await requestNotesMutation("DELETE", { id: noteId }, { mutationId });
         nextNotes = normalizeStoredNotes(result?.notes);
       } catch (error) {
-        setStatus(error.message || "메모 삭제에 실패했습니다.", "error");
-        return;
+        if (!isRetryableMutationError(error)) {
+          setStatus(error.message || "메모 삭제에 실패했습니다.", "error");
+          return;
+        }
+
+        const pendingCount = enqueuePendingMutation({
+          id: mutationId,
+          kind: "note",
+          method: "DELETE",
+          payload: { id: noteId },
+        });
+        nextNotes = buildOptimisticNotes("DELETE", { id: noteId });
+        queuedMessage = `메모 삭제를 임시보관했습니다. ${describePendingMutationCount(pendingCount)}`;
+        schedulePendingMutationFlush();
       }
     } else {
-      nextNotes = notesState.filter((note) => note.id !== noteId);
+      nextNotes = buildOptimisticNotes("DELETE", { id: noteId });
     }
 
     persistNotesToStorage(nextNotes);
@@ -3290,7 +3659,7 @@ function bindNotesSection(section) {
       setComposerMode();
       form?.reset();
     }
-    setStatus("메모를 삭제했습니다.", "success");
+    setStatus(queuedMessage || "메모를 삭제했습니다.", queuedMessage ? "neutral" : "success");
   });
 
   setComposerMode();
@@ -5600,12 +5969,7 @@ function initTradeModal() {
   }
 
   const setStatus = (message = "", tone = "neutral") => {
-    if (!status) {
-      return;
-    }
-
-    status.textContent = message;
-    status.dataset.tone = tone;
+    setTradeFormStatus(message, tone);
   };
 
   const setSubmitting = (isSubmitting) => {

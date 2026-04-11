@@ -29,6 +29,7 @@ module.exports = async (request, response) => {
 
   try {
     const profile = resolveAccessProfile(request.headers["x-access-code"], bundledPortfolioData);
+    const mutationId = String(request.headers["x-mutation-id"] || "").trim();
     if (!profile.ok) {
       const failure = getAccessFailureResponse(profile);
       sendJson(response, failure.statusCode, failure.payload);
@@ -51,15 +52,15 @@ module.exports = async (request, response) => {
 
     if (request.method === "POST") {
       const note = normalizeNotePayload({
-        id: `note-${Date.now()}`,
+        id: payload.id || `note-${Date.now()}`,
         title: payload.title,
         body: payload.body,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
       const next = sortNotes([note, ...notes]);
-      await savePersistedNotes(rootDir, next, profile.stateKey);
-      sendJson(response, 200, { notes: next });
+      const savedNotes = await savePersistedNotes(rootDir, next, profile.stateKey, { mutationId });
+      sendJson(response, 200, { notes: sortNotes(savedNotes) });
       return;
     }
 
@@ -84,8 +85,8 @@ module.exports = async (request, response) => {
         )
       );
 
-      await savePersistedNotes(rootDir, next, profile.stateKey);
-      sendJson(response, 200, { notes: next });
+      const savedNotes = await savePersistedNotes(rootDir, next, profile.stateKey, { mutationId });
+      sendJson(response, 200, { notes: sortNotes(savedNotes) });
       return;
     }
 
@@ -95,8 +96,8 @@ module.exports = async (request, response) => {
     }
 
     const next = sortNotes(notes.filter((note) => note.id !== noteId).map(normalizeNotePayload));
-    await savePersistedNotes(rootDir, next, profile.stateKey);
-    sendJson(response, 200, { notes: next });
+    const savedNotes = await savePersistedNotes(rootDir, next, profile.stateKey, { mutationId });
+    sendJson(response, 200, { notes: sortNotes(savedNotes) });
   } catch (error) {
     sendJson(response, 500, { error: error.message || "메모 처리에 실패했습니다." });
   }

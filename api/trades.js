@@ -13,6 +13,7 @@ module.exports = async (request, response) => {
 
   try {
     const profile = resolveAccessProfile(request.headers["x-access-code"], bundledPortfolioData);
+    const mutationId = String(request.headers["x-mutation-id"] || "").trim();
     if (!profile.ok) {
       const failure = getAccessFailureResponse(profile);
       sendJson(response, failure.statusCode, failure.payload);
@@ -28,10 +29,10 @@ module.exports = async (request, response) => {
 
     const portfolio =
       request.method === "POST"
-        ? await createTrade(rootDir, payload, profile.seedPortfolio, profile.stateKey)
+        ? await createTrade(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId })
         : request.method === "PUT"
-          ? await updateTradeEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey)
-          : await deleteTradeEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey);
+          ? await updateTradeEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId })
+          : await deleteTradeEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId });
 
     sendJson(response, 200, portfolio);
   } catch (error) {

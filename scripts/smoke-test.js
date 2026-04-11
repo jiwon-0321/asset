@@ -17,7 +17,14 @@ const {
   getCurrentPortfolio,
   updateTradeEntry,
 } = require("../lib/persisted-portfolio-service");
-const { getPortfolioRevision, loadPersistedPortfolio, savePersistedPortfolio } = require("../lib/server-state-store");
+const {
+  getPortfolioRevision,
+  getStorageHealth,
+  loadPersistedNotes,
+  loadPersistedPortfolio,
+  savePersistedNotes,
+  savePersistedPortfolio,
+} = require("../lib/server-state-store");
 
 const ROOT = path.resolve(__dirname, "..");
 const OWNER_CODE = "0321";
@@ -218,6 +225,31 @@ async function run() {
     );
     assert.equal((revertedTradePortfolio.trades?.stocks?.length || 0), initialStockTradeCount, "deleteTradeEntry should remove trade");
 
+    const dedupeMutationId = "trade-dedupe-smoke";
+    const dedupedTradeInput = {
+      market: "국내주식",
+      broker: "미래에셋",
+      date: basisDate,
+      asset: "카카오뱅크(323410)",
+      side: "매수",
+      stage: "1차 진입",
+      quantity: 2,
+      price: 10000,
+      fee: 0,
+      note: "smoke-dedupe",
+    };
+    const dedupeTradePortfolio = await createTrade(tempRoot, dedupedTradeInput, null, "owner", {
+      mutationId: dedupeMutationId,
+    });
+    const duplicateTradePortfolio = await createTrade(tempRoot, dedupedTradeInput, null, "owner", {
+      mutationId: dedupeMutationId,
+    });
+    assert.equal(
+      duplicateTradePortfolio.trades?.stocks?.length,
+      dedupeTradePortfolio.trades?.stocks?.length,
+      "duplicate mutationId should not append the same trade twice"
+    );
+
     const targetCandidate = findAvailableTargetAsset(initialPortfolio);
     const createdTargetPortfolio = await createTarget(tempRoot, targetCandidate, null, "owner");
     const createdTargetGroup = (createdTargetPortfolio.targets?.groups || []).find((group) =>
@@ -276,6 +308,44 @@ async function run() {
       /다른 변경이 먼저 저장되었습니다/,
       "stale revision should be rejected"
     );
+
+    const noteMutationId = "note-dedupe-smoke";
+    const savedNotes = await savePersistedNotes(
+      tempRoot,
+      [
+        {
+          id: "note-smoke-1",
+          title: "smoke",
+          body: "first",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      "owner",
+      { mutationId: noteMutationId }
+    );
+    const duplicateNotes = await savePersistedNotes(
+      tempRoot,
+      [
+        ...savedNotes,
+        {
+          id: "note-smoke-2",
+          title: "duplicate",
+          body: "should skip",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      "owner",
+      { mutationId: noteMutationId }
+    );
+    assert.equal(duplicateNotes.length, 1, "duplicate note mutationId should reuse the existing saved state");
+    const loadedNotes = await loadPersistedNotes(tempRoot, "owner");
+    assert.equal(loadedNotes.length, 1, "notes store should keep the deduped note set");
+
+    const storageHealth = await getStorageHealth(tempRoot, "owner");
+    assert.equal(storageHealth.provider, "local", "temp smoke root should default to local storage");
+    assert.ok(Number(storageHealth.revision) >= 1, "storage health should expose a revision");
 
     console.log("smoke-test: ok");
   } finally {

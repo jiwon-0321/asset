@@ -13,6 +13,7 @@ module.exports = async (request, response) => {
 
   try {
     const profile = resolveAccessProfile(request.headers["x-access-code"], bundledPortfolioData);
+    const mutationId = String(request.headers["x-mutation-id"] || "").trim();
     if (!profile.ok) {
       const failure = getAccessFailureResponse(profile);
       sendJson(response, failure.statusCode, failure.payload);
@@ -27,8 +28,8 @@ module.exports = async (request, response) => {
     const rootDir = path.resolve(__dirname, "..");
     const portfolio =
       request.method === "POST"
-        ? await createTarget(rootDir, payload, profile.seedPortfolio, profile.stateKey)
-        : await deleteTargetEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey);
+        ? await createTarget(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId })
+        : await deleteTargetEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId });
 
     sendJson(response, 200, portfolio);
   } catch (error) {
