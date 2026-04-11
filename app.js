@@ -321,6 +321,7 @@ let mobileSectionState = {
   originalParent: null,
 };
 let mobileSectionScrollTop = 0;
+let mobileSectionContentScrollTops = new Map();
 let pendingMobileSectionRestoreId = "";
 let interactionLockUntil = 0;
 let assetChartState = {
@@ -337,20 +338,10 @@ const ASSET_CHART_RANGES = Object.freeze({
     { key: "1M", label: "1개월" },
     { key: "1Y", label: "1년" },
   ]),
-  minute: Object.freeze([
-    { key: "1D", label: "1일" },
-    { key: "1W", label: "1주" },
-    { key: "1M", label: "1개월" },
-  ]),
 });
 
-const ASSET_CHART_GRANULARITIES = Object.freeze([
-  { key: "day", label: "일봉" },
-  { key: "minute", label: "분봉" },
-]);
-
 function getAssetChartRanges(granularity = "day") {
-  return ASSET_CHART_RANGES[granularity === "minute" ? "minute" : "day"];
+  return ASSET_CHART_RANGES.day;
 }
 
 function getDefaultAssetChartRange(granularity = "day") {
@@ -1263,9 +1254,14 @@ function unlockMobileSectionBackgroundScroll() {
 function closeMobileSectionOverlay() {
   const overlay = document.querySelector("#mobile-section-overlay");
   const content = document.querySelector("#mobile-section-content");
+  const shell = overlay?.querySelector(".mobile-section-shell");
   recoverDetachedMobileSection();
   if (!overlay) {
     return;
+  }
+
+  if (mobileSectionState.sectionId && shell) {
+    mobileSectionContentScrollTops.set(mobileSectionState.sectionId, shell.scrollTop);
   }
 
   if (mobileSectionState.section) {
@@ -1357,7 +1353,7 @@ function openMobileSectionOverlay(sectionId) {
   window.requestAnimationFrame(() => {
     const shell = overlay.querySelector(".mobile-section-shell");
     if (shell) {
-      shell.scrollTop = 0;
+      shell.scrollTop = mobileSectionContentScrollTops.get(sectionId) || 0;
     }
     document.querySelector("#mobile-section-close")?.focus();
   });
@@ -1623,8 +1619,10 @@ function renderDashboard(data, options = {}) {
     realized,
   });
   renderRealizedChartNote(metadata);
+  deferredMobileDashboardData = data;
 
   if (isLiveRefresh) {
+    renderHoldings(holdings);
     return;
   }
 
@@ -1633,6 +1631,7 @@ function renderDashboard(data, options = {}) {
   bindAllPanelAccordions();
   bindMobileSectionOverlay();
   bindNotesSection(document.querySelector("#notes-section"));
+  bindHoldingsSection(document.querySelector("#holdings-section"));
   clearDeferredMobileSectionTimers();
 
   if (isMobileSectionMode()) {
@@ -1727,6 +1726,64 @@ function renderPricePillMarkup(instrument, quotes = {}, fx = {}) {
   `;
 }
 
+function buildFxSourceLabel(source = "") {
+  const normalized = String(source || "").trim().toLowerCase();
+  if (normalized === "twelve-data") {
+    return "Twelve Data";
+  }
+  if (normalized === "yahoo-finance") {
+    return "Yahoo Finance";
+  }
+  if (normalized === "fallback") {
+    return "Fallback";
+  }
+  return normalized ? source : "FX API";
+}
+
+function formatUsdKrwRate(value) {
+  const numeric = toFiniteNumber(value);
+  if (numeric == null || numeric <= 0) {
+    return "연결 대기";
+  }
+  return `${formatNumber(numeric)}원 / $1`;
+}
+
+function renderFxPricePillMarkup(fx = {}) {
+  const hasRate = toFiniteNumber(fx.usdkrw) != null && Number(fx.usdkrw) > 0;
+  const quoteStateClass = hasRate ? "" : " price-pill--inactive";
+  const staleClass = fx?.isDelayed ? " price-pill--stale" : "";
+  const statusCopy = fx?.isDelayed ? "업데이트 지연" : "실시간";
+  const sourceCopy = buildFxSourceLabel(fx?.source);
+  const updatedCopy = fx?.updatedAt ? formatDateTime(fx.updatedAt) : "업데이트 대기";
+
+  return `
+    <div class="price-pill price-pill--fx price-pill--global${quoteStateClass}${staleClass}">
+      <div class="price-copy">
+        <span class="price-name">원/달러</span>
+        <span class="price-meta">USD/KRW · ${statusCopy}</span>
+      </div>
+      <div class="price-value-wrap">
+        <strong class="price-value price-move-neutral">${escapeHtml(formatUsdKrwRate(fx.usdkrw))}</strong>
+        <span class="price-secondary">${escapeHtml(`${sourceCopy} · ${updatedCopy}`)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderFxPriceSection(fx = {}) {
+  return `
+    <section class="price-sector price-sector--fx">
+      <div class="price-sector-head">
+        <span class="price-sector-label">환율</span>
+        <span class="price-sector-count">USD/KRW</span>
+      </div>
+      <div class="price-sector-list">
+        ${renderFxPricePillMarkup(fx)}
+      </div>
+    </section>
+  `;
+}
+
 function renderPriceStrip(quotes = {}, holdings = [], targets = {}, fx = {}) {
   const container = document.querySelector("#price-strip");
   if (!container) {
@@ -1734,15 +1791,9 @@ function renderPriceStrip(quotes = {}, holdings = [], targets = {}, fx = {}) {
   }
 
   const instruments = collectTrackedQuoteItems(holdings, targets);
+  const fxSectionMarkup = renderFxPriceSection(fx);
   if (!instruments.length) {
-    container.innerHTML = `
-      <div class="price-pill price-pill--empty">
-        <div class="price-copy">
-          <span class="price-name">실시간 가격</span>
-          <span class="price-meta">추적 종목이 아직 없습니다.</span>
-        </div>
-      </div>
-    `;
+    container.innerHTML = fxSectionMarkup;
     return;
   }
 
@@ -1752,7 +1803,7 @@ function renderPriceStrip(quotes = {}, holdings = [], targets = {}, fx = {}) {
     { key: "kr-stock", label: "국내주식", tone: "domestic" },
   ];
 
-  container.innerHTML = sections
+  const marketSectionsMarkup = sections
     .map((section) => {
       const items = instruments.filter((instrument) => instrument.market === section.key);
       if (!items.length) {
@@ -1772,6 +1823,8 @@ function renderPriceStrip(quotes = {}, holdings = [], targets = {}, fx = {}) {
       `;
     })
     .join("");
+
+  container.innerHTML = `${marketSectionsMarkup}${fxSectionMarkup}`;
 }
 
 function renderMetricCards(summary, realized = [], metadata = {}) {
@@ -2426,6 +2479,17 @@ function renderHoldings(holdings) {
             </div>
             <div class="holding-actions">
               <span class="status-tag ${quote?.isDelayed ? "status-tag--warning" : ""}">${statusCopy}</span>
+              <button
+                type="button"
+                class="status-tag status-tag--action holding-remove"
+                data-holding-delete
+                data-holding-market="${escapeHtml(item.market || "")}"
+                data-holding-symbol="${escapeHtml(item.symbol || "")}"
+                data-holding-asset="${escapeHtml(item.asset || item.name || "")}"
+                data-holding-name="${escapeHtml(item.name || item.asset || "")}"
+              >
+                삭제
+              </button>
             </div>
           </div>
           <div class="mini-stack">
@@ -2444,6 +2508,10 @@ function renderHoldings(holdings) {
             <div class="mini-row">
               <span class="mini-label">평가금액</span>
               <span class="mini-value">${formatCurrency(item.valuation)}</span>
+            </div>
+            <div class="mini-row">
+              <span class="mini-label">평가손익</span>
+              <span class="mini-value ${toneClass(item.pnl)}">${formatSignedCurrency(item.pnl)}</span>
             </div>
             <div class="mini-row">
               <span class="mini-label">수익률</span>
@@ -3476,6 +3544,148 @@ function groupTimelineTradesByDate(trades) {
   }, []);
 }
 
+function groupTimelineDateGroupsByMonth(dateGroups = []) {
+  return dateGroups.reduce((months, group) => {
+    const groupMonth = Number(group?.trades?.[0]?.month || 0);
+    const month = Number.isFinite(groupMonth) && groupMonth > 0 ? groupMonth : 0;
+    const lastMonth = months[months.length - 1];
+    if (lastMonth && lastMonth.month === month) {
+      lastMonth.groups.push(group);
+      return months;
+    }
+
+    months.push({
+      month,
+      groups: [group],
+    });
+    return months;
+  }, []);
+}
+
+function formatTimelineMonthLabel(month, year) {
+  const normalizedMonth = Number(month);
+  if (!normalizedMonth) {
+    return `${year}년 날짜 미확인`;
+  }
+  return `${year}년 ${normalizedMonth}월`;
+}
+
+function buildTimelineMonthSummary(dateGroups = []) {
+  const trades = dateGroups.reduce((accumulator, group) => {
+    if (Array.isArray(group?.trades)) {
+      accumulator.push(...group.trades);
+    }
+    return accumulator;
+  }, []);
+  return buildTimelineSummary(trades);
+}
+
+function renderTimelineDateGroup(group, basisYear, realizedLookup, panelId) {
+  const totalAmount = group.trades.reduce((total, trade) => total + trade.amount, 0);
+  const isOpen = false;
+  const dayProfit = realizedLookup.get(normalizeMonthDayKey(group.rawDate));
+  const hasDayPnl = dayProfit && Number.isFinite(Number(dayProfit.dailyPnl));
+  const dayPnl = hasDayPnl ? Number(dayProfit.dailyPnl) : 0;
+
+  return `
+    <section class="timeline-group ${isOpen ? "is-open" : ""}">
+      <button
+        type="button"
+        class="timeline-toggle"
+        aria-expanded="${isOpen}"
+        aria-controls="${panelId}"
+      >
+        <div class="timeline-date-head">
+          <span class="timeline-date-chip">${group.rawDate}</span>
+          <div class="timeline-date-copy">
+            <strong>${formatTimelineDate(group.rawDate, basisYear)}</strong>
+            <p>${buildTimelineSummary(group.trades)}</p>
+          </div>
+        </div>
+        <div class="timeline-header-meta">
+          <div class="timeline-stat">
+            <span>거래 건수</span>
+            <strong>${group.trades.length}건</strong>
+          </div>
+          ${
+            hasDayPnl
+              ? `
+                <div class="timeline-stat">
+                  <span>실현 손익</span>
+                  <strong class="${getSignedPriceToneClass(dayPnl)}">${formatSignedCurrency(dayPnl)}</strong>
+                </div>
+              `
+              : ""
+          }
+          <div class="timeline-stat">
+            <span>총 거래금액</span>
+            <strong>${formatCurrency(totalAmount)}</strong>
+          </div>
+          <span class="timeline-toggle-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </span>
+        </div>
+      </button>
+      <div class="timeline-panel" id="${panelId}" aria-hidden="${!isOpen}">
+        <div class="timeline-group-list">
+          ${group.trades
+            .map((trade) => {
+              const hasTradeRealized = trade.side === "매도" && Number.isFinite(Number(trade.realizedPnl));
+              const realizedValue = trade.realizedDisplay || formatSignedCurrency(Number(trade.realizedPnl || 0));
+              return `
+                <article class="timeline-item">
+                  <div class="timeline-top">
+                    <div>
+                      <p class="mini-label timeline-market">${trade.market}${trade.broker ? ` · ${trade.broker}` : ""}</p>
+                      <strong class="timeline-title">${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</strong>
+                      ${renderTimelineTradeBadges(trade)}
+                    </div>
+                    <div class="timeline-item-actions">
+                      <button
+                        type="button"
+                        class="timeline-action timeline-action--edit"
+                        data-trade-edit
+                        data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
+                        data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
+                      >
+                        수정
+                      </button>
+                      <button
+                        type="button"
+                        class="timeline-action timeline-action--delete"
+                        data-trade-delete
+                        data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
+                        data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                  <p class="timeline-meta">
+                    수량 ${formatTradeQuantity(trade.quantity)} / 단가 ${formatCurrency(trade.price)} / 수수료 ${formatCurrency(trade.fee)} / 거래금액 ${formatCurrency(trade.amount)}
+                  </p>
+                  ${
+                    hasTradeRealized
+                      ? `<strong class="timeline-realized ${getSignedPriceToneClass(trade.realizedPnl)}">실현손익 ${realizedValue}</strong>`
+                      : ""
+                  }
+                  ${
+                    getDisplayTradeNote(trade.note)
+                      ? `<p class="timeline-note">메모 · ${escapeHtml(getDisplayTradeNote(trade.note))}</p>`
+                      : ""
+                  }
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function buildRealizedHistoryLookup(realizedHistory = []) {
   return realizedHistory.reduce((lookup, entry) => {
     lookup.set(normalizeMonthDayKey(entry.date), entry);
@@ -3485,105 +3695,44 @@ function buildRealizedHistoryLookup(realizedHistory = []) {
 
 function renderTimelineList(trades, basisYear, realizedHistory = []) {
   const grouped = groupTimelineTradesByDate(trades);
+  const monthGroups = groupTimelineDateGroupsByMonth(grouped);
   const realizedLookup = buildRealizedHistoryLookup(realizedHistory);
   if (!grouped.length) {
     return `<div class="timeline-empty">표시할 거래가 없습니다.</div>`;
   }
 
-  return grouped
-    .map((group, index) => {
-      const totalAmount = group.trades.reduce((total, trade) => total + trade.amount, 0);
-      const isOpen = false;
-      const panelId = `timeline-panel-${index}`;
-      const dayProfit = realizedLookup.get(normalizeMonthDayKey(group.rawDate));
-      const dayPnl = dayProfit?.dailyPnl ?? 0;
-
+  return monthGroups
+    .map((monthGroup, monthIndex) => {
+      const monthPanelId = `timeline-month-panel-${monthIndex}`;
+      const isMonthOpen = monthIndex === 0;
       return `
-        <section class="timeline-group ${isOpen ? "is-open" : ""}">
+        <section class="timeline-month-block ${isMonthOpen ? "is-open" : ""}">
           <button
             type="button"
-            class="timeline-toggle"
-            aria-expanded="${isOpen}"
-            aria-controls="${panelId}"
+            class="timeline-month-toggle"
+            aria-expanded="${isMonthOpen}"
+            aria-controls="${monthPanelId}"
           >
-            <div class="timeline-date-head">
-              <span class="timeline-date-chip">${group.rawDate}</span>
-              <div class="timeline-date-copy">
-                <strong>${formatTimelineDate(group.rawDate, basisYear)}</strong>
-                <p>${buildTimelineSummary(group.trades)}</p>
-              </div>
+            <div class="timeline-month-copy">
+              <span class="timeline-month-chip">${monthGroup.month ? `${monthGroup.month}월` : "미정"}</span>
+              <strong>${formatTimelineMonthLabel(monthGroup.month, basisYear)}</strong>
             </div>
-            <div class="timeline-header-meta">
-              <div class="timeline-stat">
-                <span>거래 건수</span>
-                <strong>${group.trades.length}건</strong>
-              </div>
-              <div class="timeline-stat">
-                <span>실현 손익</span>
-                <strong class="${getSignedPriceToneClass(dayPnl)}">${formatSignedCurrency(dayPnl)}</strong>
-              </div>
-              <div class="timeline-stat">
-                <span>총 거래금액</span>
-                <strong>${formatCurrency(totalAmount)}</strong>
-              </div>
-              <span class="timeline-toggle-icon" aria-hidden="true">
+            <div class="timeline-month-meta">
+              <p>${buildTimelineMonthSummary(monthGroup.groups)}</p>
+              <span class="timeline-month-toggle-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="m6 9 6 6 6-6" />
                 </svg>
               </span>
             </div>
           </button>
-          <div class="timeline-panel" id="${panelId}" aria-hidden="${!isOpen}">
-            <div class="timeline-group-list">
-              ${group.trades
-                .map(
-	                  (trade) => `
-	                    <article class="timeline-item">
-	                      <div class="timeline-top">
-	                        <div>
-	                          <p class="mini-label timeline-market">${trade.market}${trade.broker ? ` · ${trade.broker}` : ""}</p>
-	                          <strong class="timeline-title">${escapeHtml(getDisplayAssetName({ asset: trade.asset }))}</strong>
-	                          ${renderTimelineTradeBadges(trade)}
-	                        </div>
-	                        <div class="timeline-item-actions">
-	                          <button
-	                            type="button"
-	                            class="timeline-action timeline-action--edit"
-                            data-trade-edit
-                            data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
-                            data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
-                          >
-                            수정
-                          </button>
-                          <button
-                            type="button"
-                            class="timeline-action timeline-action--delete"
-                            data-trade-delete
-                            data-trade-collection="${escapeHtml(trade.sourceCollection || "")}"
-                            data-trade-index="${escapeHtml(String(trade.sourceIndex ?? ""))}"
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      </div>
-                      <p class="timeline-meta">
-                        수량 ${formatTradeQuantity(trade.quantity)} / 단가 ${formatCurrency(trade.price)} / 수수료 ${formatCurrency(trade.fee)} / 거래금액 ${formatCurrency(trade.amount)}
-                      </p>
-                      <strong class="timeline-realized ${trade.side === "매도" && Number.isFinite(Number(trade.realizedPnl)) ? getSignedPriceToneClass(trade.realizedPnl) : "price-move-neutral"}">
-                        ${
-                          trade.side === "매도" && trade.realizedDisplay
-                            ? `실현손익 ${trade.realizedDisplay}`
-                            : "실현손익 집계 없음"
-                        }
-                      </strong>
-                      ${
-                        getDisplayTradeNote(trade.note)
-                          ? `<p class="timeline-note">메모 · ${escapeHtml(getDisplayTradeNote(trade.note))}</p>`
-                          : ""
-                      }
-                    </article>
-                  `
-                )
+          <div class="timeline-month-panel" id="${monthPanelId}" aria-hidden="${!isMonthOpen}">
+            <div class="timeline-month-groups">
+              ${monthGroup.groups
+                .map((group, dayIndex) => {
+                  const panelId = `timeline-panel-${monthIndex}-${dayIndex}`;
+                  return renderTimelineDateGroup(group, basisYear, realizedLookup, panelId);
+                })
                 .join("")}
             </div>
           </div>
@@ -3798,6 +3947,82 @@ function normalizeMonthDayKey(value) {
   return buildMonthDayKey(month, day);
 }
 
+function normalizeTradeIdentityToken(value = "") {
+  return String(value || "").trim().toUpperCase();
+}
+
+function buildHoldingTradeDeletionPlan(target = {}) {
+  const source = currentPortfolioData || basePortfolioData;
+  const trades = source?.trades || {};
+  const targetMarket = getMarketLabelFromMetaMarket(String(target.market || "").trim());
+  const targetSymbol = normalizeTradeIdentityToken(target.symbol);
+  const targetAsset = String(target.asset || target.name || "").trim();
+  const targetName = String(target.name || "").trim();
+
+  const matchesHolding = (trade = {}, collection = "stocks") => {
+    const tradeMarket = String(trade.market || (collection === "crypto" ? "암호화폐" : "국내주식")).trim();
+    if (targetMarket && tradeMarket && tradeMarket !== targetMarket) {
+      return false;
+    }
+
+    const tradeSymbol = normalizeTradeIdentityToken(trade.symbol);
+    if (targetSymbol && tradeSymbol) {
+      return tradeSymbol === targetSymbol;
+    }
+
+    const tradeAsset = String(trade.asset || "").trim();
+    if (tradeAsset && targetAsset) {
+      return tradeAsset === targetAsset;
+    }
+
+    if (tradeAsset && targetName) {
+      return tradeAsset === targetName;
+    }
+
+    return false;
+  };
+
+  const entries = [];
+  ["stocks", "crypto"].forEach((collection) => {
+    const list = Array.isArray(trades[collection]) ? trades[collection] : [];
+    list.forEach((trade, index) => {
+      if (matchesHolding(trade, collection)) {
+        entries.push({ collection, index });
+      }
+    });
+  });
+
+  const ordered = [
+    ...entries
+      .filter((entry) => entry.collection === "stocks")
+      .sort((a, b) => b.index - a.index),
+    ...entries
+      .filter((entry) => entry.collection === "crypto")
+      .sort((a, b) => b.index - a.index),
+  ];
+
+  return {
+    entries: ordered,
+    total: ordered.length,
+  };
+}
+
+async function deleteHoldingPosition(target = {}) {
+  const plan = buildHoldingTradeDeletionPlan(target);
+  if (!plan.total) {
+    throw new Error("삭제할 보유 거래를 찾지 못했습니다.");
+  }
+
+  for (const entry of plan.entries) {
+    await applyTradeMutation("DELETE", {
+      collection: entry.collection,
+      index: entry.index,
+    });
+  }
+
+  return plan.total;
+}
+
 async function deleteTimelineTrade(trade) {
   if (!trade?.sourceCollection || !Number.isInteger(trade?.sourceIndex)) {
     throw new Error("삭제할 거래 정보를 찾지 못했습니다.");
@@ -3807,6 +4032,48 @@ async function deleteTimelineTrade(trade) {
     collection: trade.sourceCollection,
     index: trade.sourceIndex,
   });
+}
+
+function bindHoldingsSection(section) {
+  if (!section || section.dataset.holdingsBound === "true") {
+    return;
+  }
+
+  section.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-holding-delete]");
+    if (!button || !section.contains(button)) {
+      return;
+    }
+
+    const target = {
+      market: button.dataset.holdingMarket || "",
+      symbol: button.dataset.holdingSymbol || "",
+      asset: button.dataset.holdingAsset || "",
+      name: button.dataset.holdingName || "",
+    };
+
+    const displayName = getDisplayAssetName({
+      asset: target.asset,
+      name: target.name,
+      symbol: target.symbol,
+      market: target.market,
+    });
+    const confirmed = window.confirm(
+      `정말 삭제하실건가요?\n\n보유종목 관련 거래를 제거합니다.\n대상: ${displayName}`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    button.disabled = true;
+    deleteHoldingPosition(target).catch((error) => {
+      console.error(error);
+      button.disabled = false;
+      window.alert(error.message || "보유종목 삭제에 실패했습니다.");
+    });
+  });
+
+  section.dataset.holdingsBound = "true";
 }
 
 function bindTimelineSection(section) {
@@ -3855,14 +4122,23 @@ function bindTimelineSection(section) {
     }
 
     const toggle = event.target.closest(".timeline-toggle");
-    if (!toggle || !section.contains(toggle)) {
+    if (toggle && section.contains(toggle)) {
+      const group = toggle.closest(".timeline-group");
+      const panel = group?.querySelector(".timeline-panel");
+      const willOpen = toggle.getAttribute("aria-expanded") !== "true";
+      toggleDisclosure(group, toggle, panel, willOpen);
       return;
     }
 
-    const group = toggle.closest(".timeline-group");
-    const panel = group?.querySelector(".timeline-panel");
-    const willOpen = toggle.getAttribute("aria-expanded") !== "true";
-    toggleDisclosure(group, toggle, panel, willOpen);
+    const monthToggle = event.target.closest(".timeline-month-toggle");
+    if (!monthToggle || !section.contains(monthToggle)) {
+      return;
+    }
+
+    const monthBlock = monthToggle.closest(".timeline-month-block");
+    const monthPanel = monthBlock?.querySelector(".timeline-month-panel");
+    const willOpen = monthToggle.getAttribute("aria-expanded") !== "true";
+    toggleDisclosure(monthBlock, monthToggle, monthPanel, willOpen);
   });
 
   section.dataset.timelineBound = "true";
@@ -4025,7 +4301,7 @@ function setActiveAssetChartRange(rangeKey = "1M", granularity = assetChartState
 }
 
 function syncAssetChartRangeVisibility(granularity = "day") {
-  const nextGranularity = granularity === "minute" ? "minute" : "day";
+  const nextGranularity = "day";
   const ranges = getAssetChartRanges(nextGranularity);
   const fallbackRange = getDefaultAssetChartRange(nextGranularity);
   const isSupported = ranges.some((item) => item.key === assetChartState.range);
@@ -4120,12 +4396,8 @@ function renderAssetChart(snapshot) {
   if (footnote) {
     footnote.textContent =
       snapshot?.instrument?.market === "us-stock"
-        ? snapshot?.granularity === "minute"
-          ? "미국주식 분봉은 선택 기간에 맞는 장중 흐름으로 보여주며, 장중에는 120초 · 장마감에는 900초 주기로 다시 불러옵니다."
-          : "미국주식 일봉은 선택한 기간 기준 종가 흐름으로 보여주며, 장중에는 120초 · 장마감에는 900초 주기로 다시 불러옵니다."
-        : snapshot?.granularity === "minute"
-          ? "암호화폐 분봉은 선택 기간에 맞는 분봉 흐름으로 보여주며, 차트가 열려 있으면 10초마다 다시 불러옵니다."
-          : "암호화폐 일봉은 선택한 기간 기준 업비트 일봉 흐름으로 보여주며, 차트가 열려 있으면 10초마다 다시 불러옵니다.";
+        ? "미국주식 일봉은 선택한 기간 기준 종가 흐름으로 보여주며, 장중에는 120초 · 장마감에는 900초 주기로 다시 불러옵니다."
+        : "암호화폐 일봉은 선택한 기간 기준 업비트 일봉 흐름으로 보여주며, 차트가 열려 있으면 10초마다 다시 불러옵니다.";
   }
 
   renderAssetChartStats(snapshot);
@@ -4311,7 +4583,7 @@ async function openAssetChartModal({ market, symbol, name, range = "1M", granula
   }
 
   clearAssetChartRefreshTimer();
-  const nextGranularity = granularity === "minute" ? "minute" : "day";
+  const nextGranularity = "day";
   const supportedRanges = getAssetChartRanges(nextGranularity);
   const nextRange = supportedRanges.some((item) => item.key === range) ? range : getDefaultAssetChartRange(nextGranularity);
   assetChartState = {
@@ -4354,15 +4626,6 @@ function bindPriceStripInteractions() {
 
   if (modal && modal.dataset.bound !== "true") {
     modal.addEventListener("click", (event) => {
-      const granularityButton = event.target.closest("[data-asset-chart-granularity]");
-      if (granularityButton && modal.contains(granularityButton)) {
-        const nextGranularity = granularityButton.dataset.assetChartGranularity || "day";
-        setActiveAssetChartGranularity(nextGranularity);
-        syncAssetChartRangeVisibility(nextGranularity);
-        loadAssetChartModal();
-        return;
-      }
-
       const rangeButton = event.target.closest("[data-asset-chart-range]");
       if (rangeButton && modal.contains(rangeButton)) {
         const nextRange = rangeButton.dataset.assetChartRange || "1M";
@@ -4573,6 +4836,8 @@ function normalizeHoldingsForDisplay(holdings = []) {
     const quantity = Number(item.quantity || 0);
     const valuation = Number(item.valuation || 0);
     const averagePrice = Number(item.averagePrice || 0);
+    const principal = quantity * averagePrice;
+    const pnl = Number.isFinite(Number(item.pnl)) ? Number(item.pnl) : valuation - principal;
     const fallbackPriceKrw = quantity > 0 ? valuation / quantity : averagePrice;
     const currentPriceKrw = Number.isFinite(Number(item.currentPriceKrw))
       ? Number(item.currentPriceKrw)
@@ -4595,6 +4860,7 @@ function normalizeHoldingsForDisplay(holdings = []) {
       quantity,
       averagePrice,
       valuation,
+      pnl,
       returnRate: Number(item.returnRate || 0),
       currentPriceKrw,
       currentPriceUsd,
@@ -5306,6 +5572,7 @@ function initTradeModal() {
   const tradeDaySelect = document.querySelector("#trade-date-day");
   const marketSelect = document.querySelector("#trade-market");
   const assetInput = document.querySelector("#trade-asset");
+  const assetHelp = document.querySelector("#trade-asset-help");
   const assetSuggestionPanel = document.querySelector("#trade-asset-suggestions");
   const brokerInput = document.querySelector("#trade-broker");
   const brokerGroup = document.querySelector("[data-trade-broker-group]");
@@ -5623,6 +5890,11 @@ function initTradeModal() {
             : "솔라나(SOL)";
     }
 
+    if (assetHelp) {
+      assetHelp.hidden = !isUsStock;
+      assetHelp.textContent = isUsStock ? "미국주식은 영문 회사명 또는 티커로 입력" : "";
+    }
+
     if (priceLabel) {
       priceLabel.textContent = isUsStock ? "단가 (원화 기준)" : "단가 (원)";
     }
@@ -5632,11 +5904,7 @@ function initTradeModal() {
     }
 
     if (priceHelp) {
-      priceHelp.textContent = isUsStock
-        ? "미국주식은 영문 회사명 또는 티커로 입력하고, 체결 단가는 원화 기준으로 적습니다."
-        : isCrypto
-          ? "업비트 체결 단가 기준으로 입력합니다."
-          : "체결 단가 기준으로 입력합니다.";
+      priceHelp.textContent = isCrypto ? "업비트 체결 단가 기준으로 입력합니다." : "체결 단가 기준으로 입력합니다.";
     }
 
     if (brokerHelp) {

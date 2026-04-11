@@ -484,10 +484,6 @@
             <h3 id="asset-chart-title">종목 차트</h3>
             <p class="asset-chart-summary" id="asset-chart-summary">최근 흐름을 불러오는 중입니다.</p>
             <div class="asset-chart-toolbar">
-              <div class="asset-chart-granularity-tabs" id="asset-chart-granularity-tabs" role="tablist" aria-label="차트 봉 타입 선택">
-                <button type="button" class="asset-chart-range is-active" data-asset-chart-granularity="day">일봉</button>
-                <button type="button" class="asset-chart-range" data-asset-chart-granularity="minute">분봉</button>
-              </div>
               <div class="asset-chart-range-tabs" id="asset-chart-range-tabs" role="tablist" aria-label="차트 기간 선택">
                 <button type="button" class="asset-chart-range is-active" data-asset-chart-range="1W">1주</button>
                 <button type="button" class="asset-chart-range" data-asset-chart-range="1M">1개월</button>
@@ -552,6 +548,7 @@
               <label for="trade-asset">자산</label>
               <input type="text" id="trade-asset" name="asset" placeholder="SK하이닉스" required />
               <div class="asset-suggestion-panel" id="trade-asset-suggestions" hidden></div>
+              <p class="form-help" id="trade-asset-help" hidden></p>
             </div>
             <div class="form-group">
               <label for="trade-side">매수/매도</label>
@@ -590,24 +587,19 @@
           <input type="hidden" id="trade-amount" name="amount" />
           <input type="hidden" id="trade-fee" name="fee" />
 
-	          <div class="form-row">
-	            <div class="form-group" data-trade-broker-group>
-	              <label for="trade-broker">플랫폼</label>
-	              <select id="trade-broker" name="broker"></select>
-	            </div>
-	            <div class="form-group">
-	              <label for="trade-stage">전략 단계 (선택)</label>
-	              <select id="trade-stage" name="stage"></select>
-	            </div>
-	          </div>
+          <div class="form-row">
+            <div class="form-group" data-trade-broker-group>
+              <label for="trade-broker">플랫폼</label>
+              <select id="trade-broker" name="broker"></select>
+            </div>
+            <div class="form-group">
+              <label for="trade-stage">전략 단계 (선택)</label>
+              <select id="trade-stage" name="stage"></select>
+            </div>
+          </div>
 
-	          <div class="form-group form-group--full">
-	            <label for="trade-note">전략 메모 (선택)</label>
-	            <textarea id="trade-note" name="note" rows="3" placeholder="예: 2차 진입 전 RSI 25 재확인, 장 초반 추격 금지"></textarea>
-	          </div>
-
-	          <div class="trade-summary-grid">
-	            <article class="trade-summary-card">
+          <div class="trade-summary-grid">
+            <article class="trade-summary-card">
               <span>플랫폼</span>
               <strong id="trade-summary-broker">업비트</strong>
             </article>
@@ -621,6 +613,11 @@
             </article>
           </div>
           <p class="form-help trade-summary-help" id="trade-broker-help">국내주식과 미국주식 거래만 입력하면 됩니다.</p>
+
+          <div class="form-group form-group--full">
+            <label for="trade-note">전략 메모 (선택)</label>
+            <textarea id="trade-note" name="note" rows="3" placeholder="예: 2차 진입 전 RSI 25 재확인, 장 초반 추격 금지"></textarea>
+          </div>
 
           <p class="trade-form-status" id="trade-form-status" role="status" aria-live="polite"></p>
 

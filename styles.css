@@ -506,6 +506,10 @@ h3 {
   border-color: rgba(255, 184, 77, 0.22);
 }
 
+.price-sector--fx {
+  border-color: rgba(145, 170, 255, 0.24);
+}
+
 .price-sector--domestic {
   border-color: rgba(23, 249, 166, 0.2);
 }
@@ -707,6 +711,16 @@ h3 {
   grid-template-columns: 1fr;
 }
 
+.price-pill--fx {
+  cursor: default;
+}
+
+.price-pill--fx:hover {
+  transform: none;
+  border-color: rgba(145, 170, 255, 0.26);
+  box-shadow: none;
+}
+
 .dashboard {
   display: grid;
   gap: 28px;
@@ -815,7 +829,6 @@ h3 {
   min-height: var(--app-height);
   background: rgba(4, 11, 11, 0.78);
   backdrop-filter: blur(12px);
-  animation: mobileOverlayFade 180ms ease;
   overscroll-behavior: contain;
   pointer-events: auto;
 }
@@ -1192,15 +1205,6 @@ body.mobile-menu-mode .dashboard > .section.mobile-section-active .form-actions 
 body.mobile-menu-mode .mobile-section-shell-section .memo-card-actions > *,
 body.mobile-menu-mode .mobile-section-shell-section .form-actions > * {
   flex: 1 1 0;
-}
-
-@keyframes mobileOverlayFade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 @keyframes mobileSectionReveal {
@@ -1896,6 +1900,24 @@ th.align-right {
   gap: 8px;
 }
 
+.holding-actions .status-tag {
+  width: auto;
+  min-width: 0;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 11px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.status-tag.status-tag--action {
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .holding-title {
   display: block;
   margin-top: 4px;
@@ -1992,6 +2014,142 @@ th.align-right {
 .timeline {
   display: grid;
   gap: 16px;
+}
+
+.timeline-month-block {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+}
+
+.timeline-month-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(12, 22, 22, 0.78), rgba(8, 14, 14, 0.38));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.timeline-month-toggle:hover {
+  background: linear-gradient(180deg, rgba(15, 27, 27, 0.84), rgba(9, 16, 16, 0.46));
+}
+
+.timeline-month-toggle:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(23, 249, 166, 0.28), 0 0 0 3px rgba(23, 249, 166, 0.1);
+}
+
+.timeline-month-copy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.timeline-month-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.timeline-month-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(94, 200, 255, 0.24);
+  background: rgba(94, 200, 255, 0.12);
+  color: var(--accent-blue);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.timeline-month-copy strong {
+  color: var(--text-strong);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.timeline-month-meta p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.timeline-month-toggle-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(94, 200, 255, 0.18);
+  background: rgba(4, 10, 10, 0.82);
+  color: var(--accent);
+  flex-shrink: 0;
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    background 220ms ease;
+}
+
+.timeline-month-toggle-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.timeline-month-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    grid-template-rows 240ms ease,
+    opacity 180ms ease,
+    border-top-color 240ms ease;
+}
+
+.timeline-month-block.is-open .timeline-month-panel {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  border-top: 1px solid rgba(94, 200, 255, 0.12);
+}
+
+.timeline-month-block.is-open .timeline-month-toggle-icon {
+  transform: rotate(180deg);
+  border-color: rgba(23, 249, 166, 0.28);
+  background: rgba(23, 249, 166, 0.08);
+}
+
+.timeline-month-groups {
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+  gap: 12px;
+  padding-top: 12px;
 }
 
 .timeline-views {
