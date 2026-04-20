@@ -32,13 +32,13 @@ Confirm that recent Asset changes are safe to ship by:
   - `frontend`: `app.js`, `client/*.js`, `styles/*.css`, `index.html`, mobile UI, modal flows, photo-assist UI
   - `market-close`: session detection, close-price fallback, realtime labels, U.S. stock timing
   - `cash-reconcile`: cash balance, total asset drift, realized vs unrealized separation
-  - `docs-handoff`: `private/PROJECT_PLAN.md`, `private/summary/*`, and active docs
+  - `docs-handoff`: local planning notes, local handoff notes, and active docs
 
 ### 2. Load only the relevant Asset skills
 
-- If the change matches `incident`, read `/Users/jojiwon/.codex/skills/asset-incident-response/SKILL.md`.
-- If the change matches `market-close`, read `/Users/jojiwon/.codex/skills/asset-market-close-policy/SKILL.md`.
-- If the change matches `cash-reconcile`, read `/Users/jojiwon/.codex/skills/asset-cash-reconcile/SKILL.md`.
+- If the change matches `incident`, read `skills/asset-incident-response/SKILL.md`.
+- If the change matches `market-close`, read `skills/asset-market-close-policy/SKILL.md`.
+- If the change matches `cash-reconcile`, read `skills/asset-cash-reconcile/SKILL.md`.
 - If the change is `frontend` or `docs-handoff` and there is no dedicated downstream skill, continue with the built-in checks below and report a `GAP` only if the workflow is repeatedly under-covered.
 
 ### 3. Run targeted checks
@@ -50,9 +50,9 @@ Confirm that recent Asset changes are safe to ship by:
 
 Baseline checks by domain:
 
-- `incident`: check `/api/storage-health`, `/api/portfolio`, and `/api/live-prices` locally first; verify production endpoints too if provider or endpoint behavior changed.
+- `incident`: check `/api/storage-health`, `/api/portfolio`, and `/api/live-prices` locally first; verify deployed endpoints too if provider or endpoint behavior changed and a deployed environment exists.
 - `frontend`: run `node --check` on touched JS files, run `npm run smoke` when relevant, and do one browser load or targeted UI pass for the changed surface.
-- `docs-handoff`: confirm `private/PROJECT_PLAN.md`, `private/summary/LATEST.md`, the current private daily summary, and active docs are aligned with the current shipped state and next step.
+- `docs-handoff`: confirm the local plan, local latest handoff, the current daily summary, and active docs are aligned with the current shipped state and next step.
 
 ### 4. Classify the result
 
@@ -74,7 +74,7 @@ Baseline checks by domain:
 | Frontend | mobile UI, client split, CSS refactor, modal behavior, photo-assist UI | built-in checks in this skill |
 | Market close policy | U.S. equities close logic, realtime labels, quote freshness, session timing | `asset-market-close-policy` |
 | Cash reconcile | cash balance, total asset mismatch, realized P/L separation | `asset-cash-reconcile` |
-| Docs handoff | `private/PROJECT_PLAN.md`, `private/summary/*`, active implementation notes | built-in checks in this skill |
+| Docs handoff | local planning notes, local handoff notes, active implementation notes | built-in checks in this skill |
 
 ## Output Format
 
@@ -91,6 +91,6 @@ Baseline checks by domain:
 - If the request is ambiguous, restate your understanding first and wait for confirmation before acting.
 - Do not claim full-project verification when only one domain was checked.
 - Do not invent coverage from a skill that was not actually read.
-- If browser verification or production checks were skipped, say so plainly.
+- If browser verification or deployed-endpoint checks were skipped, say so plainly.
 - Prefer one clear gap note over false confidence.
 - Keep the report short.

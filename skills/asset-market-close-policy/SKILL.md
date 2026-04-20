@@ -67,8 +67,8 @@ Resolve quote in this order:
 
 ## Primary File Targets
 
-- `/Users/jojiwon/vibecording/asset-main/lib/live-price-service.js`
-- `/Users/jojiwon/vibecording/asset-main/app.js`
-- `/Users/jojiwon/vibecording/asset-main/lib/server-state-store.js`
+- `lib/live-price-service.js`
+- `app.js`
+- `lib/server-state-store.js`
 
 Use explicit absolute dates in explanations when users confuse "today/yesterday/closed market" context.

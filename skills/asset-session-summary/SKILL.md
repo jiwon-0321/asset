@@ -13,9 +13,9 @@ Write a short, factual summary that future sessions can scan quickly, then refre
 
 ## Output Location
 
-- Write to `/Users/jojiwon/vibecording/asset-main/private/summary/YYYY-MM-DD-chat-summary.md`.
+- Write to `private/summary/YYYY-MM-DD-chat-summary.md`.
 - If the file for the current date already exists, update it instead of creating a duplicate.
-- Refresh `/Users/jojiwon/vibecording/asset-main/private/summary/LATEST.md` in the same pass.
+- Refresh `private/summary/LATEST.md` in the same pass.
 
 ## Workflow
 

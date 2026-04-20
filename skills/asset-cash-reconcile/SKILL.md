@@ -58,8 +58,8 @@ Treat user-provided current cash as the source of truth.
 
 ## Primary File Targets
 
-- `/Users/jojiwon/vibecording/asset-main/lib/persisted-portfolio-service.js`
-- `/Users/jojiwon/vibecording/asset-main/lib/server-state-store.js`
-- `/Users/jojiwon/vibecording/asset-main/app.js`
+- `lib/persisted-portfolio-service.js`
+- `lib/server-state-store.js`
+- `app.js`
 
 Ask only one clarification question when a reconciliation is blocked by missing essential numbers.

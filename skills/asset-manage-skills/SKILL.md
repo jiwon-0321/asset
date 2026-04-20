@@ -16,22 +16,21 @@ Use this skill to keep the Asset Codex skill set small, current, and useful.
 
 ## Storage Rules
 
-- Editable Codex skill source lives in `/Users/jojiwon/vibecording/asset-main/skills`.
-- Live Codex install lives in `/Users/jojiwon/.codex/skills`.
-- Claude originals stay separate in `/Users/jojiwon/vibecording/claude/skills`.
-- The repo copy is the source of truth for Asset Codex skills.
+- Shared skill source lives in the repo under `skills/`.
+- If you use a local Codex install, you may also keep a synced local copy outside the repo.
+- Treat the repo copy as the shared source of truth for Asset skills.
 
 ## Workflow
 
 ### 1. Inspect project changes
 
 - Use `git status --short`, `git diff --name-only`, and `git diff --stat` in `asset-main`.
-- Focus on `app.js`, `client/*.js`, `api/*.js`, `lib/*.js`, `scripts/*.js`, `styles/*.css`, `docs/*.md`, `private/PROJECT_PLAN.md`, and `private/summary/*`.
+- Focus on `app.js`, `client/*.js`, `api/*.js`, `lib/*.js`, `scripts/*.js`, `styles/*.css`, `docs/*.md`, and any local planning notes that matter to the workflow.
 
 ### 2. Check current skill coverage
 
-- Review the source skill copy in `/Users/jojiwon/vibecording/asset-main/skills` first.
-- Compare the source copy with `/Users/jojiwon/.codex/skills` only to catch drift before syncing.
+- Review the source skill copy in `skills/` first.
+- If you also keep a local Codex install, compare against that copy only to catch drift before syncing.
 - Existing skills may already cover incident response, market-close policy, cash reconcile, verification, or session-summary work.
 - Ask whether the changed behavior is already covered well enough.
 
@@ -55,10 +54,10 @@ Good candidates for `CREATE` only after repeated need:
 - Avoid personal portfolio data, access codes, or secrets.
 - Add or update `agents/openai.yaml`.
 
-### 5. Sync the live install
+### 5. Sync the live install when needed
 
-- After updating `/Users/jojiwon/vibecording/asset-main/skills/<skill-name>`, copy the same skill into `/Users/jojiwon/.codex/skills/<skill-name>`.
-- Treat the repo skill path as the source of truth.
+- After updating `skills/<skill-name>`, optionally sync the same skill into your local Codex install if you use one.
+- Treat the repo skill path as the shared source of truth.
 - Remove stray `.DS_Store` files from the skill tree when found.
 
 ## Output Format
