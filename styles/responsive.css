@@ -1710,6 +1710,8 @@ body.pull-refresh-animating.mobile-section-open .mobile-section-shell {
 }
 
 .form-group select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
   background-image:
     linear-gradient(45deg, transparent 50%, rgba(176, 202, 197, 0.92) 50%),
@@ -1719,6 +1721,8 @@ body.pull-refresh-animating.mobile-section-open .mobile-section-shell {
     calc(100% - 12px) calc(50% - 1px);
   background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
+  background-origin: border-box;
+  background-clip: padding-box;
   padding-right: 42px;
 }
 
@@ -2327,6 +2331,10 @@ body.pull-refresh-animating.mobile-section-open .mobile-section-shell {
   .guide-step-copy h3,
   .guide-menu-copy h3 {
     font-size: 0.94rem;
+  }
+
+  .guide-summary-list li {
+    font-size: 0.84rem;
   }
 
   .guide-summary,
@@ -3037,7 +3045,34 @@ body.pull-refresh-animating.mobile-section-open .mobile-section-shell {
 
 /* 2026-04-18 design restart: desktop layout first */
 
-@media (min-width: 1100px) {
+@media (min-width: 1280px) {
+  .page-shell {
+    width: min(1520px, calc(100% - 48px));
+    padding-top: calc(30px + env(safe-area-inset-top, 0px));
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1.42fr) minmax(360px, 1fr);
+    gap: 24px;
+    padding: 32px;
+  }
+
+  .hero-summary {
+    max-width: 64ch;
+  }
+
+  #metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .metric-grid .metric-card {
+    min-height: 142px;
+    padding: 18px 18px 20px;
+  }
+}
+
+@media (min-width: 1760px) {
   .page-shell {
     width: min(1520px, calc(100% - 48px));
     padding-top: calc(30px + env(safe-area-inset-top, 0px));
@@ -3151,7 +3186,7 @@ body.pull-refresh-animating.mobile-section-open .mobile-section-shell {
   }
 }
 
-@media (min-width: 1100px) and (max-width: 1360px) {
+@media (min-width: 1760px) and (max-width: 2040px) {
   #metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding-inline: 12px;

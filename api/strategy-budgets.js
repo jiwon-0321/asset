@@ -28,8 +28,14 @@ module.exports = async (request, response) => {
     const rootDir = path.resolve(__dirname, "..");
     const portfolio =
       request.method === "PUT"
-        ? await upsertStrategyBudgetEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId })
-        : await deleteStrategyBudgetEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId });
+        ? await upsertStrategyBudgetEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, {
+            mutationId,
+            variant: profile.variant,
+          })
+        : await deleteStrategyBudgetEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, {
+            mutationId,
+            variant: profile.variant,
+          });
 
     sendJson(response, 200, portfolio);
   } catch (error) {

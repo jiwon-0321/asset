@@ -59,10 +59,19 @@ module.exports = async (request, response) => {
 
     const portfolio =
       request.method === "POST"
-        ? await createTrade(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId })
+        ? await createTrade(rootDir, payload, profile.seedPortfolio, profile.stateKey, {
+            mutationId,
+            variant: profile.variant,
+          })
         : request.method === "PUT"
-          ? await updateTradeEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId })
-          : await deleteTradeEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId });
+          ? await updateTradeEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, {
+              mutationId,
+              variant: profile.variant,
+            })
+          : await deleteTradeEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, {
+              mutationId,
+              variant: profile.variant,
+            });
 
     sendJson(response, 200, portfolio);
   } catch (error) {

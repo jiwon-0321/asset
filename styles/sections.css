@@ -3335,18 +3335,18 @@ button.timeline-defense-badge:focus-visible {
 
 .guide-panel {
   display: grid;
-  gap: 14px;
+  gap: 18px;
 }
 
 .guide-block {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .guide-block-head {
   display: grid;
-  gap: 4px;
-  padding-inline: 2px;
+  gap: 5px;
+  padding-inline: 4px;
 }
 
 .guide-block-kicker {
@@ -3362,27 +3362,45 @@ button.timeline-defense-badge:focus-visible {
 .guide-block-head h3 {
   margin: 0;
   color: var(--text-strong);
-  font-size: 0.98rem;
-  line-height: 1.3;
+  font-size: 1rem;
+  line-height: 1.32;
 }
 
 .guide-intro-card,
 .guide-step-card,
 .guide-menu-card {
   position: relative;
+  overflow: hidden;
   border-radius: 18px;
-  border: 1px solid rgba(94, 200, 255, 0.14);
+  border: 1px solid rgba(10, 132, 255, 0.12);
   background:
-    radial-gradient(circle at top right, rgba(255, 184, 77, 0.08), transparent 30%),
-    linear-gradient(160deg, rgba(10, 20, 20, 0.96), rgba(7, 14, 14, 0.92)),
-    var(--panel-strong);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.18);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 248, 252, 0.88));
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(22px) saturate(132%);
+}
+
+.guide-intro-card::before,
+.guide-step-card::before,
+.guide-menu-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.36), transparent 36%),
+    radial-gradient(circle at 100% 0%, rgba(90, 200, 250, 0.08), transparent 30%);
 }
 
 .guide-intro-card {
   display: grid;
-  gap: 8px;
-  padding: 16px 17px;
+  gap: 10px;
+  padding: 18px 18px 17px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 159, 10, 0.18), transparent 34%),
+    radial-gradient(circle at 0% 100%, rgba(90, 200, 250, 0.16), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 248, 255, 0.92));
 }
 
 .guide-kicker {
@@ -3398,21 +3416,49 @@ button.timeline-defense-badge:focus-visible {
 .guide-intro-card h3,
 .guide-step-copy h3 {
   margin: 0;
-  color: var(--text-strong);
+  color: #15171b;
   font-size: 1rem;
-  line-height: 1.28;
+  line-height: 1.34;
 }
 
 .guide-summary,
 .guide-note,
 .guide-step-copy p {
   margin: 0;
-  color: var(--muted-strong);
-  line-height: 1.6;
+  color: rgba(29, 29, 31, 0.76);
+  line-height: 1.62;
+}
+
+.guide-summary-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-summary-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: rgba(29, 29, 31, 0.78);
+  font-size: 0.9rem;
+  line-height: 1.52;
+}
+
+.guide-summary-list li strong {
+  flex: 0 0 auto;
+  min-width: 44px;
+  color: #0a4ea3;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .guide-note {
-  color: rgba(255, 214, 143, 0.86);
+  color: rgba(120, 78, 11, 0.88);
   font-size: 0.86rem;
 }
 
@@ -3430,7 +3476,10 @@ button.timeline-defense-badge:focus-visible {
 .guide-step-card {
   display: grid;
   gap: 12px;
-  padding: 15px 16px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(90, 200, 250, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 255, 0.88));
 }
 
 .guide-step-index {
@@ -3440,12 +3489,13 @@ button.timeline-defense-badge:focus-visible {
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  border: 1px solid rgba(23, 249, 166, 0.28);
-  background: rgba(23, 249, 166, 0.1);
-  color: var(--accent);
+  border: none;
+  background: linear-gradient(180deg, #0a84ff, #0071e3);
+  color: #ffffff;
   font-family: var(--font-mono);
   font-size: 0.82rem;
   font-weight: 800;
+  box-shadow: 0 12px 24px rgba(10, 132, 255, 0.2);
 }
 
 .guide-step-copy {
@@ -3456,14 +3506,16 @@ button.timeline-defense-badge:focus-visible {
 .guide-menu-card {
   display: grid;
   gap: 12px;
-  padding: 15px 16px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(0, 113, 227, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 248, 252, 0.86));
 }
 
 .guide-menu-card--muted {
   background:
-    radial-gradient(circle at top right, rgba(94, 200, 255, 0.06), transparent 28%),
-    linear-gradient(160deg, rgba(8, 16, 17, 0.96), rgba(6, 12, 13, 0.92)),
-    var(--panel-strong);
+    radial-gradient(circle at 100% 0%, rgba(90, 200, 250, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(248, 250, 255, 0.92), rgba(242, 245, 250, 0.82));
 }
 
 .guide-menu-copy {
@@ -3473,7 +3525,7 @@ button.timeline-defense-badge:focus-visible {
 
 .guide-menu-tag {
   margin: 0;
-  color: rgba(148, 179, 190, 0.86);
+  color: rgba(0, 113, 227, 0.74);
   font-family: var(--font-mono);
   font-size: 0.64rem;
   font-weight: 700;
@@ -3483,15 +3535,15 @@ button.timeline-defense-badge:focus-visible {
 
 .guide-menu-copy h3 {
   margin: 0;
-  color: var(--text-strong);
+  color: #15171b;
   font-size: 0.96rem;
-  line-height: 1.28;
+  line-height: 1.32;
 }
 
 .guide-menu-copy p {
   margin: 0;
-  color: var(--muted-strong);
-  line-height: 1.58;
+  color: rgba(29, 29, 31, 0.74);
+  line-height: 1.6;
 }
 
 .guide-step-actions {
@@ -3580,18 +3632,42 @@ button.timeline-defense-badge:focus-visible {
   color: var(--loss);
 }
 
+.initial-setup-form {
+  display: grid;
+  gap: 16px;
+}
+
+.initial-setup-block {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(29, 29, 31, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72)),
+    rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.initial-setup-block-head {
+  display: grid;
+  gap: 4px;
+}
+
+.initial-setup-block-head h3 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1rem;
+}
+
 .initial-setup-holdings-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.initial-setup-holdings-head h3 {
-  margin: 0 0 4px;
-  color: var(--text-strong);
-  font-size: 1rem;
 }
 
 .initial-setup-row-list {
@@ -3604,8 +3680,13 @@ button.timeline-defense-badge:focus-visible {
   gap: 12px;
   padding: 14px;
   border-radius: 18px;
-  border: 1px solid rgba(94, 200, 255, 0.14);
-  background: rgba(5, 12, 12, 0.48);
+  border: 1px solid rgba(29, 29, 31, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.78)),
+    rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 10px 24px rgba(15, 23, 42, 0.05);
 }
 
 .initial-setup-row-head {
@@ -3644,6 +3725,39 @@ button.timeline-defense-badge:focus-visible {
 
 .initial-setup-row .form-group {
   min-width: 0;
+}
+
+.initial-setup-row .form-group--select {
+  position: relative;
+}
+
+.initial-setup-row .form-group--select::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid rgba(81, 81, 84, 0.82);
+  border-bottom: 1.5px solid rgba(81, 81, 84, 0.82);
+  transform: rotate(45deg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.initial-setup-row .form-group--select select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  color-scheme: light;
+  border-color: rgba(29, 29, 31, 0.1) !important;
+  color: var(--text-strong) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.8)),
+    rgba(255, 255, 255, 0.24) !important;
+  background-image: none !important;
+  box-shadow: var(--glass-highlight);
+  padding-right: 42px;
 }
 
 @media (max-width: 760px) {

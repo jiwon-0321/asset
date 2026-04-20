@@ -37,7 +37,10 @@ module.exports = async (request, response) => {
 
       const mutationId = String(request.headers["x-mutation-id"] || "").trim();
       const payload = await readJsonBody(request);
-      const updatedPortfolio = await updateCashPositionEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, { mutationId });
+      const updatedPortfolio = await updateCashPositionEntry(rootDir, payload, profile.seedPortfolio, profile.stateKey, {
+        mutationId,
+        variant: profile.variant,
+      });
       sendJson(response, 200, updatedPortfolio);
       return;
     }
@@ -53,7 +56,9 @@ module.exports = async (request, response) => {
       return;
     }
 
-    const portfolio = await getCurrentPortfolio(rootDir, profile.seedPortfolio, profile.stateKey);
+    const portfolio = await getCurrentPortfolio(rootDir, profile.seedPortfolio, profile.stateKey, {
+      variant: profile.variant,
+    });
     sendJson(response, 200, portfolio);
   } catch (error) {
     sendError(response, error, "포트폴리오를 불러오지 못했습니다.", { statusResolver: resolveMutationErrorStatus });

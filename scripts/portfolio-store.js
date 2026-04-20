@@ -526,7 +526,7 @@ function getTargetItemMetadataFromInput(input) {
     symbol: parsedAsset.symbol,
     market: "kr-stock",
     currency: "KRW",
-    priceSource: "",
+    priceSource: "kis",
   });
 }
 
@@ -1118,7 +1118,7 @@ function getHoldingMetadataFromTrade(trade) {
   return {
     market: "kr-stock",
     currency: "KRW",
-    priceSource: "",
+    priceSource: "kis",
     symbol: trade.symbol || "",
   };
 }

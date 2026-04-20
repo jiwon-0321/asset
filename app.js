@@ -2547,7 +2547,18 @@ function initAccessGate() {
   const input = document.querySelector("#access-gate-code");
   let isSubmittingCode = false;
   let ownerCodeLength = 0;
+  let ownerCodeLengths = [];
   let lastAutoSubmittedCode = "";
+
+  const getAccessGateIdleMessage = () => {
+    if (ownerCodeLengths.length > 1) {
+      return "접속 코드를 모두 입력한 뒤 엔터로 열 수 있습니다.";
+    }
+    if (ownerCodeLength) {
+      return "접속 코드를 끝까지 입력하면 자동으로 열립니다.";
+    }
+    return "접속 코드를 입력해주세요.";
+  };
 
   syncViewportHeight();
   relockAccessGate();
@@ -2557,7 +2568,7 @@ function initAccessGate() {
     return;
   }
 
-  setAccessGateStatus("접속 코드를 입력해주세요.");
+  setAccessGateStatus(getAccessGateIdleMessage());
 
   const syncAutoSubmitConfig = async () => {
     try {
@@ -2569,19 +2580,28 @@ function initAccessGate() {
       });
       const payload = await response.json().catch(() => null);
       const nextLength = Number(payload?.ownerCodeLength);
+      const nextLengths = Array.isArray(payload?.ownerCodeLengths)
+        ? [...new Set(payload.ownerCodeLengths.map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))]
+            .sort((left, right) => left - right)
+        : [];
       if (payload?.board) {
         applyBoardConfig(payload.board);
       }
 
-      if (!response.ok || !Number.isInteger(nextLength) || nextLength <= 0) {
+      if (!response.ok) {
         return;
       }
 
-      ownerCodeLength = nextLength;
-      input.maxLength = nextLength;
+      ownerCodeLengths = nextLengths.length
+        ? nextLengths
+        : Number.isInteger(nextLength) && nextLength > 0
+          ? [nextLength]
+          : [];
+      ownerCodeLength = ownerCodeLengths.length === 1 ? ownerCodeLengths[0] : 0;
+      input.maxLength = ownerCodeLengths.length ? Math.max(...ownerCodeLengths) : 12;
 
       if (!String(input.value || "").trim()) {
-        setAccessGateStatus("접속 코드를 끝까지 입력하면 자동으로 열립니다.");
+        setAccessGateStatus(getAccessGateIdleMessage());
       }
     } catch (error) {
       console.error("Failed to load access gate config", error);
@@ -2669,16 +2689,17 @@ function initAccessGate() {
 
     if (!submittedCode) {
       lastAutoSubmittedCode = "";
-      setAccessGateStatus(ownerCodeLength ? "접속 코드를 끝까지 입력하면 자동으로 열립니다." : "접속 코드를 입력해주세요.");
+      setAccessGateStatus(getAccessGateIdleMessage());
       return;
     }
 
     if (submittedCode !== lastAutoSubmittedCode && document.querySelector("#access-gate-status")?.dataset.tone === "error") {
-      setAccessGateStatus(ownerCodeLength ? "접속 코드를 끝까지 입력하면 자동으로 열립니다." : "접속 코드를 입력해주세요.");
+      setAccessGateStatus(getAccessGateIdleMessage());
     }
 
     if (!ownerCodeLength || submittedCode.length !== ownerCodeLength || isSubmittingCode) {
-      if (submittedCode.length < ownerCodeLength) {
+      const longestKnownLength = ownerCodeLengths.length ? Math.max(...ownerCodeLengths) : ownerCodeLength;
+      if (submittedCode.length < longestKnownLength) {
         lastAutoSubmittedCode = "";
       }
       return;
@@ -4551,6 +4572,7 @@ function renderDashboard(data, options = {}) {
   applySectionVisibility();
   renderNotes(notesState);
   bindAllPanelAccordions();
+  ensureGuideSectionDefaultOpen(data);
   bindGuideSection(document.querySelector("#guide-section"));
   bindInitialSetupSection(document.querySelector("#initial-setup-section"));
   bindMobileSectionOverlay();
@@ -4712,7 +4734,7 @@ function getTargetFormHelpText(market = "") {
     return "영어 회사명이나 티커를 몇 글자만 입력해도 아래 추천 목록이 뜹니다. 예시: Apple Inc. (AAPL), TSLA, NVDA";
   }
 
-  return "예시: 삼성전자(005930), SK하이닉스(000660) · 국내주식 실시간은 다음 단계에서 연결";
+  return "예시: 삼성전자(005930), SK하이닉스(000660) · 종목 코드까지 넣으면 국내주식 현재가 추적이 더 정확해집니다.";
 }
 
 function getTargetFormIdleStatusText() {
@@ -4774,13 +4796,13 @@ function renderInitialSetupRows() {
             ${canRemove ? `<button type="button" class="initial-setup-row-remove" data-initial-setup-remove="${escapeHtml(row.id)}">삭제</button>` : ""}
           </div>
           <div class="initial-setup-row-grid">
-            <div class="form-group">
+            <div class="form-group form-group--select">
               <label>시장</label>
               <select data-initial-setup-field="market">
                 ${INITIAL_SETUP_MARKET_OPTIONS.map((option) => `<option value="${escapeHtml(option.value)}" ${row.market === option.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group form-group--select">
               <label>증권사 / 거래소</label>
               <select data-initial-setup-field="broker">
                 ${brokerOptions.map((option) => `<option value="${escapeHtml(option.value)}" ${row.broker === option.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
@@ -4810,6 +4832,36 @@ function renderInitialSetupRows() {
     .join("");
 
   setInnerHtmlIfChanged(container, markup);
+}
+
+function ensureGuideSectionDefaultOpen(data = currentPortfolioData || basePortfolioData || {}) {
+  if (getBoardVariant() !== EMPTY_BOARD_VARIANT || !isSectionVisible("guide-section")) {
+    return;
+  }
+
+  const guideSection = document.querySelector("#guide-section");
+  const trigger = guideSection?.querySelector(".section-toggle");
+  const panel = guideSection?.querySelector(".panel-collapse");
+  const shouldOpen = shouldShowGuideByDefault(data) || !String(currentUiPreferences?.updatedAt || "").trim();
+
+  if (!guideSection || guideSection.hidden || !trigger || !panel || !shouldOpen) {
+    return;
+  }
+
+  if (isMobileSectionMode()) {
+    if (mobileSectionState.sectionId && mobileSectionState.sectionId !== "guide-section") {
+      return;
+    }
+
+    if (mobileSectionState.sectionId !== "guide-section") {
+      openMobileSectionOverlay("guide-section");
+    } else {
+      forceOpenPanelAccordionsWithin(guideSection);
+    }
+    return;
+  }
+
+  toggleDisclosure(guideSection, trigger, panel, true);
 }
 
 function setInitialSetupStatus(message = "", tone = "neutral") {
@@ -7861,11 +7913,13 @@ function buildHeroSummary(live) {
 
   const cryptoRefresh = live?.cryptoRefreshIntervalSeconds || live?.refreshIntervalSeconds || 10;
   const marketRefresh = live?.marketRefreshIntervalSeconds || 60;
-  const marketRefreshCopy =
+  const usMarketRefreshCopy =
     marketRefresh >= 24 * 60 * 60
       ? "미국주식 미국장 시작 이후 정규장에만 갱신"
       : `미국주식 미국장 시작 이후 정규장 ${formatNumber(marketRefresh)}초`;
-  const refreshCopy = `코인 ${formatNumber(cryptoRefresh)}초 · ${marketRefreshCopy} · 국내주식 실시간 미지원 · 환율 일 1회`;
+  const krMarketRefreshCopy =
+    marketRefresh >= 24 * 60 * 60 ? "국내주식 국내장에만 갱신" : `국내주식 국내장 ${formatNumber(marketRefresh)}초`;
+  const refreshCopy = `코인 ${formatNumber(cryptoRefresh)}초 · ${usMarketRefreshCopy} · ${krMarketRefreshCopy} · 환율 일 1회`;
 
   if (window.location.protocol === "file:") {
     return `실시간 가격은 서버 모드에서만 동작합니다. \`node scripts/dev-server.js\` 로 실행하면 ${refreshCopy}로 갱신됩니다.`;
@@ -8170,9 +8224,11 @@ function resolveInstrumentQuoteFromMap(instrument = {}, quotes = {}) {
 
 function buildInstrumentMeta(instrument, quote) {
   const scopeCopy = buildMarketLabel(instrument.market);
-  const isUsClosedQuote =
-    instrument?.market === "us-stock" && quote?.available && quote?.isMarketOpen === false;
-  const statusCopy = isUsClosedQuote ? "장 마감 종가" : quote?.isDelayed ? "업데이트 지연" : null;
+  const isClosedQuote =
+    ["us-stock", "kr-stock"].includes(String(instrument?.market || "")) &&
+    quote?.available &&
+    quote?.isMarketOpen === false;
+  const statusCopy = isClosedQuote ? "장 마감 종가" : quote?.isDelayed ? "업데이트 지연" : null;
 
   return [instrument.symbol || scopeCopy, statusCopy || scopeCopy].filter(Boolean).join(" · ");
 }
@@ -8328,7 +8384,7 @@ function buildMarketLabel(market) {
 
 function isLivePriceTrackableMarket(market = "") {
   const normalized = String(market || "").trim().toLowerCase();
-  return normalized === "crypto" || normalized === "us-stock";
+  return normalized === "crypto" || normalized === "us-stock" || normalized === "kr-stock";
 }
 
 function resolveHoldingLiveStatus(holding = {}, quote = null) {
@@ -8353,7 +8409,7 @@ function resolveHoldingLiveStatus(holding = {}, quote = null) {
     };
   }
 
-  if (holding.market === "us-stock" && quote.isMarketOpen === false) {
+  if ((holding.market === "us-stock" || holding.market === "kr-stock") && quote.isMarketOpen === false) {
     return {
       label: "장 마감 종가",
       warning: false,

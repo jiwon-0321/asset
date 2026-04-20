@@ -83,19 +83,13 @@
 
   function getDefaultVisibleSectionIds(variant = BOARD_DEFAULT_CONFIG.variant, data = {}, notes = []) {
     if (variant === EMPTY_BOARD_VARIANT) {
-      const visibleSections = [
+      return [
+        "guide-section",
         "targets-section",
         "portfolio-overview-section",
         "timeline-section",
-        "notes-section",
         "holdings-section",
       ];
-
-      if (shouldShowGuideByDefault(variant, data, notes)) {
-        visibleSections.unshift("guide-section");
-      }
-
-      return visibleSections;
     }
 
     return getToggleableSectionOptions(variant).map((item) => item.id);

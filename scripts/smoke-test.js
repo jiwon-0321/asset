@@ -45,6 +45,7 @@ const { buildTradeFeeSummaryText, estimateTradeFee } = require("../lib/trade-fee
 const ROOT = path.resolve(__dirname, "..");
 const OWNER_CODE = "smoke-owner-code";
 const GUEST_CODE = "smoke-guest-code";
+const ONBOARDING_OWNER_CODE = "on42";
 
 process.env.OWNER_ACCESS_CODE = OWNER_CODE;
 process.env.GUEST_ACCESS_CODES = GUEST_CODE;
@@ -344,6 +345,49 @@ function buildLivePriceFetchMock(overrides = {}) {
       });
     }
 
+    if (url.hostname === "openapi.koreainvestment.com" && url.pathname === "/oauth2/tokenP") {
+      return buildJsonResponse({
+        access_token: "smoke-kis-token",
+        access_token_token_expired: "2099-12-31 23:59:59",
+        expires_in: 7776000,
+        token_type: "Bearer",
+      });
+    }
+
+    if (
+      url.hostname === "openapi.koreainvestment.com" &&
+      url.pathname === "/uapi/domestic-stock/v1/quotations/inquire-price"
+    ) {
+      const symbol = String(url.searchParams.get("FID_INPUT_ISCD") || "").trim().toUpperCase();
+      if (symbol === String(overrides.failSymbol || "").trim().toUpperCase()) {
+        return buildJsonResponse({
+          rt_cd: "1",
+          msg1: `${symbol} failed`,
+        });
+      }
+
+      const payloadBySymbol = {
+        "005930": {
+          stck_prpr: "70200",
+          prdy_ctrt: "1.25",
+          stck_bsop_date: "20260420",
+          stck_cntg_hour: "101500",
+          stck_sdpr: "69300",
+        },
+      };
+      return buildJsonResponse({
+        rt_cd: "0",
+        msg1: "정상처리되었습니다.",
+        output: payloadBySymbol[symbol] || {
+          stck_prpr: "85000",
+          prdy_ctrt: "0.50",
+          stck_bsop_date: "20260420",
+          stck_cntg_hour: "101500",
+          stck_sdpr: "84500",
+        },
+      });
+    }
+
     if (url.hostname === "query1.finance.yahoo.com" && url.pathname.startsWith("/v8/finance/chart/")) {
       const symbol = decodeURIComponent(url.pathname.split("/").pop() || "").trim().toUpperCase();
       const baseBySymbol = {
@@ -398,13 +442,19 @@ function buildLivePriceFetchMock(overrides = {}) {
 async function run() {
   const originalBlobToken = process.env.BLOB_READ_WRITE_TOKEN;
   const originalTwelveDataKey = process.env.TWELVE_DATA_API_KEY;
+  const originalKisAppKey = process.env.KIS_APP_KEY;
+  const originalKisAppSecret = process.env.KIS_APP_SECRET;
   const originalStorageProvider = process.env.STORAGE_PROVIDER;
   const originalBoardVariant = process.env.BOARD_VARIANT;
   const originalOwnerStateKey = process.env.OWNER_STATE_KEY;
+  const originalOwnerAccessCodeProfiles = process.env.OWNER_ACCESS_CODE_PROFILES;
   delete process.env.BLOB_READ_WRITE_TOKEN;
   process.env.STORAGE_PROVIDER = "local";
   process.env.BOARD_VARIANT = "personal";
   process.env.OWNER_STATE_KEY = "owner";
+  delete process.env.OWNER_ACCESS_CODE_PROFILES;
+  process.env.KIS_APP_KEY = "smoke-kis-app-key";
+  process.env.KIS_APP_SECRET = "smoke-kis-app-secret";
 
   try {
     await assertModuleExports(path.join(ROOT, "client/timeline-panel.js"), [
@@ -455,6 +505,17 @@ async function run() {
       guestAccessProfile.seedPortfolio,
       "guest live prices should keep using the seeded guest portfolio"
     );
+    process.env.BOARD_VARIANT = "blank-family";
+    process.env.OWNER_STATE_KEY = "family-owner";
+    const onboardingOwnerLiveProfile = resolveAccessProfile(OWNER_CODE, bundledPortfolioData);
+    assert.equal(onboardingOwnerLiveProfile.ok, true, "blank-family owner access profile should resolve");
+    assert.equal(
+      livePricesHandler.resolveLivePriceSeedPortfolio(onboardingOwnerLiveProfile),
+      onboardingOwnerLiveProfile.seedPortfolio,
+      "blank-family owner live prices should use the seeded portfolio when the namespaced state is still empty"
+    );
+    process.env.BOARD_VARIANT = "personal";
+    process.env.OWNER_STATE_KEY = "owner";
 
     const missingConfigFailure = getAccessFailureResponse({ reason: "owner_code_missing" });
     assert.equal(missingConfigFailure.statusCode, 503, "missing owner code should map to 503");
@@ -467,6 +528,34 @@ async function run() {
     assert.equal(accessResponse.statusCode, 200, "access api should accept owner code");
     assert.equal(accessResponse.payload?.mode, "owner");
     assert.equal(accessResponse.payload?.board?.variant, "personal", "access POST should expose the active board variant");
+
+    process.env.OWNER_ACCESS_CODE_PROFILES = JSON.stringify([
+      {
+        code: ONBOARDING_OWNER_CODE,
+        stateKey: "friend-onboarding",
+        variant: "blank-family",
+      },
+    ]);
+    const onboardingProfile = resolveAccessProfile(ONBOARDING_OWNER_CODE, bundledPortfolioData);
+    assert.equal(onboardingProfile.ok, true, "configured onboarding owner profile should resolve");
+    assert.equal(onboardingProfile.stateKey, "friend-onboarding", "configured onboarding profile should honor its state key");
+    assert.equal(onboardingProfile.board?.variant, "blank-family", "configured onboarding profile should expose blank-family");
+    const multiOwnerAccessConfigResponse = await invokeJsonHandler(accessHandler, buildGetRequest("GET", "/api/access"));
+    assert.equal(multiOwnerAccessConfigResponse.statusCode, 200, "access api config should still load with multiple owner profiles");
+    assert.equal(
+      multiOwnerAccessConfigResponse.payload?.ownerCodeLength,
+      0,
+      "multiple owner code lengths should disable single-length auto submit"
+    );
+    assert.deepEqual(
+      multiOwnerAccessConfigResponse.payload?.ownerCodeLengths,
+      [ONBOARDING_OWNER_CODE.length, OWNER_CODE.length].sort((left, right) => left - right),
+      "access GET should expose every configured owner code length"
+    );
+    const onboardingAccessResponse = await invokeJsonHandler(accessHandler, buildJsonRequest("POST", { code: ONBOARDING_OWNER_CODE }));
+    assert.equal(onboardingAccessResponse.statusCode, 200, "access api should accept onboarding owner codes");
+    assert.equal(onboardingAccessResponse.payload?.mode, "owner");
+    assert.equal(onboardingAccessResponse.payload?.board?.variant, "blank-family", "onboarding owner should open blank-family board");
 
     process.env.BOARD_VARIANT = "blank-family";
     process.env.OWNER_STATE_KEY = "family-owner";
@@ -1074,7 +1163,12 @@ async function run() {
         true,
         "initial live snapshot should populate PLTR"
       );
-      assert.equal(firstLiveSnapshot.indices?.korea?.length, 0, "korean major indices should stay hidden before KR API");
+      assert.equal(
+        firstLiveSnapshot.quotes["삼성전자"]?.available,
+        true,
+        "initial live snapshot should populate Samsung Electronics"
+      );
+      assert.equal(firstLiveSnapshot.indices?.korea?.length, 0, "korean major indices should stay hidden in the strip");
       assert.equal(firstLiveSnapshot.indices?.us?.length, 0, "live snapshot should omit US major indices");
       assert.ok(Number(firstLiveSnapshot.fx?.usdkrw) > 0, "live snapshot should include a USD/KRW rate");
       const firstLiveHolding = firstLiveSnapshot.portfolioLive?.holdings?.[0] || null;
@@ -1153,6 +1247,18 @@ async function run() {
       delete process.env.TWELVE_DATA_API_KEY;
     }
 
+    if (originalKisAppKey) {
+      process.env.KIS_APP_KEY = originalKisAppKey;
+    } else {
+      delete process.env.KIS_APP_KEY;
+    }
+
+    if (originalKisAppSecret) {
+      process.env.KIS_APP_SECRET = originalKisAppSecret;
+    } else {
+      delete process.env.KIS_APP_SECRET;
+    }
+
     if (originalStorageProvider) {
       process.env.STORAGE_PROVIDER = originalStorageProvider;
     } else {
@@ -1169,6 +1275,12 @@ async function run() {
       process.env.OWNER_STATE_KEY = originalOwnerStateKey;
     } else {
       delete process.env.OWNER_STATE_KEY;
+    }
+
+    if (originalOwnerAccessCodeProfiles) {
+      process.env.OWNER_ACCESS_CODE_PROFILES = originalOwnerAccessCodeProfiles;
+    } else {
+      delete process.env.OWNER_ACCESS_CODE_PROFILES;
     }
   }
 }

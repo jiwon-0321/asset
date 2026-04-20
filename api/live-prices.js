@@ -8,7 +8,14 @@ const LIVE_PRICE_STALE_MS = 8000;
 const livePriceSnapshotCache = new Map();
 
 function resolveLivePriceSeedPortfolio(profile = null) {
-  return profile?.mode === "guest" ? profile.seedPortfolio || null : null;
+  const stateKey = String(profile?.stateKey || "").trim();
+  if (!profile?.seedPortfolio) {
+    return null;
+  }
+
+  return profile?.mode === "guest" || (profile?.mode === "owner" && stateKey && stateKey !== "owner")
+    ? profile.seedPortfolio
+    : null;
 }
 
 function shouldBypassLivePriceCache(request) {

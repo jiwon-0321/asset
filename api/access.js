@@ -4,15 +4,16 @@ const {
   getAccessFailureResponse,
   getResolvedBoardConfig,
   resolveAccessProfile,
-  resolveOwnerAccessCode,
+  resolveOwnerAccessCodeLengths,
 } = require("../lib/access-control");
 
 module.exports = async (request, response) => {
   if (request.method === "GET") {
-    const ownerAccessCode = resolveOwnerAccessCode();
+    const ownerCodeLengths = resolveOwnerAccessCodeLengths();
     sendJson(response, 200, {
       ok: true,
-      ownerCodeLength: ownerAccessCode ? ownerAccessCode.length : 0,
+      ownerCodeLength: ownerCodeLengths.length === 1 ? ownerCodeLengths[0] : 0,
+      ownerCodeLengths,
       board: getResolvedBoardConfig(),
     });
     return;

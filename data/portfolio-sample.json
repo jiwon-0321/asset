@@ -151,7 +151,7 @@
             "symbol": "005930",
             "market": "kr-stock",
             "currency": "KRW",
-            "priceSource": "krx"
+            "priceSource": "kis"
           }
         ]
       }

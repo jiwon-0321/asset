@@ -31,7 +31,10 @@ module.exports = async (request, response) => {
       payload,
       profile.seedPortfolio,
       profile.stateKey,
-      { mutationId }
+      {
+        mutationId,
+        variant: profile.variant,
+      }
     );
 
     sendJson(response, 200, portfolio);
