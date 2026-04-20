@@ -1,0 +1,48 @@
+# Firebase service account keys
+config/serviceAccountKey.json
+config/*.json
+*-firebase-adminsdk-*.json
+firebase-config.js
+
+# Backup files
+backup/
+backups/
+*.xlsx
+data/backups/
+
+# Temporary and broken files
+*.broken
+Screenshot*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.log
+
+# Environment files
+.env
+node_modules/
+data/notes.json
+data/notes.*.json
+data/portfolio.*.json
+.env*.local
+.vercel/
+private/

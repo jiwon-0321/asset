@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "routes": [
+    {
+      "src": "/api/cash-positions",
+      "dest": "/api/portfolio"
+    },
+    {
+      "src": "/api/storage-health",
+      "dest": "/api/portfolio?storageHealth=1"
+    },
+    {
+      "src": "/api/trade-photo-assist",
+      "dest": "/api/trades?photoAssist=1"
+    },
+    {
+      "src": "/data/portfolio\\.json",
+      "dest": "/api/blocked-data"
+    }
+  ]
+}

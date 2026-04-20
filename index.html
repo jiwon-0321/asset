@@ -1,0 +1,1172 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#f5f5f7" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Asset Board" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Portfolio Board</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;800&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
+    />
+    <link rel="stylesheet" href="./styles.css?v=20260419-2" />
+  </head>
+  <body class="access-locked">
+    <div class="access-gate" id="access-gate" aria-hidden="false">
+      <div class="access-gate-card">
+        <div class="access-gate-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <rect x="5" y="10" width="14" height="10" rx="3" />
+            <path d="M8 10V7.5A4 4 0 0 1 12 3.5a4 4 0 0 1 4 4V10" />
+            <circle cx="12" cy="15" r="1.2" />
+          </svg>
+        </div>
+        <p class="access-gate-kicker">Private Access</p>
+        <h1 class="access-gate-title">Access Code</h1>
+        <p class="access-gate-copy">코드가 맞으면 포트폴리오 보드가 바로 열립니다.</p>
+        <form class="access-gate-form" id="access-gate-form">
+          <label class="sr-only" for="access-gate-code">접속 코드</label>
+          <input
+            id="access-gate-code"
+            type="password"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            placeholder="접속 코드"
+            maxlength="12"
+            required
+          />
+        </form>
+        <p class="access-gate-status" id="access-gate-status" role="status" aria-live="polite">
+          접속 코드를 입력해주세요.
+        </p>
+      </div>
+    </div>
+    <div class="page-shell">
+      <header class="hero reveal">
+        <div class="hero-window-chrome" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="hero-orb hero-orb--pearl" aria-hidden="true"></div>
+        <div class="hero-orb hero-orb--aqua" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <p class="eyebrow" id="hero-kicker">Portfolio Board</p>
+          <h1 id="page-title" class="hero-title">투자 현황 보드</h1>
+          <p class="hero-summary" id="hero-summary"></p>
+          <div class="hero-meta">
+            <span id="basis-date"></span>
+          </div>
+        </div>
+        <aside class="hero-panel">
+          <div class="hero-panel-chrome" aria-hidden="true">
+            <span class="hero-panel-chip">Live Surface</span>
+            <div class="hero-panel-dots">
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+          <p class="panel-kicker">Live price</p>
+          <div class="price-strip" id="price-strip"></div>
+        </aside>
+      </header>
+
+      <main class="dashboard">
+        <section class="section reveal" id="initial-setup-section" hidden>
+          <article class="panel initial-setup-card">
+            <div class="initial-setup-head">
+              <div>
+                <p class="eyebrow">Starting Setup</p>
+                <h2>시작 자산 입력</h2>
+              </div>
+              <span class="initial-setup-badge">blank-family</span>
+            </div>
+            <p class="initial-setup-summary">
+              오늘 기준 현금과 현재 보유 종목만 입력하면 보드가 바로 시작됩니다. 이후에는 거래 타임라인으로 이어서 관리하면 됩니다.
+            </p>
+            <form class="initial-setup-form" id="initial-setup-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="initial-setup-cash">시작 현금 / 예수금</label>
+                  <input id="initial-setup-cash" name="cashAmount" type="number" min="0" step="1" placeholder="0" />
+                  <p class="initial-setup-help">원 단위로 입력합니다. 비워두면 0원으로 시작합니다.</p>
+                </div>
+              </div>
+              <div class="initial-setup-holdings-head">
+                <div>
+                  <h3>현재 보유 종목</h3>
+                  <p>현재 들고 있는 종목만 넣으세요. 평균 단가는 원 기준으로 입력합니다.</p>
+                </div>
+                <button type="button" class="btn-secondary btn-secondary--compact" id="initial-setup-add-row">종목 추가</button>
+              </div>
+              <div class="initial-setup-row-list" id="initial-setup-row-list"></div>
+              <p class="initial-setup-status" id="initial-setup-status" role="status" aria-live="polite"></p>
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" id="initial-setup-reset">입력 비우기</button>
+                <button type="submit" class="btn-primary" id="initial-setup-submit">시작 자산 저장</button>
+              </div>
+            </form>
+          </article>
+        </section>
+
+        <section class="metric-grid reveal" id="metric-grid"></section>
+
+        <section class="mobile-hub reveal" id="mobile-hub" aria-label="모바일 빠른 메뉴">
+          <div class="mobile-hub-grid" id="mobile-hub-grid"></div>
+        </section>
+
+        <section class="section reveal panel-accordion" id="guide-section" hidden aria-hidden="true">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="guide-toggle"
+              aria-expanded="false"
+              aria-controls="guide-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 3.5 4 8v8l8 4.5 8-4.5V8z" />
+                    <path d="M12 8.5v7" />
+                    <path d="M8.75 11.5h6.5" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Guide</p>
+                  <h2>안내</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="guide-panel" aria-hidden="true">
+            <div class="guide-panel">
+              <article class="guide-intro-card">
+                <p class="guide-kicker">Quick Start</p>
+                <h3>처음 사용하는 순서</h3>
+                <p class="guide-summary">처음엔 아래 순서대로만 따라가면 보드 흐름이 바로 잡힙니다. 이후에는 필요한 메뉴만 골라 쓰면 됩니다.</p>
+                <p class="guide-note">홈 화면에 추가하면 주소창 없이 앱처럼 사용할 수 있습니다.</p>
+              </article>
+
+              <section class="guide-block">
+                <div class="guide-block-head">
+                  <p class="guide-block-kicker">Start Here</p>
+                  <h3>처음엔 이 3단계만 보면 됩니다</h3>
+                </div>
+                <div class="guide-quick-grid">
+                  <article class="guide-step-card">
+                    <span class="guide-step-index">1</span>
+                    <div class="guide-step-copy">
+                      <h3>시작 자산 입력</h3>
+                      <p>처음 기준이 되는 현금과 현재 보유 종목을 먼저 입력합니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="initial-setup-section">시작 자산 입력으로 이동</button>
+                    </div>
+                  </article>
+
+                  <article class="guide-step-card">
+                    <span class="guide-step-index">2</span>
+                    <div class="guide-step-copy">
+                      <h3>관심종목 추가</h3>
+                      <p>나중에 볼 종목을 먼저 모아두면 Live price와 함께 관리하기 쉽습니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="targets-section">관심종목 열기</button>
+                    </div>
+                  </article>
+
+                  <article class="guide-step-card">
+                    <span class="guide-step-index">3</span>
+                    <div class="guide-step-copy">
+                      <h3>거래 추가·수정</h3>
+                      <p>매수와 매도 기록을 넣으면 보유 종목, 손익, 타임라인이 함께 정리됩니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="timeline-section">거래 타임라인 열기</button>
+                    </div>
+                  </article>
+                </div>
+              </section>
+
+              <section class="guide-block">
+                <div class="guide-block-head">
+                  <p class="guide-block-kicker">Menus</p>
+                  <h3>메뉴별로 무엇을 하는지 한 번에 보기</h3>
+                </div>
+                <div class="guide-menu-list">
+                  <article class="guide-menu-card">
+                    <div class="guide-menu-copy">
+                      <p class="guide-menu-tag">기본 메뉴</p>
+                      <h3>관심종목</h3>
+                      <p>후보 종목을 모아두는 곳입니다. 저장하면 Live price에서 함께 추적합니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="targets-section">관심종목 열기</button>
+                    </div>
+                  </article>
+
+                  <article class="guide-menu-card">
+                    <div class="guide-menu-copy">
+                      <p class="guide-menu-tag">기본 메뉴</p>
+                      <h3>자산 분포</h3>
+                      <p>현금과 보유 자산 비중, 총 자산 흐름을 한눈에 확인하는 메뉴입니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="portfolio-overview-section">자산 분포 열기</button>
+                    </div>
+                  </article>
+
+                  <article class="guide-menu-card">
+                    <div class="guide-menu-copy">
+                      <p class="guide-menu-tag">핵심 메뉴</p>
+                      <h3>거래 타임라인</h3>
+                      <p>매수와 매도 기록을 날짜별로 저장하는 핵심 메뉴입니다. 보유 종목과 손익 계산의 기준이 됩니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="timeline-section">거래 타임라인 열기</button>
+                    </div>
+                  </article>
+
+                  <article class="guide-menu-card">
+                    <div class="guide-menu-copy">
+                      <p class="guide-menu-tag">기본 메뉴</p>
+                      <h3>메모</h3>
+                      <p>매수 이유, 체크포인트, 복기 내용을 간단하게 남기는 공간입니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="notes-section">메모 열기</button>
+                    </div>
+                  </article>
+
+                  <article class="guide-menu-card">
+                    <div class="guide-menu-copy">
+                      <p class="guide-menu-tag">기본 메뉴</p>
+                      <h3>보유 종목</h3>
+                      <p>저장한 거래를 기준으로 현재 보유 수량, 평가금액, 손익을 보여줍니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="holdings-section">보유 종목 열기</button>
+                    </div>
+                  </article>
+
+                  <article class="guide-menu-card">
+                    <div class="guide-menu-copy">
+                      <p class="guide-menu-tag">기본 메뉴</p>
+                      <h3>세팅</h3>
+                      <p>안 쓰는 메뉴를 숨기고, 필요한 메뉴만 남겨서 보드를 정리할 수 있습니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="settings-section">세팅 열기</button>
+                    </div>
+                  </article>
+                </div>
+              </section>
+
+              <section class="guide-block">
+                <div class="guide-block-head">
+                  <p class="guide-block-kicker">Optional</p>
+                  <h3>필요하면 세팅에서 켤 수 있는 추가 메뉴</h3>
+                </div>
+                <div class="guide-menu-list">
+                  <article class="guide-menu-card guide-menu-card--muted">
+                    <div class="guide-menu-copy">
+                      <p class="guide-menu-tag">추가 메뉴</p>
+                      <h3>전략 상태</h3>
+                      <p>매수 단계와 전략 자금을 따로 관리할 때 사용하는 메뉴입니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="settings-section">세팅에서 켜기</button>
+                    </div>
+                  </article>
+
+                  <article class="guide-menu-card guide-menu-card--muted">
+                    <div class="guide-menu-copy">
+                      <p class="guide-menu-tag">추가 메뉴</p>
+                      <h3>실현손익 추이</h3>
+                      <p>실제로 매도해서 확정된 손익 흐름을 기간별로 보고 싶을 때 씁니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="settings-section">세팅에서 켜기</button>
+                    </div>
+                  </article>
+
+                  <article class="guide-menu-card guide-menu-card--muted">
+                    <div class="guide-menu-copy">
+                      <p class="guide-menu-tag">추가 메뉴</p>
+                      <h3>암호화폐 방어지표</h3>
+                      <p>특정 종목의 방어 매매 기준과 누적 흐름을 따로 보고 싶을 때 사용합니다.</p>
+                    </div>
+                    <div class="guide-step-actions">
+                      <button type="button" class="btn-secondary" data-guide-open="settings-section">세팅에서 켜기</button>
+                    </div>
+                  </article>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal panel-accordion" id="settings-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="settings-toggle"
+              aria-expanded="false"
+              aria-controls="settings-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3.5" />
+                    <path d="M12 2.75v3" />
+                    <path d="M12 18.25v3" />
+                    <path d="m4.72 4.72 2.12 2.12" />
+                    <path d="m17.16 17.16 2.12 2.12" />
+                    <path d="M2.75 12h3" />
+                    <path d="M18.25 12h3" />
+                    <path d="m4.72 19.28 2.12-2.12" />
+                    <path d="m17.16 6.84 2.12-2.12" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Settings</p>
+                  <h2>세팅</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="settings-panel" aria-hidden="true">
+            <div class="settings-card">
+              <div class="settings-copy">
+                <p class="settings-kicker">Visible Menus</p>
+                <h3 class="settings-title">필요한 메뉴만 남겨서 쓰세요</h3>
+                <p class="settings-summary">체크를 끄면 모바일 빠른 메뉴와 본문 섹션에서 동시에 숨겨집니다.</p>
+              </div>
+              <p class="settings-status" id="settings-status" role="status" aria-live="polite"></p>
+              <div class="settings-option-list" id="settings-option-list"></div>
+              <div class="settings-utility-list" id="settings-utility-list"></div>
+              <div class="settings-actions">
+                <button type="button" class="btn-secondary" id="settings-reset">기본 구성으로 되돌리기</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal panel-accordion" id="targets-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="targets-toggle"
+              aria-expanded="false"
+              aria-controls="targets-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="7.5" />
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 2.5v3" />
+                    <path d="M12 18.5v3" />
+                    <path d="M2.5 12h3" />
+                    <path d="M18.5 12h3" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Watchlist</p>
+                  <h2>관심종목</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="targets-panel" aria-hidden="true">
+            <div class="targets-layout">
+              <article class="panel targets-hero-card" id="targets-hero"></article>
+              <div class="section-bar-menu" id="target-entry-menu">
+                <button
+                  type="button"
+                  class="section-bar-toggle"
+                  id="target-entry-toggle"
+                  data-section-bar-toggle
+                  aria-expanded="false"
+                  aria-controls="target-entry-panel"
+                >
+                  <div class="section-bar-copy">
+                    <p class="eyebrow">Watchlist Entry</p>
+                    <strong>관심종목 추가</strong>
+                    <span>필요할 때만 열어서 저장합니다.</span>
+                  </div>
+                  <span class="section-bar-toggle-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </span>
+                </button>
+                <div class="section-bar-panel" id="target-entry-panel" data-section-bar-panel aria-hidden="true">
+                  <div class="section-bar-panel-inner">
+                    <article class="panel targets-entry-card" id="target-entry-card">
+                      <div class="targets-entry-head">
+                        <div>
+                          <p class="eyebrow">Watchlist Entry</p>
+                          <h3>관심종목 추가</h3>
+                        </div>
+                        <span class="targets-entry-badge">저장형</span>
+                      </div>
+                      <p class="targets-entry-summary">
+                        테스트용으로 바로 넣을 수 있게 만들었습니다. 미국주식과 코인은 티커까지 같이 적으면 실시간 추적이 더 정확해집니다.
+                      </p>
+                      <form class="trade-form targets-entry-form" id="target-form">
+                        <div class="form-row">
+                          <div class="form-group">
+                            <label for="target-market">시장</label>
+                            <select id="target-market" name="market" required>
+                              <option value="암호화폐">암호화폐</option>
+                              <option value="미국주식">미국주식</option>
+                              <option value="국내주식">국내주식</option>
+                            </select>
+                          </div>
+                          <div class="form-group form-group--autocomplete">
+                            <label for="target-asset">자산</label>
+                            <div class="asset-autocomplete-field">
+                              <input id="target-asset" name="asset" type="text" placeholder="솔라나(SOL)" required />
+                              <div class="asset-suggestion-panel" id="target-asset-suggestions" hidden></div>
+                            </div>
+                          </div>
+                        </div>
+                        <p class="targets-entry-help" id="target-help">
+                          예시: 솔라나(SOL), 애플(AAPL), 삼성전자(005930)
+                        </p>
+                        <p class="target-form-status" id="target-form-status" role="status" aria-live="polite">
+                          저장하면 관심종목과 Live price 추적 대상에 바로 반영됩니다.
+                        </p>
+                        <div class="form-actions">
+                          <button type="button" class="btn-secondary" id="target-reset">초기화</button>
+                          <button type="submit" class="btn-primary" id="target-submit">관심종목 추가</button>
+                        </div>
+                      </form>
+                    </article>
+                  </div>
+                </div>
+              </div>
+              <div class="targets-grid" id="targets-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="portfolio-overview-section">
+          <div class="panel panel-accordion" id="allocation-section">
+            <div class="section-heading section-heading--accordion">
+              <button
+                type="button"
+                class="section-toggle"
+                id="allocation-toggle"
+                aria-expanded="false"
+                aria-controls="allocation-panel"
+              >
+                <div class="section-heading-main">
+                  <span class="section-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 3v9l7.5 4.5A9 9 0 1 1 12 3Z" />
+                      <path d="M13.5 3.2A9 9 0 0 1 21 12h-7.5V3.2Z" />
+                    </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Portfolio Mix</p>
+                  <h2>자산 분포</h2>
+                </div>
+                </div>
+                <span class="section-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="panel-collapse" id="allocation-panel" aria-hidden="true">
+              <div class="allocation-layout">
+                <div class="allocation-visual" id="allocation-visual"></div>
+                <div class="allocation-legend" id="allocation-legend"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="timeline-section">
+          <div class="panel panel-accordion">
+            <div class="section-heading section-heading--accordion">
+              <button
+                type="button"
+                class="section-toggle"
+                id="timeline-toggle"
+                aria-expanded="false"
+                aria-controls="timeline-panel"
+              >
+                <div class="section-heading-main">
+                  <span class="section-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 7v5l3 2" />
+                      <circle cx="12" cy="12" r="8.5" />
+                    </svg>
+                </span>
+                <div class="section-heading-copy">
+                      <p class="eyebrow">Trade Journal</p>
+                      <h2>전체 거래 타임라인</h2>
+                  </div>
+                </div>
+                <span class="section-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="panel-collapse" id="timeline-panel" aria-hidden="true">
+              <div class="timeline-toolbar">
+                <button type="button" class="btn-add-trade" id="btn-add-trade" aria-label="거래 추가">
+                  <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  거래 추가
+                </button>
+              </div>
+              <div class="timeline" id="timeline"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal panel-accordion" id="notes-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="notes-toggle"
+              aria-expanded="false"
+              aria-controls="notes-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M6 4.5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H9l-5 3v-16a2 2 0 0 1 2-2Z" />
+                    <path d="M8 9h8" />
+                    <path d="M8 13h6" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Memo Board</p>
+                  <h2>메모</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="notes-panel" aria-hidden="true">
+            <div class="notes-layout">
+              <form class="notes-composer" id="notes-form">
+                <div class="notes-composer-head">
+                  <div>
+                    <p class="eyebrow" id="notes-form-eyebrow">Quick Memo</p>
+                    <h3 id="notes-form-title">투자 메모 저장</h3>
+                  </div>
+                  <span class="status-tag" id="notes-count">0개</span>
+                </div>
+                <div class="form-group">
+                  <label for="note-title">제목</label>
+                  <input type="text" id="note-title" name="title" placeholder="예: 다음 매수 체크포인트" />
+                </div>
+                <div class="form-group form-group--full">
+                  <label for="note-body">메모</label>
+                  <textarea id="note-body" name="body" rows="5" placeholder="손익비, 매수 조건, 주의할 점을 적어두세요."></textarea>
+                </div>
+                <p class="notes-status" id="notes-status" role="status" aria-live="polite"></p>
+                <div class="form-actions">
+                  <button type="button" class="btn-secondary" data-note-reset>입력 비우기</button>
+                  <button type="submit" class="btn-primary">메모 저장</button>
+                </div>
+              </form>
+              <div class="notes-list" id="notes-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal panel-accordion" id="holdings-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="holdings-toggle"
+              aria-expanded="false"
+              aria-controls="holdings-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 7.5h16v10H4z" />
+                    <path d="M8 7.5V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5" />
+                    <path d="M4 12h16" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Open Positions</p>
+                  <h2>보유 종목 상세</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="holdings-panel" aria-hidden="true">
+            <div class="holdings-grid" id="holdings-grid"></div>
+          </div>
+        </section>
+
+        <section class="section reveal panel-accordion" id="strategy-state-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="strategy-state-toggle"
+              aria-expanded="false"
+              aria-controls="strategy-state-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 18h16" />
+                    <path d="M7 16v-4" />
+                    <path d="M12 16V9" />
+                    <path d="M17 16v-7" />
+                    <path d="M6 6h12" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Strategy State</p>
+                  <h2>전략 상태</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="strategy-state-panel" aria-hidden="true">
+            <div class="strategy-state-layout">
+              <article class="panel strategy-state-panel">
+                <div class="strategy-state-panel-head">
+                  <div>
+                    <p class="eyebrow">Position Flow</p>
+                    <h3>진입률과 남은 포지션</h3>
+                  </div>
+                  <span class="status-tag">단계 전환 가능</span>
+                </div>
+                <p class="notes-status strategy-state-status" id="strategy-state-status" role="status" aria-live="polite"></p>
+                <div class="strategy-state-empty" id="strategy-state-empty" hidden></div>
+                <div class="strategy-state-grid" id="strategy-state-grid"></div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal charts-section panel-accordion" id="performance-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="performance-toggle"
+              aria-expanded="false"
+              aria-controls="performance-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 18V6" />
+                    <path d="M4 18h16" />
+                    <path d="M8 14v-3" />
+                    <path d="M12 14V9" />
+                    <path d="M16 14V7" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Realized PnL</p>
+                  <h2>누적 실현손익 추이</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="performance-panel" aria-hidden="true">
+            <div class="chart-grid">
+              <article class="chart-card chart-card--history">
+                <div class="chart-card-header">
+                  <div>
+                    <p class="chart-kicker">Cumulative PnL</p>
+                    <h3>누적 실현손익 추이</h3>
+                    <p class="chart-note" id="realized-chart-note">실시간 가격이 아니라 실제 매도 체결이 생길 때만 바뀝니다.</p>
+                  </div>
+                  <div class="chart-stat" id="realized-chart-stat"></div>
+                </div>
+                <div class="chart-canvas-wrap">
+                  <canvas id="realized-chart"></canvas>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="insights-section">
+          <div class="panel panel-accordion" id="defense-section">
+            <div class="section-heading section-heading--accordion">
+              <button
+                type="button"
+                class="section-toggle"
+                id="defense-toggle"
+                aria-expanded="false"
+                aria-controls="defense-panel"
+              >
+                <div class="section-heading-main">
+                  <span class="section-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 3 5 6v5c0 5 2.8 8.3 7 10 4.2-1.7 7-5 7-10V6l-7-3Z" />
+                      <path d="m9.5 12 1.7 1.7 3.8-4.2" />
+                    </svg>
+                  </span>
+                  <div class="section-heading-copy">
+                    <p class="eyebrow">Defense Metrics</p>
+                    <h2>암호화폐 방어지표</h2>
+                  </div>
+                </div>
+                <span class="section-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            <div class="panel-collapse" id="defense-panel" aria-hidden="true">
+              <div class="section-bar-menu" id="defense-asset-menu">
+                <button
+                  type="button"
+                  class="section-bar-toggle"
+                  id="defense-asset-toggle"
+                  data-section-bar-toggle
+                  aria-expanded="false"
+                  aria-controls="defense-asset-panel"
+                >
+                  <div class="section-bar-copy">
+                    <p class="eyebrow">Tracked Asset</p>
+                    <strong>XRP</strong>
+                    <span>현재 방어지표가 연결된 코인을 열어 확인합니다.</span>
+                  </div>
+                  <span class="section-bar-toggle-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </span>
+                </button>
+                <div class="section-bar-panel" id="defense-asset-panel" data-section-bar-panel aria-hidden="true">
+                  <div class="section-bar-panel-inner">
+                    <div class="defense-grid" id="defense-grid"></div>
+                    <p class="defense-note" id="defense-note"></p>
+                    <div class="defense-detail" id="defense-detail" hidden></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section strategy reveal panel-accordion" id="strategy-section">
+          <div class="section-heading section-heading--accordion">
+            <button
+              type="button"
+              class="section-toggle"
+              id="strategy-toggle"
+              aria-expanded="false"
+              aria-controls="strategy-panel"
+            >
+              <div class="section-heading-main">
+                <span class="section-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M7 4.5h10a2 2 0 0 1 2 2v13l-4-2-4 2-4-2-4 2v-13a2 2 0 0 1 2-2h2" />
+                    <path d="M8.5 8.5h7" />
+                    <path d="M8.5 12h5.5" />
+                  </svg>
+                </span>
+                <div class="section-heading-copy">
+                  <p class="eyebrow">Execution Playbook</p>
+                  <h2>플레이 전략</h2>
+                </div>
+              </div>
+              <span class="section-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="panel-collapse" id="strategy-panel" aria-hidden="true">
+            <div class="strategy-playbook" id="strategy-playbook"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="mobile-section-overlay" id="mobile-section-overlay" hidden aria-hidden="true">
+      <div class="mobile-section-shell">
+        <div class="mobile-section-topbar">
+          <div class="mobile-section-title-wrap">
+            <p class="eyebrow" id="mobile-section-kicker">Quick Access</p>
+            <h2 class="mobile-section-title" id="mobile-section-title">모바일 패널</h2>
+          </div>
+          <button type="button" class="mobile-section-close" id="mobile-section-close" aria-label="닫기">
+            <svg viewBox="0 0 24 24">
+              <path d="m7 7 10 10" />
+              <path d="m17 7-10 10" />
+            </svg>
+          </button>
+        </div>
+        <div class="mobile-section-content" id="mobile-section-content"></div>
+      </div>
+    </div>
+
+    <div class="app-dialog" id="app-dialog" hidden aria-hidden="true">
+      <div class="app-dialog-backdrop" data-app-dialog-close></div>
+      <div
+        class="app-dialog-panel"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="app-dialog-title"
+        aria-describedby="app-dialog-message"
+      >
+        <div class="app-dialog-copy">
+          <p class="eyebrow" id="app-dialog-eyebrow">Confirm</p>
+          <h3 id="app-dialog-title">확인</h3>
+          <p class="app-dialog-message" id="app-dialog-message"></p>
+        </div>
+        <div class="app-dialog-actions">
+          <button type="button" class="btn-secondary" id="app-dialog-cancel" data-app-dialog-close>취소</button>
+          <button type="button" class="btn-primary app-dialog-confirm" id="app-dialog-confirm">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-dialog cash-editor-dialog" id="cash-editor-dialog" hidden aria-hidden="true">
+      <div class="app-dialog-backdrop" data-cash-editor-close></div>
+      <form
+        class="app-dialog-panel cash-editor-panel"
+        id="cash-editor-form"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cash-editor-title"
+        aria-describedby="cash-editor-message"
+      >
+        <div class="app-dialog-copy">
+          <p class="eyebrow">Cash Snapshot</p>
+          <h3 id="cash-editor-title">현금 보유 수정</h3>
+          <p class="app-dialog-message" id="cash-editor-message">현재 현금 총액을 직접 입력하거나 `-300,000`, `+500,000`처럼 증감값으로 입력할 수 있습니다. 반영하면 현금 보유 카드와 전체 자산 계산이 함께 다시 맞춰집니다.</p>
+        </div>
+        <label class="strategy-budget-label cash-editor-label" for="cash-editor-input">현금 총액 또는 증감</label>
+        <div class="strategy-budget-field cash-editor-field">
+          <input
+            class="strategy-budget-input cash-editor-input"
+            id="cash-editor-input"
+            name="cashTotal"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            enterkeyhint="done"
+            pattern="[0-9,+\\-\\s원₩,]*"
+            placeholder="예: 14,636,716 또는 -300,000"
+          />
+          <span class="strategy-budget-suffix" aria-hidden="true">원</span>
+        </div>
+        <div class="cash-editor-summary">
+          <span class="cash-editor-summary-label" id="cash-editor-current">현재 기준 0원</span>
+          <strong class="cash-editor-summary-value" id="cash-editor-delta">차이 0원</strong>
+        </div>
+        <p class="cash-editor-status" id="cash-editor-status" role="status" aria-live="polite"></p>
+        <div class="app-dialog-actions">
+          <button type="button" class="btn-secondary" id="cash-editor-cancel" data-cash-editor-close>취소</button>
+          <button type="submit" class="btn-primary" id="cash-editor-submit">반영</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="app-toast-stack" id="app-toast-stack" aria-live="polite" aria-atomic="false"></div>
+    <div class="pull-refresh-indicator" id="pull-refresh-indicator" aria-hidden="true">
+      <div class="pull-refresh-indicator-ring" aria-hidden="true"></div>
+      <div class="pull-refresh-indicator-copy">
+        <strong id="pull-refresh-title">새로고침</strong>
+        <p id="pull-refresh-message">아래로 당기면 최신 데이터로 갱신됩니다.</p>
+      </div>
+    </div>
+
+    <div class="asset-chart-modal" id="asset-chart-modal" hidden>
+      <div class="asset-chart-backdrop" data-asset-chart-close></div>
+      <div
+        class="asset-chart-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="asset-chart-title"
+        aria-describedby="asset-chart-summary"
+      >
+        <div class="asset-chart-header">
+          <div>
+            <p class="eyebrow">Live Chart</p>
+            <h3 id="asset-chart-title">종목 차트</h3>
+            <p class="asset-chart-summary" id="asset-chart-summary">최근 흐름을 불러오는 중입니다.</p>
+            <div class="asset-chart-toolbar">
+              <div class="asset-chart-range-tabs" id="asset-chart-range-tabs" role="tablist" aria-label="차트 기간 선택">
+                <button type="button" class="asset-chart-range is-active" data-asset-chart-range="1W">1주</button>
+                <button type="button" class="asset-chart-range" data-asset-chart-range="1M">1개월</button>
+                <button type="button" class="asset-chart-range" data-asset-chart-range="1Y">1년</button>
+              </div>
+              <p class="asset-chart-refresh" id="asset-chart-refresh">자동 갱신 대기 중</p>
+            </div>
+          </div>
+          <button type="button" class="asset-chart-close" data-asset-chart-close aria-label="차트 닫기">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+        <div class="asset-chart-stats" id="asset-chart-stats"></div>
+        <div class="chart-canvas-wrap asset-chart-canvas-wrap" id="asset-chart-canvas-wrap">
+          <canvas id="asset-chart-canvas"></canvas>
+        </div>
+        <p class="asset-chart-footnote" id="asset-chart-footnote"></p>
+      </div>
+    </div>
+
+    <!-- 거래 추가 모달 -->
+    <div class="trade-modal" id="trade-modal" hidden aria-hidden="true" role="dialog" aria-modal="true">
+      <div class="trade-modal-dialog">
+        <div class="trade-modal-header">
+          <div>
+            <p class="eyebrow" id="trade-modal-eyebrow">Quick Entry</p>
+            <h3 id="trade-modal-title">거래 추가</h3>
+            <p class="trade-modal-helper" id="trade-modal-helper">날짜와 체결값만 넣으면 거래금액은 계산되고, 수수료 기준은 플랫폼에 맞춰 고정됩니다.</p>
+          </div>
+          <button type="button" class="trade-modal-close" data-trade-modal-close aria-label="닫기">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+        <form class="trade-form" id="trade-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="trade-date">날짜</label>
+              <div class="trade-date-fields">
+                <select id="trade-date-month" aria-label="거래 월 선택"></select>
+                <select id="trade-date-day" aria-label="거래 일 선택"></select>
+              </div>
+              <input type="hidden" id="trade-date" name="date" required />
+            </div>
+            <div class="form-group">
+              <label for="trade-market">시장</label>
+              <select id="trade-market" name="market" required>
+                <option value="국내주식">국내주식</option>
+                <option value="미국주식">미국주식</option>
+                <option value="암호화폐">암호화폐</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="trade-photo-assist-panel">
+            <div class="trade-photo-assist-head">
+              <div>
+                <p class="trade-photo-assist-label">Photo Assist</p>
+                <p class="trade-photo-assist-copy">체결내역 또는 주문 확인 캡처 1~4장을 함께 읽어서 초안만 채워줍니다. 저장은 검토 후 직접 눌러야 합니다.</p>
+              </div>
+              <button type="button" class="status-tag status-tag--action" id="trade-photo-assist-trigger">사진으로 채우기</button>
+            </div>
+            <input type="file" id="trade-photo-assist-input" accept="image/*" multiple hidden />
+            <p class="trade-photo-assist-status" id="trade-photo-assist-status" role="status" aria-live="polite"></p>
+            <div class="trade-photo-assist-meta" id="trade-photo-assist-meta" hidden></div>
+            <div class="trade-photo-assist-candidates" id="trade-photo-assist-candidates" hidden></div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group form-group--autocomplete">
+              <label for="trade-asset">자산</label>
+              <div class="asset-autocomplete-field">
+                <input type="text" id="trade-asset" name="asset" placeholder="SK하이닉스" required />
+                <div class="asset-suggestion-panel" id="trade-asset-suggestions" hidden></div>
+              </div>
+              <p class="form-help" id="trade-asset-help" hidden></p>
+              <div class="trade-quick-action-row">
+                <button type="button" class="status-tag status-tag--action" id="trade-watch-target-add">관심목록에 추가</button>
+                <button type="button" class="status-tag status-tag--action" id="trade-quick-target-add">빠른선택에 추가</button>
+              </div>
+              <div class="trade-quick-target-row">
+                <p class="trade-quick-target-status" id="trade-quick-target-status" role="status" aria-live="polite"></p>
+              </div>
+              <div class="trade-quick-list" id="trade-quick-list">
+                <p class="trade-quick-list-label">빠른선택</p>
+                <div class="trade-quick-list-items" id="trade-quick-target-list"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="trade-side">매수/매도</label>
+              <select id="trade-side" name="side" required>
+                <option value="매수">매수</option>
+                <option value="매도">매도</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="trade-quantity">수량</label>
+              <input type="text" id="trade-quantity" name="quantity" placeholder="0" inputmode="decimal" autocomplete="off" required />
+            </div>
+            <div class="form-group">
+              <label for="trade-price" id="trade-price-label">단가 (원)</label>
+              <input type="text" id="trade-price" name="price" placeholder="0" inputmode="decimal" autocomplete="off" required />
+              <p class="form-help" id="trade-price-help">체결 단가 기준으로 입력합니다.</p>
+            </div>
+          </div>
+
+          <input type="hidden" id="trade-amount" name="amount" />
+          <input type="hidden" id="trade-fee" name="fee" />
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="trade-fee-override">수수료 입력 방식</label>
+              <label class="form-checkbox" for="trade-fee-override">
+                <input type="checkbox" id="trade-fee-override" />
+                <span class="form-checkbox-copy">실제 수수료 직접 입력</span>
+              </label>
+              <p class="form-help">미국주식 매도처럼 자동 기준에 없는 규제 fee가 있으면 원화 기준 최종 수수료를 직접 입력합니다.</p>
+            </div>
+            <div class="form-group" id="trade-fee-manual-group" hidden>
+              <label for="trade-fee-manual">실제 수수료 (원)</label>
+              <input type="text" id="trade-fee-manual" placeholder="0" inputmode="decimal" autocomplete="off" />
+              <p class="form-help">체결내역에 찍힌 최종 수수료를 그대로 입력합니다.</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" data-trade-broker-group>
+              <label for="trade-broker">플랫폼</label>
+              <select id="trade-broker" name="broker"></select>
+            </div>
+            <div class="form-group">
+              <label for="trade-stage">전략 단계 (선택)</label>
+              <select id="trade-stage" name="stage"></select>
+            </div>
+          </div>
+
+          <div class="trade-summary-grid">
+            <article class="trade-summary-card">
+              <span>플랫폼</span>
+              <strong id="trade-summary-broker">업비트</strong>
+            </article>
+            <article class="trade-summary-card">
+              <span>거래금액</span>
+              <strong id="trade-summary-amount">₩0</strong>
+            </article>
+            <article class="trade-summary-card">
+              <span>적용 수수료</span>
+              <strong id="trade-summary-fee">선택 필요</strong>
+            </article>
+          </div>
+          <p class="form-help trade-summary-help" id="trade-broker-help">국내주식과 미국주식 거래만 입력하면 됩니다.</p>
+
+          <div class="form-group form-group--full">
+            <label for="trade-note">전략 메모 (선택)</label>
+            <textarea id="trade-note" name="note" rows="3" placeholder="예: 2차 진입 전 RSI 25 재확인, 장 초반 추격 금지"></textarea>
+          </div>
+
+          <p class="trade-form-status" id="trade-form-status" role="status" aria-live="polite"></p>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" data-trade-modal-close>취소</button>
+            <button type="submit" class="btn-primary">저장</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <template id="metric-card-template">
+      <article class="metric-card">
+        <div class="metric-card-head">
+          <p class="metric-label"></p>
+          <button type="button" class="metric-card-action" hidden></button>
+        </div>
+        <strong class="metric-value"></strong>
+        <p class="metric-detail"></p>
+      </article>
+    </template>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js" defer></script>
+    <script src="./lib/trade-fee-policy.js?v=20260415-03"></script>
+    <script src="./client/app-config.js?v=20260418-11"></script>
+    <script src="./client/app-ui-helpers.js?v=20260415-02"></script>
+    <script src="./client/strategy-state.js?v=20260418-09"></script>
+    <script src="./client/asset-chart-shell.js?v=20260419-03"></script>
+    <script src="./client/charts-panel.js?v=20260419-03"></script>
+    <script src="./client/metric-cards.js?v=20260418-01"></script>
+    <script src="./client/notes-board.js?v=20260418-01"></script>
+    <script src="./client/realized-defense.js?v=20260418-01"></script>
+    <script src="./client/settings-panel.js?v=20260418-01"></script>
+    <script src="./client/portfolio-panels.js?v=20260418-01"></script>
+    <script src="./client/timeline-panel.js?v=20260418-01"></script>
+    <script src="./app.js?v=20260418-13"></script>
+    <script src="./client/trade-modal.js?v=20260417-05"></script>
+  </body>
+</html>

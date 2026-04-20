@@ -1,0 +1,18 @@
+{
+  "name": "asset",
+  "private": true,
+  "scripts": {
+    "backup:stable": "node scripts/create-stable-backup.js",
+    "dev": "node scripts/dev-server.js",
+    "export": "python3 scripts/export_workbook.py",
+    "release:guard": "npm run smoke && npm run backup:stable",
+    "smoke": "node scripts/smoke-test.js",
+    "storage:status": "node scripts/storage-status.js",
+    "storage:migrate:dry": "node scripts/migrate-blob-to-firebase.js",
+    "storage:migrate:apply": "node scripts/migrate-blob-to-firebase.js --apply"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.0.0",
+    "firebase-admin": "^13.8.0"
+  }
+}

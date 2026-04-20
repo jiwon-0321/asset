@@ -1,0 +1,241 @@
+{
+  "metadata": {
+    "title": "Sample Portfolio Overview",
+    "mantra": "기록을 먼저 지키고, 큰 결정은 천천히 한다",
+    "basisDateLabel": "2026.04.18 기준",
+    "realizedPerformanceStartDate": "2026-04-01",
+    "workbook": "sample-portfolio.xlsx"
+  },
+  "summary": {
+    "initialInvestment": 15000000,
+    "totalAssets": 15325000,
+    "investedPrincipal": 10325000,
+    "assetValuationTotal": 9825000,
+    "cashTotal": 5500000,
+    "portfolioPnl": -500000,
+    "portfolioReturnRate": -0.048426150121,
+    "realizedProfitTotal": 825000,
+    "liquidityRatio": 0.358890701469
+  },
+  "assetStatus": [
+    {
+      "category": "암호화폐",
+      "platform": "샘플 거래소",
+      "valuation": 4125000,
+      "principal": 4500000,
+      "pnl": -375000,
+      "returnRate": -0.083333333333
+    },
+    {
+      "category": "미국주식",
+      "platform": "샘플 증권사",
+      "valuation": 5700000,
+      "principal": 5825000,
+      "pnl": -125000,
+      "returnRate": -0.021459227468
+    }
+  ],
+  "cashPositions": [
+    {
+      "platform": "샘플 증권사 예수금",
+      "amount": 3200000
+    },
+    {
+      "platform": "샘플 페이 잔액",
+      "amount": 800000
+    },
+    {
+      "platform": "샘플 거래소 KRW",
+      "amount": 1500000
+    }
+  ],
+  "holdings": [
+    {
+      "platform": "샘플 거래소",
+      "asset": "BTC",
+      "name": "Bitcoin",
+      "symbol": "KRW-BTC",
+      "market": "crypto",
+      "currency": "KRW",
+      "priceSource": "upbit",
+      "quantity": 0.0215,
+      "averagePrice": 198000000,
+      "valuation": 4125000,
+      "returnRate": -0.083333333333
+    },
+    {
+      "platform": "샘플 증권사",
+      "asset": "AAPL",
+      "name": "Apple Inc.",
+      "symbol": "AAPL",
+      "market": "us-stock",
+      "currency": "USD",
+      "priceSource": "twelve-data",
+      "quantity": 10,
+      "averagePrice": 790000,
+      "valuation": 5700000,
+      "returnRate": -0.021459227468
+    }
+  ],
+  "targets": {
+    "eyebrow": "Sample Target Board",
+    "title": "샘플 관심 종목",
+    "summary": "실데이터 없이도 UI와 접근 프로필이 동작하도록 남겨둔 샘플 후보군입니다.",
+    "groups": [
+      {
+        "title": "암호화폐",
+        "label": "Crypto",
+        "tone": "crypto",
+        "summary": "대표 코인 예시",
+        "items": [
+          {
+            "name": "비트코인",
+            "symbol": "KRW-BTC",
+            "market": "crypto",
+            "currency": "KRW",
+            "priceSource": "upbit"
+          },
+          {
+            "name": "이더리움",
+            "symbol": "KRW-ETH",
+            "market": "crypto",
+            "currency": "KRW",
+            "priceSource": "upbit"
+          }
+        ]
+      },
+      {
+        "title": "해외주식",
+        "label": "Global Equity",
+        "tone": "global",
+        "summary": "대표 미국주식 예시",
+        "items": [
+          {
+            "name": "써클",
+            "symbol": "CRCL",
+            "market": "us-stock",
+            "currency": "USD",
+            "priceSource": "twelve-data"
+          },
+          {
+            "name": "Palantir Technologies Inc.",
+            "symbol": "PLTR",
+            "market": "us-stock",
+            "currency": "USD",
+            "priceSource": "twelve-data"
+          },
+          {
+            "name": "Apple Inc.",
+            "symbol": "AAPL",
+            "market": "us-stock",
+            "currency": "USD",
+            "priceSource": "twelve-data"
+          },
+          {
+            "name": "Microsoft Corporation",
+            "symbol": "MSFT",
+            "market": "us-stock",
+            "currency": "USD",
+            "priceSource": "twelve-data"
+          }
+        ]
+      },
+      {
+        "title": "국내주식",
+        "label": "Korea Equity",
+        "tone": "domestic",
+        "summary": "국내주식 예시",
+        "items": [
+          {
+            "name": "삼성전자",
+            "symbol": "005930",
+            "market": "kr-stock",
+            "currency": "KRW",
+            "priceSource": "krx"
+          }
+        ]
+      }
+    ]
+  },
+  "realized": [
+    {
+      "market": "미국주식",
+      "platform": "샘플 증권사",
+      "asset": "Apple Inc. 2주 매도",
+      "assetName": "Apple Inc.",
+      "symbol": "AAPL",
+      "quantity": 2,
+      "pnl": 125000,
+      "returnRate": 0.0417,
+      "date": "4/15"
+    }
+  ],
+  "charts": {
+    "returnsComparison": [
+      {
+        "label": "포트폴리오",
+        "value": -4.84
+      },
+      {
+        "label": "비트코인",
+        "value": 3.1
+      },
+      {
+        "label": "S&P 500",
+        "value": 1.6
+      }
+    ],
+    "realizedHistory": [
+      {
+        "date": "04.12",
+        "dailyPnl": 0,
+        "cumulativePnl": 0
+      },
+      {
+        "date": "04.15",
+        "dailyPnl": 125000,
+        "cumulativePnl": 125000
+      }
+    ]
+  },
+  "trades": {
+    "stocks": [],
+    "crypto": []
+  },
+  "strategyBudgets": {
+    "items": []
+  },
+  "uiPreferences": {
+    "visibleSections": [
+      "targets-section",
+      "portfolio-overview-section",
+      "holdings-section",
+      "timeline-section",
+      "settings-section"
+    ],
+    "livePrice": {
+      "showGlobalIndices": true
+    },
+    "tradeQuickAssets": [],
+    "hiddenHoldings": []
+  },
+  "analytics": {
+    "prices": {},
+    "assetPrices": {},
+    "xrpDefense": {
+      "initialQuantity": 0,
+      "initialAveragePrice": 0,
+      "soldQuantity": 0,
+      "averageSellNet": 0,
+      "rebuyQuantity": 0,
+      "averageRebuyGross": 0,
+      "defenseGain": 0,
+      "finalAveragePrice": 0,
+      "averageCutAmount": 0,
+      "averageCutRate": 0,
+      "realizedPnl": 0,
+      "remainingQuantity": 0,
+      "breakevenTargetBuyPrice": 0
+    }
+  }
+}
