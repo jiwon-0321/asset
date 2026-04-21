@@ -1128,12 +1128,16 @@ body.board-variant-personal #initial-setup-section {
   display: none !important;
 }
 
-body.mobile-menu-mode .dashboard > .section:not(#initial-setup-section) {
+body.mobile-menu-mode .dashboard > .section:not(#initial-setup-section):not(#strategy-section) {
   display: none !important;
 }
 
 body.mobile-menu-mode .dashboard > #initial-setup-section:not([hidden]) {
   display: grid !important;
+}
+
+body.mobile-menu-mode .dashboard > #strategy-section:not([hidden]) {
+  display: block !important;
 }
 
 body.mobile-menu-mode .dashboard > .section.mobile-section-active,

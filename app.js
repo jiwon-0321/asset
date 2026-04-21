@@ -3385,6 +3385,9 @@ function renderUiPreferencesState(data = getRenderablePortfolioSnapshot(), optio
   deferredMobileDashboardData = data;
 
   if (isMobileSectionMode()) {
+    if (shouldKeepStrategySectionInlineOnMobile()) {
+      renderStrategy(data.strategy);
+    }
     clearDeferredMobileSectionTimers();
     if (mobileSectionState.sectionId && isSectionVisible(mobileSectionState.sectionId)) {
       ensureDeferredMobileSectionRendered(mobileSectionState.sectionId);
@@ -4329,6 +4332,10 @@ function clearDeferredMobileSectionTimers() {
   deferredMobileSectionTimers.clear();
 }
 
+function shouldKeepStrategySectionInlineOnMobile() {
+  return isMobileSectionMode() && isSectionVisible("strategy-section");
+}
+
 function renderDeferredMobileSection(sectionId, data = deferredMobileDashboardData) {
   if (!data || deferredMobileSectionsRendered.has(sectionId) || !isSectionVisible(sectionId)) {
     return;
@@ -4399,6 +4406,9 @@ function queueDeferredMobileDashboardSections(data) {
   clearDeferredMobileSectionTimers();
 
   Object.entries(MOBILE_DEFERRED_SECTION_DELAYS).forEach(([sectionId, delayMs]) => {
+    if (sectionId === "strategy-section" && shouldKeepStrategySectionInlineOnMobile()) {
+      return;
+    }
     if (!isSectionVisible(sectionId)) {
       return;
     }
@@ -4593,6 +4603,9 @@ function renderDashboard(data, options = {}) {
   clearDeferredMobileSectionTimers();
 
   if (isMobileSectionMode()) {
+    if (shouldKeepStrategySectionInlineOnMobile()) {
+      renderStrategy(strategy);
+    }
     queueDeferredMobileDashboardSections(data);
   } else {
     if (isSectionVisible("holdings-section")) {
