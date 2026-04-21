@@ -2,7 +2,7 @@
 
 Mobile-first portfolio board for trade tracking, watchlists, notes, strategy state, and live market data.
 
-This public repository contains application code plus public-safe sample fixtures only. Real runtime portfolio data, notes, access codes, and deployment secrets are intended to live outside GitHub.
+This public repository contains application code and public-safe sample assets only. Personal deployment details, real access codes, and private runtime data are intentionally kept out of the repo.
 
 ## What This App Does
 
@@ -28,18 +28,9 @@ npm run dev
 
 Then open [http://127.0.0.1:4173](http://127.0.0.1:4173).
 
-## Repo vs Runtime Data
-
-Team rule of thumb:
-
-- GitHub keeps the app shell, API routes, business logic, and public-safe sample fixtures
-- Firebase keeps real runtime data such as live portfolio state, trades, notes, and user-specific saved state
-
-Files in `data/` such as `data/portfolio-sample.json` and `data/portfolio.friend-*.json` are sample or guide fixtures for fallback, onboarding, and UI checks. They are not the live owner timeline.
-
 ## Recommended `.env.local`
 
-For a first-time user or a fresh clone, this is the recommended sample-only starting point:
+For a first-time user or a fresh clone, this is the recommended starting point:
 
 ```env
 OWNER_ACCESS_CODE=change-this-code
@@ -53,15 +44,13 @@ What each value means:
 - `OWNER_ACCESS_CODE`: the code entered on the access screen
 - `BOARD_VARIANT=blank-family`: enables the onboarding-first board with the guide and initial asset setup
 - `OWNER_STATE_KEY`: isolates saved local state for this board
-- `STORAGE_PROVIDER=local`: saves temporary local test data into ignored files inside `data/`
+- `STORAGE_PROVIDER=local`: saves data into local files inside `data/`
 
 With `STORAGE_PROVIDER=local`, the app writes local state files such as:
 
 - `data/portfolio.local.json` for the default owner state
 - `data/portfolio.<stateKey>.json` for custom owner state keys
 - `data/notes.json` or `data/notes.<stateKey>.json` for notes
-
-These local runtime files are ignored by Git and are meant for clone-and-run testing, not for shared production data.
 
 ## First-Time Onboarding
 
@@ -133,13 +122,13 @@ Notes:
 
 ## Storage Options
 
-Default recommendation for quick local development:
+Default recommendation for local development:
 
 ```env
 STORAGE_PROVIDER=local
 ```
 
-Preferred setup for real shared data or production-like persistence:
+Optional Firebase-backed storage is supported if you want shared persistence:
 
 ```env
 FIREBASE_SERVICE_ACCOUNT_JSON=
@@ -150,11 +139,6 @@ FIRESTORE_NOTES_COLLECTION_PATH=
 ```
 
 For a normal clone-and-run workflow, local storage is enough.
-
-For the team workflow, the intended split is:
-
-- GitHub: code and public-safe sample fixtures
-- Firebase: real user/runtime data
 
 ## Validation
 
