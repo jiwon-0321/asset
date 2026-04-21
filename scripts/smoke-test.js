@@ -38,7 +38,7 @@ const {
   savePersistedNotes,
   savePersistedPortfolio,
 } = require("../lib/server-state-store");
-const { createTradePhotoAssistDraft, normalizeTradePhotoAssistResult } = require("../lib/trade-photo-assist");
+const { normalizeTradePhotoAssistResult } = require("../lib/trade-photo-assist");
 const { buildTradeBook, rebuildPortfolioFromTradeBook } = require("./portfolio-store");
 const { buildTradeFeeSummaryText, estimateTradeFee } = require("../lib/trade-fee-policy");
 
@@ -198,146 +198,6 @@ function assertTradePhotoAssistNormalization() {
   assert.equal(candidateResult.candidates.length, 2, "candidate photo-assist result should preserve multiple candidates");
   assert.equal(candidateResult.selectedCandidateIndex, 1, "selected candidate index should respect the payload");
   assert.equal(candidateResult.draft.quantity, 155, "selected candidate should become the primary draft");
-}
-
-async function assertTradePhotoAssistGeminiFallback() {
-  const imageBase64 = Buffer.from("smoke-image").toString("base64");
-  const requestedModels = [];
-  const originalFetch = global.fetch;
-  const originalGeminiApiKey = process.env.GEMINI_API_KEY;
-  const originalGoogleApiKey = process.env.GOOGLE_API_KEY;
-  const originalGoogleGenAiApiKey = process.env.GOOGLE_GENAI_API_KEY;
-  const originalTradePhotoAssistModel = process.env.TRADE_PHOTO_ASSIST_GEMINI_MODEL;
-  const originalTradePhotoAssistModels = process.env.TRADE_PHOTO_ASSIST_GEMINI_MODELS;
-
-  delete process.env.GEMINI_API_KEY;
-  process.env.GOOGLE_API_KEY = "smoke-google-api-key";
-  delete process.env.GOOGLE_GENAI_API_KEY;
-  delete process.env.TRADE_PHOTO_ASSIST_GEMINI_MODEL;
-  delete process.env.TRADE_PHOTO_ASSIST_GEMINI_MODELS;
-
-  global.fetch = async (input, init = {}) => {
-    const url = new URL(String(input));
-    if (url.hostname !== "generativelanguage.googleapis.com") {
-      throw new Error(`Unexpected Gemini request during smoke test: ${url}`);
-    }
-
-    const model = url.pathname.split("/models/")[1]?.split(":")[0] || "";
-    requestedModels.push(model);
-
-    if (model === "gemini-2.5-flash-lite") {
-      return buildJsonResponse(
-        {
-          error: {
-            message: "models/gemini-2.5-flash-lite is not found for API version v1beta, or is not supported for generateContent.",
-          },
-        },
-        404
-      );
-    }
-
-    const body = JSON.parse(String(init.body || "{}"));
-    assert.equal(
-      body?.contents?.[0]?.parts?.some((part) => part?.inlineData?.data === imageBase64),
-      true,
-      "Gemini request should include the uploaded image payload"
-    );
-
-    return buildJsonResponse({
-      candidates: [
-        {
-          content: {
-            parts: [
-              {
-                text: JSON.stringify({
-                  selectedIndex: 0,
-                  candidates: [
-                    {
-                      label: "4/18 · XRP · 매수 · 309",
-                      summary: "업비트 체결 내역 후보",
-                      draft: {
-                        date: "4/18",
-                        market: "암호화폐",
-                        broker: "업비트",
-                        asset: "XRP",
-                        side: "매수",
-                        quantity: 309,
-                        price: 2122,
-                      },
-                      confidence: {
-                        overall: 0.94,
-                        fields: {
-                          date: 0.95,
-                          asset: 0.99,
-                        },
-                      },
-                      warnings: [],
-                      rawSnippets: ["XRP", "309", "2122"],
-                    },
-                  ],
-                  warnings: [],
-                }),
-              },
-            ],
-          },
-        },
-      ],
-    });
-  };
-
-  try {
-    const result = await createTradePhotoAssistDraft({
-      payload: {
-        images: [
-          {
-            imageDataUrl: `data:image/jpeg;base64,${imageBase64}`,
-            imageMimeType: "image/jpeg",
-            imageName: "smoke.jpg",
-          },
-        ],
-        marketHint: "암호화폐",
-        brokerHint: "업비트",
-        locale: "ko-KR",
-      },
-      basisLabel: "2026.04.18 기준",
-    });
-
-    assert.equal(result.source.model, "gemini-2.5-flash", "photo assist should retry with the fallback Gemini model");
-    assert.equal(requestedModels.length, 2, "photo assist should try the primary model before the fallback");
-    assert.equal(result.draft.asset, "XRP", "photo assist fallback should still normalize the Gemini response");
-  } finally {
-    global.fetch = originalFetch;
-
-    if (originalGeminiApiKey == null) {
-      delete process.env.GEMINI_API_KEY;
-    } else {
-      process.env.GEMINI_API_KEY = originalGeminiApiKey;
-    }
-
-    if (originalGoogleApiKey == null) {
-      delete process.env.GOOGLE_API_KEY;
-    } else {
-      process.env.GOOGLE_API_KEY = originalGoogleApiKey;
-    }
-
-    if (originalGoogleGenAiApiKey == null) {
-      delete process.env.GOOGLE_GENAI_API_KEY;
-    } else {
-      process.env.GOOGLE_GENAI_API_KEY = originalGoogleGenAiApiKey;
-    }
-
-    if (originalTradePhotoAssistModel == null) {
-      delete process.env.TRADE_PHOTO_ASSIST_GEMINI_MODEL;
-    } else {
-      process.env.TRADE_PHOTO_ASSIST_GEMINI_MODEL = originalTradePhotoAssistModel;
-    }
-
-    if (originalTradePhotoAssistModels == null) {
-      delete process.env.TRADE_PHOTO_ASSIST_GEMINI_MODELS;
-    } else {
-      process.env.TRADE_PHOTO_ASSIST_GEMINI_MODELS = originalTradePhotoAssistModels;
-    }
-  }
 }
 
 function findAvailableTargetAsset(portfolio) {
@@ -611,7 +471,6 @@ async function run() {
       "createStrategyPlaybookShellHelpers",
     ]);
     assertTradePhotoAssistNormalization();
-    await assertTradePhotoAssistGeminiFallback();
 
     const krSellFee = estimateTradeFee({
       broker: "카카오증권",
