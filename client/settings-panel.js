@@ -71,7 +71,7 @@
     }
 
     function getVisibleMobileShortcuts() {
-      return MOBILE_SECTION_SHORTCUTS.filter((item) => isSectionVisible(item.id) && item.id !== "strategy-section");
+      return MOBILE_SECTION_SHORTCUTS.filter((item) => isSectionVisible(item.id));
     }
 
     function renderMobileSectionHub() {
