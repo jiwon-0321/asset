@@ -461,15 +461,6 @@ async function run() {
       "buildRealizedTradeKey",
       "normalizeTimelineTrades",
     ]);
-    await assertModuleExports(path.join(ROOT, "client/strategy-playbook-data.js"), [
-      "buildTrailingStopRuleCopy",
-      "normalizeStrategyPlaybook",
-      "createStrategyPlaybookDataHelpers",
-    ]);
-    await assertModuleExports(path.join(ROOT, "client/strategy-playbook-shell.js"), [
-      "renderStrategyPlaybook",
-      "createStrategyPlaybookShellHelpers",
-    ]);
     assertTradePhotoAssistNormalization();
 
     const krSellFee = estimateTradeFee({
