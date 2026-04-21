@@ -3,14 +3,7 @@
     const { normalizeTradeStrategyStage } = deps;
 
     function buildTrailingStopRuleCopy() {
-      return "상승 시 고점 기준으로 스탑 상향, 하락 시 기존 스탑 유지.";
-    }
-
-    function stripEntryCumulativeCopy(value = "") {
-      return String(value || "")
-        .replace(/전체\s*보유량\s*기준\s*누적\s*/g, "전체 보유량 기준 ")
-        .replace(/\s+/g, " ")
-        .trim();
+      return "주가가 오르면 그날 최고점 기준으로 스탑을 끌어올리고, 주가가 내려오면 이전 스탑은 그대로 유지합니다.";
     }
 
     function buildStrategyExitStepNote(step = {}) {
@@ -19,7 +12,7 @@
         return baseNote;
       }
 
-      return [baseNote, buildTrailingStopRuleCopy()].filter(Boolean).join(" · ");
+      return [baseNote, buildTrailingStopRuleCopy()].filter(Boolean).join(" ");
     }
 
     function buildStrategyTrailingNotes(notes = []) {
@@ -28,16 +21,11 @@
         : [];
       const trailingRule = buildTrailingStopRuleCopy();
 
-      const preservedNotes = normalizedNotes.filter((item) => !(item.includes("최고점") && item.includes("스탑")));
-      return [...preservedNotes, trailingRule];
-    }
+      if (normalizedNotes.some((item) => item.includes("최고점") && item.includes("스탑"))) {
+        return normalizedNotes;
+      }
 
-    function normalizeStrategyEntryStep(step = {}) {
-      return {
-        ...(step && typeof step === "object" ? step : {}),
-        allocation: stripEntryCumulativeCopy(step?.allocation),
-        summary: stripEntryCumulativeCopy(step?.summary),
-      };
+      return [...normalizedNotes, trailingRule];
     }
 
     function normalizeStrategyPlaybook(strategy = null) {
@@ -45,9 +33,7 @@
         return null;
       }
 
-      const entry = strategy.entry && typeof strategy.entry === "object" ? strategy.entry : {};
       const exit = strategy.exit && typeof strategy.exit === "object" ? strategy.exit : {};
-      const normalizedEntrySteps = Array.isArray(entry.steps) ? entry.steps.map((step) => normalizeStrategyEntryStep(step)) : [];
       const normalizedSteps = Array.isArray(exit.steps)
         ? exit.steps.map((step) => ({
             ...(step && typeof step === "object" ? step : {}),
@@ -57,10 +43,6 @@
 
       return {
         ...strategy,
-        entry: {
-          ...entry,
-          steps: normalizedEntrySteps,
-        },
         exit: {
           ...exit,
           steps: normalizedSteps,
@@ -71,10 +53,8 @@
 
     return Object.freeze({
       buildTrailingStopRuleCopy,
-      stripEntryCumulativeCopy,
       buildStrategyExitStepNote,
       buildStrategyTrailingNotes,
-      normalizeStrategyEntryStep,
       normalizeStrategyPlaybook,
     });
   }
