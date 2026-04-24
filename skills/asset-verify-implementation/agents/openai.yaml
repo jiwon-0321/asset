@@ -1,3 +1,0 @@
-interface:
-  display_name: "Asset Verify Implementation"
-  short_description: "Run a focused verification pass for recent asset-main changes"

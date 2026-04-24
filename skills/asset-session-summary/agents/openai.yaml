@@ -1,3 +1,0 @@
-interface:
-  display_name: "Asset Session Summary"
-  short_description: "Write a short daily summary file for asset-main"
