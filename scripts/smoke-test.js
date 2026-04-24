@@ -569,6 +569,24 @@ async function run() {
     );
     const blankTempRoot = await makeTempRoot();
     const blankInitialPortfolio = await getCurrentPortfolio(blankTempRoot, blankProfile.seedPortfolio, "family-owner");
+    const blankLiveFetchMock = buildLivePriceFetchMock();
+    const blankLiveSnapshot = await buildLivePriceSnapshot({
+      rootDir: blankTempRoot,
+      portfolioData: blankInitialPortfolio,
+      stateKey: "family-owner",
+      forceRefresh: true,
+      fetchImpl: async (input) => {
+        const url = new URL(String(input));
+        assert.notEqual(url.hostname, "api.upbit.com", "blank-family live prices should not request Upbit with no crypto instruments");
+        return blankLiveFetchMock(input);
+      },
+    });
+    assert.equal(
+      blankLiveSnapshot.live?.status?.level,
+      "success",
+      "blank-family live prices should stay successful before any tracked assets exist"
+    );
+    assert.deepEqual(blankLiveSnapshot.live?.errors, [], "blank-family live prices should not surface empty crypto errors");
     const blankGuidePreferencesPortfolio = await updateUiPreferencesEntry(
       blankTempRoot,
       {

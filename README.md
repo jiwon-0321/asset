@@ -20,7 +20,7 @@ This public repository contains application code and public-safe sample assets o
 
 ```bash
 git clone <repo-url>
-cd asset-main
+cd asset
 npm install
 cp .env.example .env.local
 npm run dev
