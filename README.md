@@ -100,6 +100,15 @@ KIS_APP_KEY=
 KIS_APP_SECRET=
 ```
 
+Optional photo-assist variables:
+
+```env
+GEMINI_API_KEY=
+TRADE_PHOTO_ASSIST_GEMINI_MODEL=gemini-2.5-flash-lite
+```
+
+`GEMINI_API_KEY` is only needed for the trade timeline's "사진으로 채우기" helper. Each developer should use their own Gemini API key in `.env.local`; do not commit real API keys.
+
 Optional guest access:
 
 ```env
