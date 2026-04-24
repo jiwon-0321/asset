@@ -1,11 +1,11 @@
 ---
 name: asset-session-summary
-description: Write or update a short session summary for asset-main. Use after meaningful implementation, debugging, deployment, or review work.
+description: Write or update a short session summary for asset. Use after meaningful implementation, debugging, deployment, or review work.
 ---
 
 # Asset Session Summary
 
-Use this skill to keep a lean daily summary and handoff pointer inside the local `asset-main` workspace.
+Use this skill to keep a lean daily summary and handoff pointer inside the local `asset` workspace.
 
 ## Goal
 

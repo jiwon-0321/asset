@@ -1,11 +1,11 @@
 ---
 name: asset-verify-implementation
-description: Run a focused verification pass for asset-main after implementation work. Use after meaningful changes to app.js, client files, styles, api routes, lib services, persistence, or before shipping.
+description: Run a focused verification pass for asset after implementation work. Use after meaningful changes to app.js, client files, styles, api routes, lib services, persistence, or before shipping.
 ---
 
 # Asset Verify Implementation
 
-Use this skill for a compact, project-aware verification pass on `asset-main`.
+Use this skill for a compact, project-aware verification pass on `asset`.
 
 ## Goal
 
@@ -18,7 +18,7 @@ Confirm that recent Asset changes are safe to ship by:
 
 ## When To Use
 
-- After implementing a feature or bug fix in `asset-main`
+- After implementing a feature or bug fix in `asset`
 - Before committing or deploying a risky change
 - During review of changes touching UI, storage, quotes, portfolio math, or session logic
 

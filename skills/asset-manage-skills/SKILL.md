@@ -1,6 +1,6 @@
 ---
 name: asset-manage-skills
-description: Decide when asset-main needs a new Codex skill or an update to an existing one. Use after meaningful project changes, repeated incidents, or review coverage gaps.
+description: Decide when asset needs a new Codex skill or an update to an existing one. Use after meaningful project changes, repeated incidents, or review coverage gaps.
 ---
 
 # Asset Manage Skills
@@ -24,7 +24,7 @@ Use this skill to keep the Asset Codex skill set small, current, and useful.
 
 ### 1. Inspect project changes
 
-- Use `git status --short`, `git diff --name-only`, and `git diff --stat` in `asset-main`.
+- Use `git status --short`, `git diff --name-only`, and `git diff --stat` in the `asset` repository.
 - Focus on `app.js`, `client/*.js`, `api/*.js`, `lib/*.js`, `scripts/*.js`, `styles/*.css`, `docs/*.md`, and any local planning notes that matter to the workflow.
 
 ### 2. Check current skill coverage
